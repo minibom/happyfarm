@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen style={{ '--sidebar-width': '15%' }}>
       <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r border-sidebar-border">
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
