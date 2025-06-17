@@ -8,7 +8,6 @@ import FarmGrid from '@/components/game/FarmGrid';
 import ActionButtons from '@/components/game/ActionButtons';
 import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
-// import ItemDescriptionDialog from '@/components/game/ItemDescriptionDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -31,14 +30,10 @@ export default function HomePage() {
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
-    // newItemDescription,
-    // isDescriptionLoading,
-    // clearNewItemDescription,
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
-  // const [showItemDescriptionModal, setShowItemDescriptionModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
@@ -50,12 +45,6 @@ export default function HomePage() {
     }
   }, [user, authLoading, router]);
 
-  // useEffect(() => {
-  //   if (newItemDescription && !isDescriptionLoading) {
-  //     setShowItemDescriptionModal(true);
-  //   }
-  // }, [newItemDescription, isDescriptionLoading]);
-
   const handlePlotClick = (plotId: number) => {
     const plot = gameState.plots.find(p => p.id === plotId);
     if (!plot) return;
@@ -65,7 +54,6 @@ export default function HomePage() {
       if (plot.state === 'empty') {
         plantCrop(plotId, selectedSeedToPlant);
       } else {
-        // Optionally, toast that plot is not empty or do nothing
         console.log("Plot not empty for global planting action.");
       }
     } 
@@ -74,7 +62,6 @@ export default function HomePage() {
       if (plot.state === 'ready_to_harvest') {
         harvestCrop(plotId);
       } else {
-        // Optionally, toast that plot is not ready or do nothing
         console.log("Plot not ready for global harvesting action.");
       }
     } 
@@ -167,14 +154,6 @@ export default function HomePage() {
         onGetNewAdvice={fetchAdvisorTip}
         isLoading={isAdvisorLoading}
       />
-      {/* <ItemDescriptionDialog
-        isOpen={showItemDescriptionModal}
-        onClose={() => {
-          setShowItemDescriptionModal(false);
-          clearNewItemDescription();
-        }}
-        item={newItemDescription}
-      /> */}
       <InventoryModal
         isOpen={showInventoryModal}
         onClose={() => setShowInventoryModal(false)}
@@ -183,4 +162,3 @@ export default function HomePage() {
     </div>
   );
 }
-

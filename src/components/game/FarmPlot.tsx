@@ -1,3 +1,4 @@
+
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import { Sprout, Gift } from 'lucide-react';
@@ -15,7 +16,7 @@ interface FarmPlotProps {
   onPlantFromPopover: (seedId: SeedId) => void;
   isGloballyPlanting: boolean; // True if currentAction === 'planting' in HomePage
   isGloballyHarvesting: boolean; // True if currentAction === 'harvesting' in HomePage
-  isSelected?: boolean; // Propagated from FarmGrid if needed, but primary interaction changes
+  isSelected?: boolean; 
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -49,9 +50,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
         const remaining = Math.max(0, targetTime - now);
 
         if (remaining === 0) {
-          // The actual state transition is handled by useGameLogic.
-          // This timer will stop, and the component will re-render with the new plot state.
-          setTimeLeftDisplay("00:00"); // Show 00:00 briefly before state change
+          setTimeLeftDisplay("00:00"); 
           clearInterval(intervalId);
         } else {
           const totalSeconds = Math.floor(remaining / 1000);
@@ -96,12 +95,9 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   const handlePlotGUIClick = () => {
     if (plot.state === 'empty' && !isGloballyPlanting) {
-      // If plot is empty and not in global planting mode, open local seed selector
-      if (availableSeedsForPopover.length > 0) {
-        setIsSeedSelectorOpen(true);
-      } else {
-        onClick(); // No seeds to plant, fall back to default behavior (e.g., show a toast if implemented)
-      }
+      // If plot is empty and not in global planting mode, always try to open local seed selector popover.
+      // The popover itself will display "No seeds in inventory." if availableSeedsForPopover is empty.
+      setIsSeedSelectorOpen(true);
     } else {
       // For all other cases (e.g. global planting active, harvesting, clicking non-empty plot)
       // defer to the main click handler from HomePage
@@ -133,7 +129,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
           className={cn(
             baseClasses,
             stateClasses[plot.state],
-            isSelected && 'ring-4 ring-primary ring-offset-2', // isSelected might be less relevant now
+            isSelected && 'ring-4 ring-primary ring-offset-2',
             actionableClass
           )}
           aria-label={`Farm plot ${plot.id + 1}, state: ${plot.state}${plot.cropId ? `, crop: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
@@ -184,3 +180,4 @@ const FarmPlot: FC<FarmPlotProps> = ({
 };
 
 export default FarmPlot;
+
