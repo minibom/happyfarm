@@ -5,15 +5,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
 import FarmGrid from '@/components/game/FarmGrid';
-import ActionButtons from '@/components/game/ActionButtons';
 import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { useAuth } from '@/hooks/useAuth.tsx';
+import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { ALL_SEED_IDS, MARKET_ITEMS } from '@/lib/constants';
+import { ALL_SEED_IDS, MARKET_ITEMS, CROP_DATA } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 
@@ -33,7 +32,7 @@ export default function HomePage() {
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
-  const [showAdvisor, setShowAdvisor] = useState(false);
+  const [showAdvisor, setShowAdvisor] = useState(false); // Retain advisor state if needed later
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
@@ -49,35 +48,26 @@ export default function HomePage() {
     const plot = gameState.plots.find(p => p.id === plotId);
     if (!plot) return;
 
-    // If in global planting mode (seed selected from ActionButtons)
     if (currentAction === 'planting' && selectedSeedToPlant) {
       if (plot.state === 'empty') {
         plantCrop(plotId, selectedSeedToPlant);
-      } else {
-        console.log("Plot not empty for global planting action.");
       }
-    } 
-    // If in global harvesting mode
-    else if (currentAction === 'harvesting') {
+    } else if (currentAction === 'harvesting') {
       if (plot.state === 'ready_to_harvest') {
         harvestCrop(plotId);
-      } else {
-        console.log("Plot not ready for global harvesting action.");
       }
-    } 
-    // If no global action, and plot is not empty (empty plot click is handled by FarmPlot's popover)
-    else if (plot.state !== 'empty' && currentAction === 'none') {
-      console.log(`Plot ${plotId} clicked. State: ${plot.state}. No global action. No local action defined for non-empty plots without global action.`);
     }
-    // If plot is empty and currentAction is 'none', FarmPlot's internal popover logic takes precedence via its own click handler.
+    // If plot is empty and currentAction is 'none', FarmPlot's internal popover logic takes precedence.
     // The onClick passed to FarmPlot from here will be called by FarmPlot if it doesn't open its popover.
   };
   
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
     plantCrop(plotId, seedId);
+    // If a global action was active, planting from popover might clear it or not, depending on desired UX.
+    // For now, let's assume it doesn't clear global action to allow continuous mass planting/harvesting.
   };
 
-  const togglePlantMode = (seedId: SeedId) => {
+  const handleSetPlantMode = (seedId: SeedId) => {
     if (currentAction === 'planting' && selectedSeedToPlant === seedId) {
       setCurrentAction('none');
       setSelectedSeedToPlant(undefined);
@@ -87,10 +77,19 @@ export default function HomePage() {
     }
   };
 
-  const toggleHarvestMode = () => {
-    setCurrentAction(prev => (prev === 'harvesting' ? 'none' : 'harvesting'));
-    setSelectedSeedToPlant(undefined); // Ensure no seed is selected when switching to harvest
+  const handleToggleHarvestMode = () => {
+    if (currentAction === 'harvesting') {
+      setCurrentAction('none');
+    } else {
+      setCurrentAction('harvesting');
+      setSelectedSeedToPlant(undefined); // Ensure no seed is selected when switching to harvest
+    }
   };
+  
+  const handleClearAction = () => {
+    setCurrentAction('none');
+    setSelectedSeedToPlant(undefined);
+  }
 
   const availableSeedsForPlanting = ALL_SEED_IDS.filter(seedId => gameState.inventory[seedId] > 0);
 
@@ -107,35 +106,31 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4">
       <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
       
-      <main className="flex flex-col lg:flex-row gap-4 w-full max-w-7xl mt-4">
-        <div className="lg:w-3/4 flex flex-col items-center">
-          <h1 className="text-3xl sm:text-4xl font-bold text-primary font-headline my-4 text-center">Happy Farm</h1>
-          <FarmGrid
-            plots={gameState.plots}
-            onPlotClick={handlePlotClick}
-            availableSeedsForPopover={availableSeedsForPlanting}
-            onPlantFromPopover={plantSeedFromPlotPopover}
-            isGloballyPlanting={currentAction === 'planting'}
-            isGloballyHarvesting={currentAction === 'harvesting'}
-          />
-        </div>
-        
-        <aside className="lg:w-1/4 flex flex-col gap-4 lg:sticky lg:top-20 self-start">
-          <ActionButtons
-            onTogglePlantMode={togglePlantMode}
-            onToggleHarvestMode={toggleHarvestMode}
-            onOpenAdvisor={() => { fetchAdvisorTip(); setShowAdvisor(true); }}
-            availableSeeds={availableSeedsForPlanting}
-            isPlanting={currentAction === 'planting'}
-            isHarvesting={currentAction === 'harvesting'}
-            selectedSeed={selectedSeedToPlant}
-          />
-        </aside>
+      <main className="flex flex-col items-center w-full max-w-7xl mt-4">
+        <h1 className="text-3xl sm:text-4xl font-bold text-primary font-headline my-4 text-center">Happy Farm</h1>
+        <FarmGrid
+          plots={gameState.plots}
+          onPlotClick={handlePlotClick}
+          availableSeedsForPopover={availableSeedsForPlanting}
+          onPlantFromPopover={plantSeedFromPlotPopover}
+          isGloballyPlanting={currentAction === 'planting'}
+          isGloballyHarvesting={currentAction === 'harvesting'}
+        />
       </main>
+      
+      {/* Advisor Dialog can be triggered from somewhere else if needed, e.g. a ? icon or from ResourceBar */}
+      {/* For now, removing ActionButtons also removes the explicit advisor trigger */}
 
       <BottomNavBar 
         onOpenInventory={() => setShowInventoryModal(true)}
         onOpenMarket={() => setShowMarket(true)}
+        onSetPlantMode={handleSetPlantMode}
+        onToggleHarvestMode={handleToggleHarvestMode}
+        onClearAction={handleClearAction}
+        currentAction={currentAction}
+        selectedSeed={selectedSeedToPlant}
+        availableSeeds={availableSeedsForPlanting}
+        inventory={gameState.inventory}
       />
 
       <MarketModal

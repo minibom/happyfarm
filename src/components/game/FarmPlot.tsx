@@ -14,9 +14,9 @@ interface FarmPlotProps {
   onClick: () => void; // Original click handler from HomePage for global actions
   availableSeedsForPopover: SeedId[];
   onPlantFromPopover: (seedId: SeedId) => void;
-  isGloballyPlanting: boolean; // True if currentAction === 'planting' in HomePage
-  isGloballyHarvesting: boolean; // True if currentAction === 'harvesting' in HomePage
-  isSelected?: boolean; 
+  isGloballyPlanting: boolean; 
+  isGloballyHarvesting: boolean;
+  isSelected?: boolean; // This prop seems unused, consider removing if not needed
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -26,7 +26,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onPlantFromPopover,
   isGloballyPlanting,
   isGloballyHarvesting,
-  isSelected,
+  isSelected, 
 }) => {
   const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
@@ -94,13 +94,16 @@ const FarmPlot: FC<FarmPlotProps> = ({
   };
 
   const handlePlotGUIClick = () => {
-    if (plot.state === 'empty' && !isGloballyPlanting) {
-      // If plot is empty and not in global planting mode, always try to open local seed selector popover.
-      // The popover itself will display "No seeds in inventory." if availableSeedsForPopover is empty.
+    // If a global action (planting or harvesting) is active, defer to the main onClick from HomePage
+    if (isGloballyPlanting || isGloballyHarvesting) {
+      onClick();
+    } 
+    // If plot is empty and no global action is active, open local seed selector popover
+    else if (plot.state === 'empty') {
       setIsSeedSelectorOpen(true);
-    } else {
-      // For all other cases (e.g. global planting active, harvesting, clicking non-empty plot)
-      // defer to the main click handler from HomePage
+    } 
+    // For other cases (e.g., clicking a non-empty plot with no global action), defer to main onClick
+    else {
       onClick();
     }
   };
@@ -115,11 +118,15 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   let actionableClass = '';
   if (isGloballyPlanting && plot.state === 'empty') {
-    actionableClass = 'ring-4 ring-accent ring-offset-2';
+    actionableClass = 'ring-4 ring-green-500 ring-offset-2'; // Green ring for plantable
   }
   if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
-    actionableClass = 'ring-4 ring-blue-500 ring-offset-2';
+    actionableClass = 'ring-4 ring-yellow-400 ring-offset-2'; // Yellow ring for harvestable
   }
+  if (isSelected) { // isSelected might not be needed if actionableClass takes precedence
+     actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
+  }
+
 
   return (
     <Popover open={isSeedSelectorOpen} onOpenChange={setIsSeedSelectorOpen}>
@@ -129,7 +136,6 @@ const FarmPlot: FC<FarmPlotProps> = ({
           className={cn(
             baseClasses,
             stateClasses[plot.state],
-            isSelected && 'ring-4 ring-primary ring-offset-2',
             actionableClass
           )}
           aria-label={`Farm plot ${plot.id + 1}, state: ${plot.state}${plot.cropId ? `, crop: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
@@ -147,7 +153,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      {plot.state === 'empty' && (
+      {plot.state === 'empty' && !isGloballyPlanting && ( // Only show popover if not in global planting mode
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium mb-1 text-center">Plant a seed:</p>
@@ -165,7 +171,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
                     }}
                     className="w-full justify-start"
                   >
-                    <span className="mr-2">{crop?.icon}</span> Plant {crop?.name || seedId}
+                    <span className="mr-2 text-lg">{crop?.icon}</span> Plant {crop?.name || seedId}
                   </Button>
                 );
               })
@@ -180,4 +186,3 @@ const FarmPlot: FC<FarmPlotProps> = ({
 };
 
 export default FarmPlot;
-
