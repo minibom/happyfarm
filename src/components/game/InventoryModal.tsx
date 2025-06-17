@@ -13,9 +13,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Inventory, SeedId, CropId, CropDetails } from '@/types';
-import { PackageSearch, Wheat, Sprout } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card'; // Import Card for item display
-import { Badge } from '@/components/ui/badge'; // For quantity display
+import { PackageSearch, Wheat, Sprout, Clock, Coins } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface InventoryModalProps {
   isOpen: boolean;
@@ -25,6 +31,21 @@ interface InventoryModalProps {
   allSeedIds: SeedId[];
   allCropIds: CropId[];
 }
+
+const formatMilliseconds = (ms: number) => {
+  if (ms <= 0) return "0s";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  let formattedTime = "";
+  if (minutes > 0) {
+    formattedTime += `${minutes}m `;
+  }
+  if (seconds > 0 || minutes === 0) {
+    formattedTime += `${seconds}s`;
+  }
+  return formattedTime.trim() || "0s";
+};
 
 const InventoryModal: FC<InventoryModalProps> = ({
     isOpen,
@@ -68,16 +89,52 @@ const InventoryModal: FC<InventoryModalProps> = ({
 
         if (!itemDetails) return null;
 
+        const totalHarvestTime = itemDetails.timeToGrowing + itemDetails.timeToReady;
+        const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
+
         return (
-          <Card key={itemId} className="overflow-hidden shadow-sm flex flex-col items-center justify-between h-28 sm:h-32">
-            <CardContent className="p-2 flex flex-col items-center justify-center flex-grow w-full relative">
-              <Badge className="absolute top-1 right-1 text-xs px-1.5 py-0.5 h-auto">{quantity}</Badge>
-              <span className="text-3xl sm:text-4xl my-1">{itemIcon}</span>
-              <p className="text-[10px] sm:text-xs font-medium text-center truncate w-full mt-auto" title={displayName}>
-                {displayName}
-              </p>
-            </CardContent>
-          </Card>
+          <TooltipProvider key={itemId} delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card className="overflow-hidden shadow-sm flex flex-col items-center justify-between h-28 sm:h-32 cursor-default">
+                  <CardContent className="p-2 flex flex-col items-center justify-center flex-grow w-full relative">
+                    <Badge className="absolute top-1 right-1 text-xs px-1.5 py-0.5 h-auto">{quantity}</Badge>
+                    <span className="text-3xl sm:text-4xl my-1">{itemIcon}</span>
+                    <p className="text-[10px] sm:text-xs font-medium text-center truncate w-full mt-auto" title={displayName}>
+                      {displayName}
+                    </p>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent className="text-sm p-2 shadow-lg rounded-md bg-background border border-border">
+                <div className="font-bold text-primary mb-1">{displayName}</div>
+                {type === 'seed' && (
+                  <div className="space-y-0.5 text-xs">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span>TG Thu Hoạch: {formattedHarvestTime}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5 text-yellow-500" />
+                      <span>Giá Mua (Hạt): {itemDetails.seedPrice}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5 text-green-500" />
+                      <span>Giá Bán (Nông Sản): {itemDetails.cropPrice}</span>
+                    </div>
+                  </div>
+                )}
+                {type === 'crop' && (
+                  <div className="space-y-0.5 text-xs">
+                    <div className="flex items-center gap-1">
+                      <Coins className="w-3.5 h-3.5 text-green-500" />
+                      <span>Giá Bán: {itemDetails.cropPrice}</span>
+                    </div>
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       })}
     </div>
@@ -128,3 +185,4 @@ const InventoryModal: FC<InventoryModalProps> = ({
 };
 
 export default InventoryModal;
+
