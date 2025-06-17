@@ -10,10 +10,11 @@ import AdvisorDialog from '@/components/game/AdvisorDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import ChatPanel from '@/components/game/ChatPanel';
+import PlayerProfileModal from '@/components/game/PlayerProfileModal'; // Added
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { ALL_SEED_IDS, MARKET_ITEMS } from '@/lib/constants'; // Ensure MARKET_ITEMS is imported
+import { ALL_SEED_IDS, MARKET_ITEMS, LEVEL_UP_XP_THRESHOLD } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 
@@ -35,6 +36,7 @@ export default function HomePage() {
   const [showMarket, setShowMarket] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false); // Added
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -123,6 +125,7 @@ export default function HomePage() {
       <BottomNavBar 
         onOpenInventory={() => setShowInventoryModal(true)}
         onOpenMarket={() => setShowMarket(true)}
+        onOpenProfile={() => setShowProfileModal(true)} // Added
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onClearAction={handleClearAction}
@@ -135,7 +138,7 @@ export default function HomePage() {
       <MarketModal
         isOpen={showMarket}
         onClose={() => setShowMarket(false)}
-        marketItems={MARKET_ITEMS} // Pass MARKET_ITEMS here
+        marketItems={MARKET_ITEMS}
         playerGold={gameState.gold}
         playerInventory={gameState.inventory}
         onBuyItem={buyItem}
@@ -152,6 +155,15 @@ export default function HomePage() {
         isOpen={showInventoryModal}
         onClose={() => setShowInventoryModal(false)}
         inventory={gameState.inventory}
+      />
+      <PlayerProfileModal // Added
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        playerEmail={user.email || 'Không có email'}
+        playerLevel={gameState.level}
+        playerGold={gameState.gold}
+        playerXP={gameState.xp}
+        xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
       />
     </div>
   );

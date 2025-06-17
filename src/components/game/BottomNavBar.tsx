@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react'; // Added UserCircle2
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 interface BottomNavBarProps {
   onOpenInventory: () => void;
   onOpenMarket: () => void;
+  onOpenProfile: () => void; // Added
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onClearAction: () => void;
@@ -39,6 +40,7 @@ interface BottomNavBarProps {
 const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenInventory,
   onOpenMarket,
+  onOpenProfile, // Added
   onSetPlantMode,
   onToggleHarvestMode,
   onClearAction,
@@ -66,7 +68,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     try {
       await logOut();
       toast({ title: "Đã Đăng Xuất", description: "Bạn đã đăng xuất thành công." });
-      router.push('/login'); // Ensure redirection after logout
+      router.push('/login'); 
     } catch (error) {
       console.error("Logout failed:", error);
       toast({ title: "Đăng Xuất Thất Bại", description: "Không thể đăng xuất. Vui lòng thử lại.", variant: "destructive" });
@@ -85,7 +87,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     size="icon" 
                     variant="outline"
                     className={cn(
-                      "p-2.5 h-12 w-12 rounded-full shadow-md", 
+                      "p-2 h-12 w-12 rounded-full shadow-md", 
                       currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                     )}
                     aria-label="Trồng Hạt Giống"
@@ -129,7 +131,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 size="icon"
                 variant="outline"
                 className={cn(
-                  "p-2.5 h-12 w-12 rounded-full shadow-md",
+                  "p-2 h-12 w-12 rounded-full shadow-md",
                   currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                 )}
                 aria-label="Thu Hoạch"
@@ -147,7 +149,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onOpenInventory}
                 size="icon"
-                className="p-2.5 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
+                variant="outline"
+                className="p-2 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
                 aria-label="Mở Kho"
               >
                 <PackageSearch className="h-5 w-5" />
@@ -163,7 +166,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onOpenMarket}
                 size="icon"
-                className="p-2.5 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90 text-accent-foreground"
+                variant="outline"
+                className="p-2 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90 text-accent-foreground"
                 aria-label="Mở Chợ"
               >
                 <ShoppingCart className="h-5 w-5" />
@@ -174,6 +178,23 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                  onClick={onOpenProfile}
+                  size="icon"
+                  variant="outline"
+                  className="p-2 h-12 w-12 rounded-full shadow-md"
+                  aria-label="Thông tin Người chơi"
+              >
+                  <UserCircle2 className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>Thông tin Người chơi</p>
+            </TooltipContent>
+          </Tooltip>
+
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -181,7 +202,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     <Button
                         size="icon"
                         variant="outline"
-                        className="p-2.5 h-12 w-12 rounded-full shadow-md"
+                        className="p-2 h-12 w-12 rounded-full shadow-md"
                         aria-label="Cài Đặt & Quản trị"
                     >
                         <Settings className="h-5 w-5" />
