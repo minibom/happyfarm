@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -6,13 +5,12 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import type { User as FirebaseUser, AuthError } from 'firebase/auth';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
 } from 'firebase/auth';
-// Removed unused Firestore imports: doc, getDoc, setDoc, onSnapshot, type Unsubscribe
 import type { GameState } from '@/types';
 
 interface AuthContextType {
@@ -23,7 +21,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
-  initialGameState?: GameState; 
+  initialGameState?: GameState;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signOut(auth);
-      setInitialGameState(undefined); 
+      setInitialGameState(undefined);
     } catch (e) {
       setError(e as AuthError);
     } finally {
@@ -98,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value = { user, userId, loading, error, signUp, signIn, logOut, initialGameState };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (<AuthContext.Provider value={value}>{children}</AuthContext.Provider>);
 };
 
 export const useAuth = (): AuthContextType => {
