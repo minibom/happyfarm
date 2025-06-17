@@ -18,7 +18,7 @@ export interface CropDetails {
 
 export interface Plot {
   id: number;
-  state: PlotState; // Can include 'locked' if we explicitly set it, or derive from unlockedPlotsCount
+  state: PlotState;
   cropId?: CropId;
   plantedAt?: number;
 }
@@ -30,10 +30,13 @@ export interface GameState {
   gold: number;
   xp: number;
   level: number;
-  plots: Plot[]; // Plot state might be dynamically determined rather than stored as 'locked'
+  plots: Plot[];
   inventory: Inventory;
   lastUpdate: number;
-  unlockedPlotsCount: number; // New: to track how many plots are unlocked
+  unlockedPlotsCount: number;
+  status: 'active' | 'banned_chat'; // For user status, e.g., chat ban
+  lastLogin: number; // Timestamp of last login or game data load
+  email?: string; // User's email, for display in admin
 }
 
 export interface MarketItem {
@@ -56,4 +59,10 @@ export interface TierInfo {
   tier: number;
   tierName: string;
   nextTierLevel?: number;
+}
+
+// For Admin User Page
+export interface AdminUserView extends GameState {
+  uid: string;
+  // email is already optional in GameState, so it's covered
 }

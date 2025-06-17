@@ -1,14 +1,14 @@
 
-import type { CropDetails, CropId, GameState, Plot, MarketItem, SeedId, TierInfo } from '@/types';
+import type { CropDetails, CropId, GameState, Plot, SeedId, TierInfo } from '@/types';
 
-export const GRID_ROWS = 5; // Updated
-export const GRID_COLS = 5; // Updated
-export const TOTAL_PLOTS = GRID_ROWS * GRID_COLS; // Now 25
+export const GRID_ROWS = 5;
+export const GRID_COLS = 5;
+export const TOTAL_PLOTS = GRID_ROWS * GRID_COLS;
 
 export const INITIAL_GOLD = 100;
 export const INITIAL_XP = 0;
 export const INITIAL_LEVEL = 1;
-export const INITIAL_UNLOCKED_PLOTS = 10; // Player starts with 10 plots
+export const INITIAL_UNLOCKED_PLOTS = 10;
 
 export const TIER_NAMES: string[] = [
   "Nông Dân Tập Sự",
@@ -30,10 +30,7 @@ export const getPlayerTierInfo = (level: number): TierInfo => {
   return { tier, tierName, nextTierLevel };
 };
 
-// Function to determine plot unlock cost
 export const getPlotUnlockCost = (plotIndex: number): number => {
-  // plotIndex is 0-based. Plots 0-9 are free.
-  // Plot 10 (index 10) is the first to cost.
   if (plotIndex < INITIAL_UNLOCKED_PLOTS) return 0;
   const baseCost = 500;
   const increment = 250;
@@ -116,15 +113,15 @@ export const ALL_SEED_IDS = ALL_CROP_IDS.map(cropId => CROP_DATA[cropId].seedNam
 
 export const INITIAL_PLOTS: Plot[] = Array.from({ length: TOTAL_PLOTS }, (_, i) => ({
   id: i,
-  state: 'empty', // The actual 'locked' state will be determined by unlockedPlotsCount
+  state: 'empty',
 }));
 
 export const INITIAL_INVENTORY: GameState['inventory'] = {};
 ALL_SEED_IDS.forEach(seedId => {
   INITIAL_INVENTORY[seedId] = seedId === 'tomatoSeed' ? 5 :
                               seedId === 'carrotSeed' ? 3 :
-                              seedId === 'cornSeed' || seedId === 'strawberrySeed' ? 2 :
-                              seedId === 'potatoSeed' || seedId === 'lettuceSeed' ? 1 : 0;
+                              seedId === 'strawberrySeed' ? 2 : // Gave some strawberry seeds
+                              0; // Default others to 0
 });
 ALL_CROP_IDS.forEach(cropId => {
   INITIAL_INVENTORY[cropId] = 0;
@@ -139,6 +136,9 @@ export const INITIAL_GAME_STATE: GameState = {
   inventory: INITIAL_INVENTORY,
   lastUpdate: Date.now(),
   unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
+  status: 'active',
+  lastLogin: Date.now(),
+  email: undefined,
 };
 
 export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {

@@ -7,8 +7,8 @@ import {
   TOTAL_PLOTS,
   CROP_DATA as FALLBACK_CROP_DATA,
   getPlayerTierInfo,
-  getPlotUnlockCost, // Import new function
-  INITIAL_UNLOCKED_PLOTS, // Import new constant
+  getPlotUnlockCost,
+  INITIAL_UNLOCKED_PLOTS,
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from 'firebase/firestore';
 
 export const useGameLogic = () => {
-  const { userId, loading: authLoading } = useAuth();
+  const { user, userId, loading: authLoading } = useAuth(); // Get user from useAuth
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [isInitialized, setIsInitialized] = useState(false);
   const [gameDataLoaded, setGameDataLoaded] = useState(false);
@@ -157,7 +157,7 @@ export const useGameLogic = () => {
           loadedState.plots = plots;
 
           const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
-          if (cropData) { // Ensure cropData is available before validating inventory against allSeedIds/allCropIds
+          if (cropData) {
             allSeedIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
             allCropIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
           }
@@ -174,20 +174,31 @@ export const useGameLogic = () => {
           loadedState.gold = typeof loadedState.gold === 'number' ? loadedState.gold : INITIAL_GAME_STATE.gold;
           loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
           loadedState.level = typeof loadedState.level === 'number' ? loadedState.level : INITIAL_GAME_STATE.level;
-          loadedState.lastUpdate = typeof loadedState.lastUpdate === 'number' ? loadedState.lastUpdate : Date.now();
+          loadedState.lastUpdate = Date.now(); // Always update lastUpdate on load
           loadedState.unlockedPlotsCount = typeof loadedState.unlockedPlotsCount === 'number' && loadedState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && loadedState.unlockedPlotsCount <= TOTAL_PLOTS
             ? loadedState.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
+          
+          loadedState.email = user?.email || loadedState.email || 'N/A'; // Ensure email is set
+          loadedState.lastLogin = Date.now(); // Update lastLogin on data load
+          loadedState.status = loadedState.status || 'active'; // Initialize status if missing
 
 
           setGameState(loadedState);
           if (!gameDataLoaded) prevLevelRef.current = loadedState.level;
         } else {
-          const newInitialState = { ...INITIAL_GAME_STATE, lastUpdate: Date.now(), unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS };
-            if (cropData) {
-                allSeedIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
-                allCropIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
-            }
+          const newInitialState = { 
+            ...INITIAL_GAME_STATE, 
+            lastUpdate: Date.now(), 
+            unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
+            email: user?.email || 'N/A', // Set email for new user
+            lastLogin: Date.now(), // Set lastLogin for new user
+            status: 'active' as const, // Set status for new user
+          };
+          if (cropData) {
+              allSeedIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
+              allCropIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
+          }
           setGameState(newInitialState);
 
           if (!gameDataLoaded) prevLevelRef.current = newInitialState.level;
@@ -213,7 +224,7 @@ export const useGameLogic = () => {
     return () => {
         if (unsubscribe) unsubscribe();
     };
-  }, [userId, authLoading, toast, cropData, allSeedIds, allCropIds, gameDataLoaded]); // Added cropData, allSeedIds, allCropIds dependencies
+  }, [userId, authLoading, toast, cropData, allSeedIds, allCropIds, gameDataLoaded, user]);
 
   useEffect(() => {
     if (gameDataLoaded && itemDataLoaded && userId) {
@@ -233,7 +244,6 @@ export const useGameLogic = () => {
         if (!prev.plots) return prev;
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
-          // Only process plots that are within the unlocked range
           if (plot.id >= prev.unlockedPlotsCount) return plot;
 
           if (plot.state === 'planted' && plot.plantedAt && plot.cropId && cropData[plot.cropId]) {
@@ -444,7 +454,7 @@ export const useGameLogic = () => {
     harvestCrop,
     buyItem,
     sellItem,
-    unlockPlot, // Expose new function
+    unlockPlot,
     isInitialized,
     playerTierInfo,
     cropData,
