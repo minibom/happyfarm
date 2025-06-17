@@ -51,9 +51,11 @@ const MarketModal: FC<MarketModalProps> = ({
   }, [marketItems, playerTier]);
 
   const cropsToSell = useMemo(() => {
-    if (!marketItems) return [];
-    return marketItems.filter(item => item.type === 'crop');
-  }, [marketItems]);
+    if (!marketItems || !playerInventory) return [];
+    return marketItems.filter(item => 
+      item.type === 'crop' && (playerInventory[item.id] || 0) > 0
+    );
+  }, [marketItems, playerInventory]);
 
 
   if (!marketItems || !cropData) {
@@ -91,7 +93,7 @@ const MarketModal: FC<MarketModalProps> = ({
   };
 
   const renderSeedMarketGrid = () => (
-    <ScrollArea className="h-80">
+    <ScrollArea className="max-h-[60vh]">
       <TooltipProvider>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
@@ -150,13 +152,16 @@ const MarketModal: FC<MarketModalProps> = ({
               </Card>
             );
           })}
+           {seedsToDisplay.length === 0 && (
+                <p className="text-center text-muted-foreground py-4 col-span-full">Không có hạt giống nào để mua ở bậc này.</p>
+            )}
         </div>
       </TooltipProvider>
     </ScrollArea>
   );
 
-  const renderCropSellList = () => ( // Keep sell list as is for now, or change to grid if preferred
-    <ScrollArea className="h-80">
+  const renderCropSellList = () => (
+    <ScrollArea className="max-h-[60vh]">
       <div className="space-y-3 pr-2">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
@@ -202,7 +207,7 @@ const MarketModal: FC<MarketModalProps> = ({
           );
         })}
         {cropsToSell.length === 0 && (
-            <p className="text-center text-muted-foreground py-4">Không có nông sản để bán.</p>
+            <p className="text-center text-muted-foreground py-4">Không có nông sản nào trong kho để bán.</p>
         )}
       </div>
     </ScrollArea>
