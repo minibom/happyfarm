@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Trash2, MessageCircleOff, ShieldAlert, Users, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
+import { Eye, Trash2, ShieldAlert, Users, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { GameState, AdminUserView } from '@/types';
-import { TIER_NAMES, getPlayerTierInfo } from '@/lib/constants';
+import { getPlayerTierInfo } from '@/lib/constants';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserView[]>([]);
@@ -51,22 +51,19 @@ export default function AdminUsersPage() {
             ...gameState,
           });
         } else {
-          // Handle cases where a user doc exists but no gameState (should be rare)
            fetchedUsers.push({
             uid,
             email: 'N/A (No GameState)',
-            // Provide default GameState values
             gold: 0, xp: 0, level: 1, plots: [], inventory: {}, lastUpdate: 0, unlockedPlotsCount: 0,
             status: 'active', lastLogin: 0 
           });
         }
       }
-      // Sort users by level descending, then by lastLogin descending
       fetchedUsers.sort((a, b) => {
         if (b.level !== a.level) {
             return b.level - a.level;
         }
-        return b.lastLogin - a.lastLogin;
+        return (b.lastLogin || 0) - (a.lastLogin || 0);
       });
       setUsers(fetchedUsers);
     } catch (error) {
@@ -111,10 +108,9 @@ export default function AdminUsersPage() {
         return;
       }
     } else {
-        // Simulated actions
         switch(action) {
             case 'delete': actionDescription = `xóa người dùng ${userToUpdate.email}`; break;
-            case 'view_game_state': actionDescription = `xem trạng thái game của ${userToUpdate.email}`; break; // This is done by opening modal
+            case 'view_game_state': actionDescription = `xem trạng thái game của ${userToUpdate.email}`; break; 
             case 'reset_progress': actionDescription = `reset tiến trình của ${userToUpdate.email}`; break;
             case 'grant_items': actionDescription = `tặng vật phẩm cho ${userToUpdate.email}`; break;
         }
@@ -139,13 +135,13 @@ export default function AdminUsersPage() {
 
   if (isLoading) {
     return (
-      <Card className="shadow-xl">
+      <Card className="shadow-xl flex-1 flex flex-col min-h-0">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
             <Users className="h-7 w-7"/> Quản Lý Người Dùng
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+        <CardContent className="flex-1 flex items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="ml-4 text-xl">Đang tải dữ liệu người dùng từ Firestore...</p>
         </CardContent>
@@ -155,7 +151,7 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <Card className="shadow-xl">
+      <Card className="shadow-xl flex flex-col flex-1 min-h-0">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
             <div>
@@ -178,8 +174,8 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="max-h-[calc(100vh-350px)] border rounded-md">
+        <CardContent className="flex-1 overflow-hidden flex flex-col">
+          <ScrollArea className="h-full border rounded-md">
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>

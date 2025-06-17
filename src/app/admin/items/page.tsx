@@ -38,7 +38,6 @@ export default function AdminItemsPage() {
     setIsLoading(true);
     try {
       const itemsCollectionRef = collection(db, 'gameItems');
-      // Order by unlockTier, then by name for consistent display
       const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
       const querySnapshot = await getDocs(q);
       const fetchedItems: ItemDataForTable[] = [];
@@ -55,9 +54,6 @@ export default function AdminItemsPage() {
   }, [toast]);
 
   useEffect(() => {
-    // Initial fetch
-    // fetchItems(); // Removed to rely solely on onSnapshot for initial load and updates
-
     const itemsCollectionRef = collection(db, 'gameItems');
     const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
     
@@ -103,13 +99,12 @@ export default function AdminItemsPage() {
 
     try {
       const itemRef = doc(db, 'gameItems', effectiveId);
-      await setDoc(itemRef, dataToSave, { merge: modalProps.mode === 'edit' }); // Use merge for edits to avoid overwriting unrelated fields if any
+      await setDoc(itemRef, dataToSave, { merge: modalProps.mode === 'edit' }); 
       toast({
         title: `Thành Công (${modalProps.mode === 'create' ? 'Tạo Mới' : 'Chỉnh Sửa'})`,
         description: `Đã ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm "${data.name}" trên database.`,
         className: "bg-green-500 text-white"
       });
-      // No need to call fetchItems() here as onSnapshot will update the list
     } catch (error) {
       console.error(`Error ${modalProps.mode === 'create' ? 'creating' : 'updating'} item:`, error);
       toast({ title: "Lỗi Lưu Trữ", description: `Không thể ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm.`, variant: "destructive"});
@@ -125,7 +120,6 @@ export default function AdminItemsPage() {
         description: `Đã xóa vật phẩm "${itemToDelete.name}" khỏi database.`,
         className: "bg-orange-500 text-white"
       });
-      // No need to call fetchItems() here as onSnapshot will update the list
     } catch (error) {
       console.error("Error deleting item:", error);
       toast({ title: "Lỗi Xóa", description: `Không thể xóa vật phẩm "${itemToDelete.name}".`, variant: "destructive"});
@@ -134,13 +128,13 @@ export default function AdminItemsPage() {
 
   if (isLoading && items.length === 0) {
     return (
-      <Card className="shadow-xl">
+      <Card className="shadow-xl flex-1 flex flex-col min-h-0">
         <CardHeader>
             <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm
             </CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+        <CardContent className="flex-1 flex items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="ml-4 text-xl">Đang tải dữ liệu vật phẩm từ Firestore...</p>
         </CardContent>
@@ -150,7 +144,7 @@ export default function AdminItemsPage() {
 
   return (
     <>
-      <Card className="shadow-xl">
+      <Card className="shadow-xl flex flex-col flex-1 min-h-0">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
@@ -166,8 +160,8 @@ export default function AdminItemsPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <ScrollArea className="max-h-[calc(100vh-300px)] border rounded-md">
+        <CardContent className="flex-1 overflow-hidden flex flex-col">
+          <ScrollArea className="h-full border rounded-md">
             {items.length === 0 && !isLoading && (
                  <p className="text-center text-muted-foreground py-8">
                     Không tìm thấy vật phẩm nào. Hãy thử đẩy dữ liệu từ trang "Cấu hình Hệ thống" hoặc tạo mới.
