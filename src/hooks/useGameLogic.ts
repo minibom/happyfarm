@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, Plot, CropId, InventoryItem, SeedId, GeneratedItem } from '@/types';
+import type { GameState, Plot, CropId, InventoryItem, SeedId } from '@/types';
 import {
   INITIAL_GAME_STATE,
   CROP_DATA,
@@ -10,7 +10,7 @@ import {
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { getFarmingAdvice, type FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor';
-import { generateItemDescription, type ItemDescriptionInput } from '@/ai/flows/ai-generated-item-descriptions';
+// import { generateItemDescription, type ItemDescriptionInput } from '@/ai/flows/ai-generated-item-descriptions';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
@@ -21,8 +21,8 @@ export const useGameLogic = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [advisorTip, setAdvisorTip] = useState<string | null>(null);
   const [isAdvisorLoading, setIsAdvisorLoading] = useState(false);
-  const [newItemDescription, setNewItemDescription] = useState<GeneratedItem | null>(null);
-  const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
+  // const [newItemDescription, setNewItemDescription] = useState<GeneratedItem | null>(null);
+  // const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const { toast } = useToast();
 
   const prevLevelRef = useRef(gameState.level);
@@ -231,16 +231,16 @@ export const useGameLogic = () => {
 
     toast({ title: "Harvested!", description: `Harvested ${cropDetail.harvestYield} ${cropDetail.name}(s) and earned ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
 
-    setIsDescriptionLoading(true);
-    try {
-      const itemInput: ItemDescriptionInput = { cropType: cropDetail.name, harvestQuality: 'perfect' };
-      const desc = await generateItemDescription(itemInput);
-      setNewItemDescription({ name: desc.itemName, description: desc.itemDescription, cropId: currentPlot.cropId });
-    } catch (error) {
-      console.error("Failed to generate item description:", error);
-    } finally {
-      setIsDescriptionLoading(false);
-    }
+    // setIsDescriptionLoading(true);
+    // try {
+    //   const itemInput: ItemDescriptionInput = { cropType: cropDetail.name, harvestQuality: 'perfect' };
+    //   const desc = await generateItemDescription(itemInput);
+    //   setNewItemDescription({ name: desc.itemName, description: desc.itemDescription, cropId: currentPlot.cropId });
+    // } catch (error) {
+    //   console.error("Failed to generate item description:", error);
+    // } finally {
+    //   setIsDescriptionLoading(false);
+    // }
   }, [toast]);
 
   const buyItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
@@ -324,8 +324,9 @@ export const useGameLogic = () => {
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
-    newItemDescription,
-    isDescriptionLoading,
-    clearNewItemDescription: () => setNewItemDescription(null),
+    // newItemDescription,
+    // isDescriptionLoading,
+    // clearNewItemDescription: () => setNewItemDescription(null),
   };
 };
+

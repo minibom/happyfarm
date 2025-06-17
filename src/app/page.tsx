@@ -8,11 +8,11 @@ import FarmGrid from '@/components/game/FarmGrid';
 import ActionButtons from '@/components/game/ActionButtons';
 import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
-import ItemDescriptionDialog from '@/components/game/ItemDescriptionDialog';
+// import ItemDescriptionDialog from '@/components/game/ItemDescriptionDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth.tsx';
 import type { SeedId } from '@/types';
 import { ALL_SEED_IDS, MARKET_ITEMS } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
@@ -31,14 +31,14 @@ export default function HomePage() {
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
-    newItemDescription,
-    isDescriptionLoading,
-    clearNewItemDescription,
+    // newItemDescription,
+    // isDescriptionLoading,
+    // clearNewItemDescription,
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
-  const [showItemDescriptionModal, setShowItemDescriptionModal] = useState(false);
+  // const [showItemDescriptionModal, setShowItemDescriptionModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
@@ -50,11 +50,11 @@ export default function HomePage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (newItemDescription && !isDescriptionLoading) {
-      setShowItemDescriptionModal(true);
-    }
-  }, [newItemDescription, isDescriptionLoading]);
+  // useEffect(() => {
+  //   if (newItemDescription && !isDescriptionLoading) {
+  //     setShowItemDescriptionModal(true);
+  //   }
+  // }, [newItemDescription, isDescriptionLoading]);
 
   const handlePlotClick = (plotId: number) => {
     const plot = gameState.plots.find(p => p.id === plotId);
@@ -167,14 +167,14 @@ export default function HomePage() {
         onGetNewAdvice={fetchAdvisorTip}
         isLoading={isAdvisorLoading}
       />
-      <ItemDescriptionDialog
+      {/* <ItemDescriptionDialog
         isOpen={showItemDescriptionModal}
         onClose={() => {
           setShowItemDescriptionModal(false);
           clearNewItemDescription();
         }}
         item={newItemDescription}
-      />
+      /> */}
       <InventoryModal
         isOpen={showInventoryModal}
         onClose={() => setShowInventoryModal(false)}
@@ -183,3 +183,4 @@ export default function HomePage() {
     </div>
   );
 }
+

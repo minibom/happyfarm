@@ -40,8 +40,9 @@ export interface MarketItem {
   type: 'seed' | 'crop';
 }
 
-export interface GeneratedItem {
-  name: string;
-  description: string;
-  cropId: CropId;
-}
+// export interface GeneratedItem {
+//   name: string;
+//   description: string;
+//   cropId: CropId;
+// }
+
