@@ -33,9 +33,9 @@ interface BottomNavBarProps {
   onClearAction: () => void;
   currentAction: 'planting' | 'harvesting' | 'none';
   selectedSeed?: SeedId;
-  availableSeeds: SeedId[]; 
+  availableSeeds: SeedId[];
   inventory: Inventory;
-  cropData: Record<CropId, CropDetails> | null; 
+  cropData: Record<CropId, CropDetails> | null;
   playerTier: number;
 }
 
@@ -62,7 +62,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     const cropId = seedId.replace('Seed', '') as CropId;
     return cropData[cropId];
   };
-  
+
   const selectedSeedInfo = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed) : null;
   const selectedSeedName = selectedSeedInfo?.name;
 
@@ -74,7 +74,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     try {
       await logOut();
       toast({ title: "Đã Đăng Xuất", description: "Bạn đã đăng xuất thành công." });
-      router.push('/login'); 
+      router.push('/login');
     } catch (error) {
       console.error("Logout failed:", error);
       toast({ title: "Đăng Xuất Thất Bại", description: "Không thể đăng xuất. Vui lòng thử lại.", variant: "destructive" });
@@ -82,31 +82,35 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   };
 
   if (!cropData) {
-    return null; 
+    return null;
   }
+
+  const buttonBaseClass = "p-2 h-auto w-[72px] rounded-lg shadow-md flex flex-col items-center justify-center gap-1";
+  const iconClass = "h-5 w-5";
+  const labelClass = "text-[10px] leading-none";
 
   return (
     <TooltipProvider>
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon" 
                     variant="outline"
                     className={cn(
-                      "p-2 h-12 w-12 rounded-full shadow-md", 
+                      buttonBaseClass,
                       currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                     )}
                     aria-label="Trồng Hạt Giống"
                   >
                     {currentAction === 'planting' && selectedSeedInfo?.icon ? (
-                        <span className="text-xl">{selectedSeedInfo.icon}</span>
+                        <span className="text-xl h-5 flex items-center justify-center">{selectedSeedInfo.icon}</span>
                     ) : (
-                        <Sprout className="h-5 w-5" />
+                        <Sprout className={iconClass} />
                     )}
+                    <span className={labelClass}>Trồng</span>
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
@@ -114,7 +118,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <p>{currentAction === 'planting' && selectedSeedName ? `Đang trồng: ${selectedSeedName}` : 'Chọn Hạt Giống Để Trồng'}</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="mb-2 max-h-72 overflow-y-auto">
+            <DropdownMenuContent align="end" side="top" className="mb-2 max-h-72 overflow-y-auto">
               {availableSeeds.length > 0 ? (
                 availableSeeds.map(seedId => {
                   const crop = getCropInfo(seedId);
@@ -123,9 +127,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   const requiredTierName = isSeedLocked ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
 
                   return (
-                    <DropdownMenuItem 
-                        key={seedId} 
-                        onClick={() => onSetPlantMode(seedId)} 
+                    <DropdownMenuItem
+                        key={seedId}
+                        onClick={() => onSetPlantMode(seedId)}
                         disabled={!crop || isSeedLocked}
                         className={cn(isSeedLocked && "opacity-60")}
                     >
@@ -154,15 +158,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onToggleHarvestMode}
-                size="icon"
                 variant="outline"
                 className={cn(
-                  "p-2 h-12 w-12 rounded-full shadow-md",
+                  buttonBaseClass,
                   currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground gentle-pulse"
                 )}
                 aria-label="Thu Hoạch"
               >
-                <Hand className="h-5 w-5" />
+                <Hand className={iconClass} />
+                <span className={labelClass}>Thu Hoạch</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -174,16 +178,16 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onOpenInventory}
-                size="icon"
                 variant="outline"
-                className="p-2 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
+                className={cn(buttonBaseClass, "bg-secondary hover:bg-secondary/90")}
                 aria-label="Mở Kho"
               >
-                <PackageSearch className="h-5 w-5" />
+                <PackageSearch className={iconClass} />
+                <span className={labelClass}>Kho</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Kho</p>
+              <p>Kho Đồ</p>
             </TooltipContent>
           </Tooltip>
 
@@ -191,12 +195,12 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onOpenMarket}
-                size="icon"
                 variant="outline"
-                className="p-2 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90 text-accent-foreground"
+                className={cn(buttonBaseClass, "bg-accent hover:bg-accent/90 text-accent-foreground")}
                 aria-label="Mở Chợ"
               >
-                <ShoppingCart className="h-5 w-5" />
+                <ShoppingCart className={iconClass} />
+                <span className={labelClass}>Chợ</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -208,12 +212,12 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                   onClick={onOpenProfile}
-                  size="icon"
                   variant="outline"
-                  className="p-2 h-12 w-12 rounded-full shadow-md"
+                  className={cn(buttonBaseClass)}
                   aria-label="Thông tin Người chơi"
               >
-                  <UserCircle2 className="h-5 w-5" />
+                  <UserCircle2 className={iconClass} />
+                  <span className={labelClass}>Hồ Sơ</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -226,12 +230,12 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <TooltipTrigger asChild>
                  <DropdownMenuTrigger asChild>
                     <Button
-                        size="icon"
                         variant="outline"
-                        className="p-2 h-12 w-12 rounded-full shadow-md"
+                        className={cn(buttonBaseClass)}
                         aria-label="Cài Đặt & Quản trị"
                     >
-                        <Settings className="h-5 w-5" />
+                        <Settings className={iconClass} />
+                        <span className={labelClass}>Cài Đặt</span>
                     </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
@@ -239,7 +243,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <p>Cài Đặt & Quản trị</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="mb-2">
+            <DropdownMenuContent align="end" side="top" className="mb-2">
                 <DropdownMenuItem onClick={handleAdminNavigation}>
                     <ShieldCheck className="mr-2 h-4 w-4" />
                     <span>Vào trang Admin</span>
