@@ -49,16 +49,14 @@ const MarketModal: FC<MarketModalProps> = ({
     const filteredSeeds = marketItems.filter(item =>
       item.type === 'seed' && (item.unlockTier <= playerTier || item.unlockTier === playerTier + 1)
     );
-    // Sort: unlocked first (by tier, then name), then locked (next tier, by name).
     return filteredSeeds.sort((a, b) => {
         const aIsLocked = a.unlockTier > playerTier;
         const bIsLocked = b.unlockTier > playerTier;
 
         if (aIsLocked !== bIsLocked) {
-            return aIsLocked ? 1 : -1; // Unlocked items first
+            return aIsLocked ? 1 : -1; 
         }
 
-        // If both are locked or both are unlocked, sort by tier then by name
         if (a.unlockTier !== b.unlockTier) {
             return a.unlockTier - b.unlockTier;
         }
@@ -77,7 +75,7 @@ const MarketModal: FC<MarketModalProps> = ({
     if (!marketItems || !playerInventory || !cropData) return [];
     return marketItems.filter(item => 
       item.type === 'crop' && (playerInventory[item.id] || 0) > 0
-    ).sort((a,b) => { // Optional: sort sellable crops by name
+    ).sort((a,b) => { 
         const cropDetailsA = cropData[a.id as CropId];
         const cropDetailsB = cropData[b.id as CropId];
         if (cropDetailsA && cropDetailsB) {
@@ -128,11 +126,11 @@ const MarketModal: FC<MarketModalProps> = ({
     type: 'seed' | 'crop',
     itemUnlockTier: number
   ) => {
-    if (type === 'seed' && playerTier < itemUnlockTier) return;
+    if (type === 'seed' && playerTier < itemUnlockTier && value !== '' && parseInt(value, 10) > 0) return;
 
     let numValue = parseInt(value, 10);
     if (isNaN(numValue) || value === '') {
-      numValue = 0;
+      numValue = 0; 
     }
     if (numValue < 0) numValue = 0;
 
@@ -140,13 +138,18 @@ const MarketModal: FC<MarketModalProps> = ({
       const maxSellable = playerInventory[itemId] || 0;
       if (numValue > maxSellable) numValue = maxSellable;
     }
-
-    setQuantities(prev => ({ ...prev, [itemId]: numValue }));
+    
+    if (type === 'seed' && playerTier < itemUnlockTier) {
+        // If item is locked, input should always reflect 0, ignore typed value if > 0
+        setQuantities(prev => ({ ...prev, [itemId]: 0 }));
+    } else {
+        setQuantities(prev => ({ ...prev, [itemId]: numValue }));
+    }
   };
 
 
   const renderSeedMarketGrid = () => (
-    <ScrollArea className="max-h-[60vh]">
+    <ScrollArea className="max-h-96"> {/* Changed from max-h-[60vh] */}
       <TooltipProvider>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
@@ -213,7 +216,7 @@ const MarketModal: FC<MarketModalProps> = ({
             );
           })}
            {seedsToDisplay.length === 0 && (
-                <p className="text-center text-muted-foreground py-4 col-span-full">Không có hạt giống nào để mua ở bậc này.</p>
+                <p className="text-center text-muted-foreground py-4 col-span-full">Không có hạt giống nào để mua.</p>
             )}
         </div>
       </TooltipProvider>
@@ -221,7 +224,7 @@ const MarketModal: FC<MarketModalProps> = ({
   );
 
   const renderCropSellList = () => (
-    <ScrollArea className="max-h-[60vh]">
+    <ScrollArea className="max-h-96"> {/* Changed from max-h-[60vh] */}
       <div className="space-y-3 pr-2">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
