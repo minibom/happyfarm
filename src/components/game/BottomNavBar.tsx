@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { FC, useMemo } from 'react'; // Added useMemo
+import { type FC, useMemo } from 'react'; // Corrected useMemo import
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare } from 'lucide-react';
