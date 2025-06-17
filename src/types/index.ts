@@ -40,9 +40,15 @@ export interface MarketItem {
   type: 'seed' | 'crop';
 }
 
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  timestamp: number; // or firebase.database.ServerValue.TIMESTAMP type if more specific typing is needed
+}
+
 // export interface GeneratedItem {
 //   name: string;
 //   description: string;
 //   cropId: CropId;
 // }
-
