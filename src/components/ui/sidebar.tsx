@@ -229,29 +229,25 @@ const Sidebar = React.forwardRef<
 
     // Desktop view
     return (
-      <div
+      <div // This is the main flex item for the sidebar
         ref={ref}
-        className={cn("group peer hidden md:block text-sidebar-foreground", variant === 'inset' ? 'relative' : '')}
-        data-state={state} // Use `state` which reflects `open`
+        className={cn(
+          "group peer hidden md:block text-sidebar-foreground",
+          variant === 'inset' ? 'relative' : '', // 'relative' might be needed if 'inset' variant has absolutely positioned children
+          // Apply width directly to this flex item
+          open ? "w-[var(--sidebar-width)]" : (collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : "w-0"),
+          "transition-[width] duration-200 ease-linear" // Apply transition here
+        )}
+        data-state={state}
         data-collapsible={collapsible === "icon" && !open ? "icon" : collapsible === "offcanvas" && !open ? "offcanvas" : ""}
         data-variant={variant}
         data-side={side}
       >
+        {/* This div holds the actual content, positioned fixed within the viewport but effectively constrained by its parent's width in the document flow */}
         <div
           className={cn(
-            "duration-200 relative h-svh transition-[width] ease-linear",
-            open ? "w-[var(--sidebar-width)]" : (collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : "w-0"),
-             variant === "inset" && open ? "w-[var(--sidebar-width)]" : 
-             variant === "inset" && !open && collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : 
-             variant === "inset" && !open && collapsible === "offcanvas" ? "w-0" : "",
-             (variant === "floating" || variant === "inset") && open ? "p-2" : "",
-             (variant === "floating" || variant === "inset") && !open && collapsible === "icon" ? "p-2 w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : ""
-
-          )}
-        />
-        <div
-          className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] ease-linear md:flex flex-col",
+            "fixed inset-y-0 z-10 h-svh md:flex flex-col", // Removed transition-[width] as parent handles it
+            // Width of this fixed element. It takes its width from --sidebar-width or --sidebar-width-icon.
             open ? "w-[var(--sidebar-width)]" : (collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : "w-0"),
             side === "left" ? "left-0" : "right-0",
             !open && collapsible === "offcanvas" && side === "left" ? "left-[calc(var(--sidebar-width)*-1)]" : "",
@@ -263,14 +259,14 @@ const Sidebar = React.forwardRef<
 
             variant !== "floating" && variant !== "inset" ? 
                 (side === "left" ? "border-r border-sidebar-border" : "border-l border-sidebar-border") : "",
-            className
+            className // Pass down className from props
           )}
-          {...props}
+          {...props} // Pass down other props
         >
           <div
             data-sidebar="sidebar" // Keep this for styling children
             className={cn(
-                "flex h-full w-full flex-col bg-sidebar",
+                "flex h-full w-full flex-col bg-sidebar", // w-full ensures it fills its fixed parent
                 (variant === "floating" || variant === "inset") ? "rounded-lg" : "",
                 variant === "floating" ? "border border-sidebar-border shadow-md" : ""
             )}
