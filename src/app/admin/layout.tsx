@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <SidebarProvider defaultOpen style={{ '--sidebar-width': '15%' }}>
+    <SidebarProvider defaultOpen style={{ '--sidebar-width': '20%' }}>
       <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r border-sidebar-border">
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
@@ -73,7 +73,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="bg-muted/30 md:ml-0"> {/* Added md:ml-0 here */}
+      <SidebarInset className="bg-muted/30"> {/* Removed md:ml-0 here */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2">
             <SidebarTrigger className="md:hidden" />
             <div className="flex items-center gap-2">
