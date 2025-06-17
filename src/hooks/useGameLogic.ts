@@ -1,14 +1,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, Plot, CropId, InventoryItem, SeedId, CropDetails, MarketItem } from '@/types';
+import type { GameState, Plot, CropId, InventoryItem, SeedId, CropDetails, MarketItem, TierInfo } from '@/types';
 import {
   INITIAL_GAME_STATE,
   LEVEL_UP_XP_THRESHOLD,
   TOTAL_PLOTS,
-  CROP_DATA as FALLBACK_CROP_DATA, // Fallback if Firestore fails
+  CROP_DATA as FALLBACK_CROP_DATA, 
+  getPlayerTierInfo, // Import tier helper
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import { getFarmingAdvice, type FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor';
+// import { getFarmingAdvice, type FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor'; // Advisor temporarily commented
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from 'firebase/firestore';
@@ -16,18 +17,19 @@ import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from '
 export const useGameLogic = () => {
   const { userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
-  const [isInitialized, setIsInitialized] = useState(false); // Overall initialization
-  const [gameDataLoaded, setGameDataLoaded] = useState(false); // For user-specific game data
-  const [itemDataLoaded, setItemDataLoaded] = useState(false); // For global item data
+  const [isInitialized, setIsInitialized] = useState(false); 
+  const [gameDataLoaded, setGameDataLoaded] = useState(false); 
+  const [itemDataLoaded, setItemDataLoaded] = useState(false); 
 
-  const [advisorTip, setAdvisorTip] = useState<string | null>(null);
-  const [isAdvisorLoading, setIsAdvisorLoading] = useState(false);
+  // const [advisorTip, setAdvisorTip] = useState<string | null>(null); // Advisor temporarily commented
+  // const [isAdvisorLoading, setIsAdvisorLoading] = useState(false); // Advisor temporarily commented
   const { toast } = useToast();
 
   const [cropData, setCropData] = useState<Record<CropId, CropDetails> | null>(null);
   const [marketItems, setMarketItems] = useState<MarketItem[] | null>(null);
   const [allSeedIds, setAllSeedIds] = useState<SeedId[]>([]);
   const [allCropIds, setAllCropIds] = useState<CropId[]>([]);
+  const [playerTierInfo, setPlayerTierInfo] = useState<TierInfo>(getPlayerTierInfo(INITIAL_GAME_STATE.level));
 
 
   const prevLevelRef = useRef(gameState.level);
@@ -35,9 +37,9 @@ export const useGameLogic = () => {
 
   useEffect(() => {
     gameStateRef.current = gameState;
+    setPlayerTierInfo(getPlayerTierInfo(gameState.level)); // Update tier info when game state (level) changes
   }, [gameState]);
 
-  // Fetch global item data from Firestore
   useEffect(() => {
     const fetchItemData = async () => {
       try {
@@ -50,7 +52,7 @@ export const useGameLogic = () => {
 
         if (Object.keys(fetchedItems).length === 0) {
             console.warn("No items found in Firestore 'gameItems' collection. Using fallback data.");
-            setCropData(FALLBACK_CROP_DATA); // Use local constants as fallback
+            setCropData(FALLBACK_CROP_DATA); 
             toast({ title: "Lưu ý", description: "Không tìm thấy dữ liệu vật phẩm trên server, sử dụng dữ liệu tạm.", variant: "destructive"});
         } else {
             setCropData(fetchedItems);
@@ -59,17 +61,17 @@ export const useGameLogic = () => {
       } catch (error) {
         console.error("Failed to fetch item data from Firestore:", error);
         toast({ title: "Lỗi Tải Vật Phẩm", description: "Không thể tải dữ liệu vật phẩm từ server. Sử dụng dữ liệu tạm.", variant: "destructive" });
-        setCropData(FALLBACK_CROP_DATA); // Fallback on error
-        setItemDataLoaded(true); // Mark as loaded to allow game to proceed with fallback
+        setCropData(FALLBACK_CROP_DATA); 
+        setItemDataLoaded(true); 
       }
     };
     fetchItemData();
   }, [toast]);
 
-  // Derive market items and IDs once cropData is loaded/updated
   useEffect(() => {
     if (cropData) {
       const derivedCropIds = Object.keys(cropData) as CropId[];
+      // Ensure seedName is correctly typed as SeedId
       const derivedSeedIds = derivedCropIds.map(id => cropData[id].seedName as SeedId);
       setAllCropIds(derivedCropIds);
       setAllSeedIds(derivedSeedIds);
@@ -79,13 +81,17 @@ export const useGameLogic = () => {
           id: cropData[id].seedName as SeedId,
           name: `${cropData[id].name} (Hạt Giống)`,
           price: cropData[id].seedPrice,
-          type: 'seed' as 'seed'
+          type: 'seed' as 'seed',
+          unlockTier: cropData[id].unlockTier,
+          icon: cropData[id].icon,
         })),
         ...derivedCropIds.map(id => ({
           id: id,
           name: cropData[id].name,
           price: cropData[id].cropPrice,
-          type: 'crop' as 'crop'
+          type: 'crop' as 'crop',
+          unlockTier: cropData[id].unlockTier, // Crops are generally sellable regardless of tier, but good to have
+          icon: cropData[id].icon,
         })),
       ];
       setMarketItems(derivedMarketItems);
@@ -95,7 +101,7 @@ export const useGameLogic = () => {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveGameStateToFirestore = useCallback(() => {
-    if (userId && gameDataLoaded && itemDataLoaded) { // Save only if all data is loaded
+    if (userId && gameDataLoaded && itemDataLoaded) { 
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -116,7 +122,12 @@ export const useGameLogic = () => {
 
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level) {
+      const oldTierInfo = getPlayerTierInfo(prevLevelRef.current);
+      const newTierInfo = getPlayerTierInfo(gameState.level);
       toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${gameState.level}!`, className: "bg-primary text-primary-foreground" });
+      if (newTierInfo.tier > oldTierInfo.tier) {
+        toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được Bậc ${newTierInfo.tierName}! Các vật phẩm mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
+      }
     }
     prevLevelRef.current = gameState.level;
   }, [gameState.level, gameDataLoaded, toast]);
@@ -154,24 +165,19 @@ export const useGameLogic = () => {
           loadedState.plots = plots;
 
           const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
-          // Ensure initial inventory includes all possible seed/crop types from Firestore data if available
-          // This needs cropData to be loaded first, or handle it carefully
           if (cropData) {
             allSeedIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
             allCropIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
           }
 
-
           if (loadedState.inventory && typeof loadedState.inventory === 'object') {
             for (const key in loadedState.inventory) {
-               // Only load inventory items that are known (from derived allSeedIds/allCropIds or initial)
               if (Object.prototype.hasOwnProperty.call(validatedInventory, key)) {
                 validatedInventory[key as InventoryItem] = loadedState.inventory[key as InventoryItem] || 0;
               }
             }
           }
           loadedState.inventory = validatedInventory;
-
 
           loadedState.gold = typeof loadedState.gold === 'number' ? loadedState.gold : INITIAL_GAME_STATE.gold;
           loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
@@ -182,14 +188,14 @@ export const useGameLogic = () => {
           if (!gameDataLoaded) prevLevelRef.current = loadedState.level;
         } else {
           const newInitialState = { ...INITIAL_GAME_STATE, lastUpdate: Date.now() };
-            if (cropData) { // Ensure inventory keys from fetched items
+            if (cropData) { 
                 allSeedIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
                 allCropIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
             }
           setGameState(newInitialState);
 
           if (!gameDataLoaded) prevLevelRef.current = newInitialState.level;
-          setDoc(gameDocRef, newInitialState); // Save initial state for new user
+          setDoc(gameDocRef, newInitialState); 
         }
         setGameDataLoaded(true);
       }, (error) => {
@@ -204,7 +210,7 @@ export const useGameLogic = () => {
     } else if (!authLoading && !userId) {
       setGameState(INITIAL_GAME_STATE);
       setGameDataLoaded(false);
-      setItemDataLoaded(false); // Reset item loaded state on logout
+      setItemDataLoaded(false); 
       setCropData(null);
       setMarketItems(null);
     }
@@ -258,18 +264,25 @@ export const useGameLogic = () => {
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
+    const currentTierInfo = getPlayerTierInfo(currentGameState.level);
+
     if (!cropData) {
         toast({ title: "Lỗi", description: "Dữ liệu cây trồng chưa tải xong.", variant: "destructive" });
         return;
     }
     const cropId = seedId.replace('Seed', '') as CropId;
+    const cropDetail = cropData[cropId];
 
-    if (!cropData[cropId]) {
+    if (!cropDetail) {
       toast({ title: "Lỗi", description: "Loại hạt giống không hợp lệ.", variant: "destructive" });
       return;
     }
+     if (currentTierInfo.tier < cropDetail.unlockTier) {
+      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (cropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${cropDetail.unlockTier}) để trồng ${cropDetail.name}.`, variant: "destructive" });
+      return;
+    }
     if (currentGameState.inventory[seedId] <= 0) {
-      toast({ title: "Không Đủ Hạt Giống", description: `Bạn không có hạt giống ${cropData[cropId].name}.`, variant: "destructive" });
+      toast({ title: "Không Đủ Hạt Giống", description: `Bạn không có hạt giống ${cropDetail.name}.`, variant: "destructive" });
       return;
     }
     const currentPlot = currentGameState.plots.find(p => p.id === plotId);
@@ -287,7 +300,7 @@ export const useGameLogic = () => {
       const newInventory = { ...prev.inventory, [seedId]: prev.inventory[seedId] - 1 };
       return { ...prev, plots: newPlots, inventory: newInventory };
     });
-    toast({ title: "Đã Trồng!", description: `Đã trồng ${cropData[cropId].name} trên thửa đất ${plotId + 1}.` });
+    toast({ title: "Đã Trồng!", description: `Đã trồng ${cropDetail.name} trên thửa đất ${plotId + 1}.` });
   }, [toast, cropData]);
 
   const harvestCrop = useCallback(async (plotId: number) => {
@@ -304,12 +317,12 @@ export const useGameLogic = () => {
     }
 
     const cropDetail = cropData[plotToHarvest.cropId];
-    const earnedXp = cropDetail.harvestYield * 5;
+    const earnedXp = cropDetail.harvestYield * 5; // XP per yield unit
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
-          const { cropId: oldCropId, plantedAt, ...restOfPlot } = p; // remove cropId and plantedAt
+          const { cropId: oldCropId, plantedAt, ...restOfPlot } = p; 
           return { ...restOfPlot, state: 'empty' as const };
         }
         return p;
@@ -320,10 +333,13 @@ export const useGameLogic = () => {
 
       let newXp = prev.xp + earnedXp;
       let newLevel = prev.level;
-      const xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
-      if (newXp >= xpThreshold) {
+      
+      // Level up logic
+      let xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
+      while (newXp >= xpThreshold) {
         newXp -= xpThreshold;
         newLevel += 1;
+        xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
       }
       return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel };
     });
@@ -334,26 +350,38 @@ export const useGameLogic = () => {
   const buyItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
     const currentGameState = gameStateRef.current;
-    const totalCost = quantity * price;
-     if (!marketItems) {
-        toast({ title: "Lỗi", description: "Dữ liệu chợ chưa tải.", variant: "destructive" });
+    const currentTierInfo = getPlayerTierInfo(currentGameState.level);
+
+     if (!marketItems || !cropData) {
+        toast({ title: "Lỗi", description: "Dữ liệu chợ hoặc cây trồng chưa tải.", variant: "destructive" });
+        return;
+    }
+    const marketItemInfo = marketItems.find(i => i.id === itemId);
+    if (!marketItemInfo) {
+        toast({ title: "Lỗi", description: "Không tìm thấy vật phẩm trong chợ.", variant: "destructive" });
         return;
     }
 
+    if (currentTierInfo.tier < marketItemInfo.unlockTier) {
+         toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (marketItemInfo.unlockTier-1) * 10 + 1 ).tierName} (Bậc ${marketItemInfo.unlockTier}) để mua ${marketItemInfo.name}.`, variant: "destructive", duration: 7000 });
+        return;
+    }
+
+    const totalCost = quantity * price;
     if (currentGameState.gold < totalCost) {
       toast({ title: "Không Đủ Vàng", description: "Bạn không có đủ vàng.", variant: "destructive" });
       return;
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev;
+      if (prev.gold < totalCost) return prev; // Double check
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory };
     });
-    const itemName = marketItems.find(i => i.id === itemId)?.name || itemId;
-    toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${itemName}.`, className: "bg-accent text-accent-foreground" });
-  }, [toast, marketItems]);
+    
+    toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${marketItemInfo.name}.`, className: "bg-accent text-accent-foreground" });
+  }, [toast, marketItems, cropData]);
 
   const sellItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
@@ -370,7 +398,7 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev;
+      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check
       const totalGain = quantity * price;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
@@ -379,42 +407,43 @@ export const useGameLogic = () => {
     toast({ title: "Đã Bán!", description: `Bán ${quantity} x ${itemName}.`, className: "bg-primary text-primary-foreground" });
   }, [toast, marketItems]);
 
-  const fetchAdvisorTip = useCallback(async () => {
-    setIsAdvisorLoading(true);
-    try {
-      const currentGameState = gameStateRef.current;
-       if (!cropData || !marketItems) {
-        setAdvisorTip("Dữ liệu trò chơi chưa sẵn sàng cho lời khuyên.");
-        setIsAdvisorLoading(false);
-        return;
-      }
+  // Advisor temporarily commented out
+  // const fetchAdvisorTip = useCallback(async () => {
+  //   setIsAdvisorLoading(true);
+  //   try {
+  //     const currentGameState = gameStateRef.current;
+  //      if (!cropData || !marketItems) {
+  //       setAdvisorTip("Dữ liệu trò chơi chưa sẵn sàng cho lời khuyên.");
+  //       setIsAdvisorLoading(false);
+  //       return;
+  //     }
 
-      const currentMarketPrices: Record<string, number> = {};
-      marketItems.forEach(item => currentMarketPrices[item.id] = item.price);
+  //     const currentMarketPrices: Record<string, number> = {};
+  //     marketItems.forEach(item => currentMarketPrices[item.id] = item.price);
 
-      const plotsForAI = currentGameState.plots.map(p => ({
-        state: p.state,
-        crop: p.cropId ? cropData[p.cropId]?.name : undefined,
-      }));
+  //     const plotsForAI = currentGameState.plots.map(p => ({
+  //       state: p.state,
+  //       crop: p.cropId ? cropData[p.cropId]?.name : undefined,
+  //     }));
 
-      const adviceInput: FarmingAdviceInput = {
-        gold: currentGameState.gold,
-        xp: currentGameState.xp,
-        level: currentGameState.level,
-        plots: plotsForAI,
-        inventory: currentGameState.inventory,
-        marketPrices: currentMarketPrices,
-      };
-      const tip = await getFarmingAdvice(adviceInput);
-      setAdvisorTip(tip.advice);
-    } catch (error) {
-      console.error("Failed to get farming advice:", error);
-      setAdvisorTip("Hmm, tôi đang gặp chút khó khăn trong việc suy nghĩ. Hãy thử lại sau!");
-      toast({ title: "Lỗi Cố Vấn", description: "Không thể lấy lời khuyên.", variant: "destructive" });
-    } finally {
-      setIsAdvisorLoading(false);
-    }
-  }, [toast, cropData, marketItems]);
+  //     const adviceInput: FarmingAdviceInput = {
+  //       gold: currentGameState.gold,
+  //       xp: currentGameState.xp,
+  //       level: currentGameState.level,
+  //       plots: plotsForAI,
+  //       inventory: currentGameState.inventory,
+  //       marketPrices: currentMarketPrices,
+  //     };
+  //     const tip = await getFarmingAdvice(adviceInput);
+  //     setAdvisorTip(tip.advice);
+  //   } catch (error) {
+  //     console.error("Failed to get farming advice:", error);
+  //     setAdvisorTip("Hmm, tôi đang gặp chút khó khăn trong việc suy nghĩ. Hãy thử lại sau!");
+  //     toast({ title: "Lỗi Cố Vấn", description: "Không thể lấy lời khuyên.", variant: "destructive" });
+  //   } finally {
+  //     setIsAdvisorLoading(false);
+  //   }
+  // }, [toast, cropData, marketItems]);
 
   return {
     gameState,
@@ -422,11 +451,11 @@ export const useGameLogic = () => {
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized, // Use the combined initialization flag
-    advisorTip,
-    fetchAdvisorTip,
-    isAdvisorLoading,
-    // For passing to components that need item data or market listings
+    isInitialized, 
+    playerTierInfo, // Expose player tier info
+    // advisorTip, // Advisor temporarily commented
+    // fetchAdvisorTip, // Advisor temporarily commented
+    // isAdvisorLoading, // Advisor temporarily commented
     cropData,
     marketItems,
     allSeedIds,

@@ -15,11 +15,12 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, PlusCircle, Trash2, Edit, Loader2 } from 'lucide-react';
+import { Eye, PlusCircle, Trash2, Edit, Loader2, ShoppingBasket } from 'lucide-react';
 import { ItemModal, type ItemModalProps } from '@/components/admin/ItemActionModals';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { TIER_NAMES } from '@/lib/constants';
 
 type ItemDataForTable = CropDetails & { id: CropId };
 
@@ -29,7 +30,7 @@ export default function AdminItemsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalProps, setModalProps] = useState<Omit<ItemModalProps, 'isOpen' | 'onClose'>>({ 
     mode: 'view', 
-    itemData: { name: '', seedName: '', icon: '', timeToGrowing: 0, timeToReady: 0, harvestYield: 0, seedPrice: 0, cropPrice: 0 }
+    itemData: { name: '', seedName: '', icon: '', timeToGrowing: 0, timeToReady: 0, harvestYield: 0, seedPrice: 0, cropPrice: 0, unlockTier: 1 }
   });
   const { toast } = useToast();
 
@@ -37,7 +38,9 @@ export default function AdminItemsPage() {
     setIsLoading(true);
     try {
       const itemsCollectionRef = collection(db, 'gameItems');
-      const querySnapshot = await getDocs(itemsCollectionRef);
+      // Order by unlockTier, then by name for consistent display
+      const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
+      const querySnapshot = await getDocs(q);
       const fetchedItems: ItemDataForTable[] = [];
       querySnapshot.forEach((docSnap) => {
         fetchedItems.push({ id: docSnap.id as CropId, ...(docSnap.data() as CropDetails) });
@@ -52,16 +55,19 @@ export default function AdminItemsPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchItems();
-    // Optional: Listen for real-time updates if needed
+    // Initial fetch
+    // fetchItems(); // Removed to rely solely on onSnapshot for initial load and updates
+
     const itemsCollectionRef = collection(db, 'gameItems');
-    const unsubscribe = onSnapshot(itemsCollectionRef, (snapshot) => {
+    const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
         const updatedItems: ItemDataForTable[] = [];
         snapshot.forEach((docSnap) => {
             updatedItems.push({ id: docSnap.id as CropId, ...(docSnap.data() as CropDetails) });
         });
         setItems(updatedItems);
-        setIsLoading(false); // In case initial fetch was slow or failed
+        setIsLoading(false); 
     }, (error) => {
         console.error("Error with real-time item updates:", error);
         toast({ title: "Lỗi Đồng Bộ", description: "Mất kết nối với dữ liệu vật phẩm.", variant: "destructive" });
@@ -69,15 +75,14 @@ export default function AdminItemsPage() {
     });
 
     return () => unsubscribe();
-  }, [fetchItems, toast]);
+  }, [toast]);
 
 
   const openModal = (mode: 'view' | 'edit' | 'create', item?: ItemDataForTable) => {
     if (mode === 'create') {
       setModalProps({
         mode: 'create',
-        // Default new item, ID will be set in modal or on save
-        itemData: { name: '', seedName: '', icon: '', timeToGrowing: 30000, timeToReady: 60000, harvestYield: 1, seedPrice: 1, cropPrice: 1 }, 
+        itemData: { name: '', seedName: '', icon: '❓', timeToGrowing: 30000, timeToReady: 60000, harvestYield: 1, seedPrice: 1, cropPrice: 1, unlockTier: 1 }, 
       });
     } else if (item) {
        setModalProps({ mode, itemData: item, cropId: item.id });
@@ -92,27 +97,19 @@ export default function AdminItemsPage() {
         return;
     }
     
-    // Ensure seedName is derived if it's a new item or if ID changed
-    // The modal should handle setting the ID for new items.
-    // For simplicity, we assume ID provided is correct for setDoc.
     const dataToSave = { ...data };
-    if (modalProps.mode === 'create' || (modalProps.mode === 'edit' && id !== originalId)) {
-        // If creating or ID changed, seedName might need update.
-        // However, item modal now requires explicit ID for creation.
-        // seedName will be derived from the cropId (document ID).
-        dataToSave.seedName = `${effectiveId}Seed`;
-    }
+    dataToSave.seedName = `${effectiveId}Seed`;
 
 
     try {
       const itemRef = doc(db, 'gameItems', effectiveId);
-      await setDoc(itemRef, dataToSave);
+      await setDoc(itemRef, dataToSave, { merge: modalProps.mode === 'edit' }); // Use merge for edits to avoid overwriting unrelated fields if any
       toast({
         title: `Thành Công (${modalProps.mode === 'create' ? 'Tạo Mới' : 'Chỉnh Sửa'})`,
         description: `Đã ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm "${data.name}" trên database.`,
         className: "bg-green-500 text-white"
       });
-      fetchItems(); // Refresh list
+      // No need to call fetchItems() here as onSnapshot will update the list
     } catch (error) {
       console.error(`Error ${modalProps.mode === 'create' ? 'creating' : 'updating'} item:`, error);
       toast({ title: "Lỗi Lưu Trữ", description: `Không thể ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm.`, variant: "destructive"});
@@ -128,7 +125,7 @@ export default function AdminItemsPage() {
         description: `Đã xóa vật phẩm "${itemToDelete.name}" khỏi database.`,
         className: "bg-orange-500 text-white"
       });
-      fetchItems(); // Refresh list
+      // No need to call fetchItems() here as onSnapshot will update the list
     } catch (error) {
       console.error("Error deleting item:", error);
       toast({ title: "Lỗi Xóa", description: `Không thể xóa vật phẩm "${itemToDelete.name}".`, variant: "destructive"});
@@ -137,10 +134,17 @@ export default function AdminItemsPage() {
 
   if (isLoading && items.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-xl">Đang tải dữ liệu vật phẩm từ Firestore...</p>
-      </div>
+      <Card className="shadow-xl">
+        <CardHeader>
+            <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+                <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm
+            </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center min-h-[calc(100vh-300px)]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-xl">Đang tải dữ liệu vật phẩm từ Firestore...</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -150,46 +154,45 @@ export default function AdminItemsPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle className="text-3xl font-bold text-primary font-headline">
-                Quản Trị - Cấu Hình Vật Phẩm Cây Trồng (Từ Database)
+              <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm (Database)
               </CardTitle>
               <CardDescription>
-                Hiển thị và quản lý cấu hình vật phẩm trực tiếp từ Firestore collection <code>gameItems</code>.
-                <br />
-                Các thay đổi sẽ có hiệu lực trong game (có thể cần tải lại game).
+                Quản lý cấu hình vật phẩm trực tiếp từ Firestore (collection <code>gameItems</code>).
               </CardDescription>
             </div>
             <Button onClick={() => openModal('create')} className="bg-accent hover:bg-accent/90">
-              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Mới Vật Phẩm
+              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Vật Phẩm Mới
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-[calc(100vh-250px)]">
+          <ScrollArea className="max-h-[calc(100vh-300px)] border rounded-md">
             {items.length === 0 && !isLoading && (
                  <p className="text-center text-muted-foreground py-8">
-                    Không tìm thấy vật phẩm nào trong database. Bạn có thể cần đẩy dữ liệu ban đầu từ trang "Cấu hình Hệ thống".
+                    Không tìm thấy vật phẩm nào. Hãy thử đẩy dữ liệu từ trang "Cấu hình Hệ thống" hoặc tạo mới.
                  </p>
             )}
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead>Biểu Tượng</TableHead>
+                  <TableHead className="w-[50px]">Icon</TableHead>
                   <TableHead>Tên (ID)</TableHead>
-                  <TableHead>Tên Hạt Giống</TableHead>
-                  <TableHead>Thời Gian Lớn (ms)</TableHead>
-                  <TableHead>Thời Gian Sẵn Sàng (ms)</TableHead>
-                  <TableHead>Sản Lượng</TableHead>
-                  <TableHead>Giá Hạt Giống</TableHead>
-                  <TableHead>Giá Nông Sản</TableHead>
-                  <TableHead className="text-center">Hành động</TableHead>
+                  <TableHead>Hạt Giống</TableHead>
+                  <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
+                  <TableHead className="w-[100px]">TG Lớn</TableHead>
+                  <TableHead className="w-[100px]">TG Sẵn</TableHead>
+                  <TableHead className="w-[80px]">S.Lượng</TableHead>
+                  <TableHead className="w-[100px]">Giá Hạt</TableHead>
+                  <TableHead className="w-[100px]">Giá N.Sản</TableHead>
+                  <TableHead className="text-center w-[120px]">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((item) => {
                   return (
                     <TableRow key={item.id}>
-                      <TableCell className="text-2xl">{item.icon}</TableCell>
+                      <TableCell className="text-2xl text-center">{item.icon}</TableCell>
                       <TableCell>
                         <div className="font-medium">{item.name}</div>
                         <Badge variant="outline" className="text-xs">{item.id}</Badge>
@@ -197,19 +200,22 @@ export default function AdminItemsPage() {
                       <TableCell>
                         <Badge variant="secondary" className="text-xs">{item.seedName.replace('Seed', ' Hạt Giống')}</Badge>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className="bg-purple-500 hover:bg-purple-600 text-white">Bậc {item.unlockTier}</Badge>
+                      </TableCell>
                       <TableCell>{item.timeToGrowing.toLocaleString()}</TableCell>
                       <TableCell>{item.timeToReady.toLocaleString()}</TableCell>
-                      <TableCell>{item.harvestYield}</TableCell>
+                      <TableCell className="text-center">{item.harvestYield}</TableCell>
                       <TableCell className="text-primary font-semibold">{item.seedPrice}</TableCell>
                       <TableCell className="text-accent font-semibold">{item.cropPrice}</TableCell>
                       <TableCell className="text-center space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => openModal('view', item)} className="hover:text-primary">
+                        <Button variant="ghost" size="icon" onClick={() => openModal('view', item)} className="hover:text-primary" title="Xem chi tiết">
                           <Eye className="h-5 w-5" />
                         </Button>
-                         <Button variant="ghost" size="icon" onClick={() => openModal('edit', item)} className="hover:text-blue-600">
+                         <Button variant="ghost" size="icon" onClick={() => openModal('edit', item)} className="hover:text-blue-600" title="Chỉnh sửa">
                           <Edit className="h-5 w-5" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)} className="hover:text-destructive">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)} className="hover:text-destructive" title="Xóa">
                           <Trash2 className="h-5 w-5" />
                         </Button>
                       </TableCell>

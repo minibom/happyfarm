@@ -124,5 +124,5 @@
 
 html, body {
   height: 100%;
-  overflow-x: hidden; /* Prevent horizontal scroll on main body */
+  overflow-x: hidden; 
 }

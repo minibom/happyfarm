@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
 import FarmGrid from '@/components/game/FarmGrid';
 import MarketModal from '@/components/game/MarketModal';
-// import AdvisorDialog from '@/components/game/AdvisorDialog'; // Temporarily remove if not used
+// import AdvisorDialog from '@/components/game/AdvisorDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import ChatPanel from '@/components/game/ChatPanel';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId } from '@/types';
-import { LEVEL_UP_XP_THRESHOLD } from '@/lib/constants';
+import type { SeedId, CropId } from '@/types'; // Keep CropId if used for typing elsewhere
+import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 
@@ -27,13 +27,14 @@ export default function HomePage() {
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized, // This now includes item data loading
+    isInitialized,
+    playerTierInfo, // Get playerTierInfo from useGameLogic
     // advisorTip,
     // fetchAdvisorTip,
     // isAdvisorLoading,
-    marketItems, // Now from useGameLogic, derived from Firestore
-    allSeedIds,  // Now from useGameLogic
-    cropData,    // Now from useGameLogic
+    marketItems, 
+    allSeedIds,  
+    cropData,    
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
@@ -52,11 +53,14 @@ export default function HomePage() {
 
   const handlePlotClick = (plotId: number) => {
     const plot = gameState.plots.find(p => p.id === plotId);
-    if (!plot) return;
+    if (!plot || !cropData) return;
 
     if (currentAction === 'planting' && selectedSeedToPlant) {
-      if (plot.state === 'empty') {
+      const seedCropDetail = cropData[selectedSeedToPlant.replace('Seed','') as CropId];
+      if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
         plantCrop(plotId, selectedSeedToPlant);
+      } else if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier < seedCropDetail.unlockTier) {
+        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
       }
     } else if (currentAction === 'harvesting') {
       if (plot.state === 'ready_to_harvest') {
@@ -66,10 +70,25 @@ export default function HomePage() {
   };
   
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
-    plantCrop(plotId, seedId);
+     if (!cropData) return;
+     const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
+     if (seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
+        plantCrop(plotId, seedId);
+     } else if (seedCropDetail) {
+        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
+     }
   };
 
   const handleSetPlantMode = (seedId: SeedId) => {
+    if (!cropData) return;
+    const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
+    if (!seedCropDetail || playerTierInfo.tier < seedCropDetail.unlockTier) {
+      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để chọn hạt giống ${seedCropDetail.name}.`, variant: "destructive" });
+      setCurrentAction('none');
+      setSelectedSeedToPlant(undefined);
+      return;
+    }
+
     if (currentAction === 'planting' && selectedSeedToPlant === seedId) {
       setCurrentAction('none');
       setSelectedSeedToPlant(undefined);
@@ -93,8 +112,17 @@ export default function HomePage() {
     setSelectedSeedToPlant(undefined);
   }
 
-  // Derive available seeds from gameState.inventory and allSeedIds (from useGameLogic)
-  const availableSeedsForPlanting = allSeedIds.filter(seedId => gameState.inventory[seedId] > 0);
+  const availableSeedsForPlanting = allSeedIds
+    .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
+    .filter(seedId => {
+        if (!cropData) return false;
+        const cropDetail = cropData[seedId.replace('Seed','') as CropId];
+        return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
+    });
+  
+  const allAvailableSeedsInInventory = allSeedIds // For the dropdown menu, show all owned, then let setPlantMode handle tier check
+    .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
+
 
   if (authLoading || !isInitialized || !user || !marketItems || !cropData) {
     return (
@@ -120,7 +148,8 @@ export default function HomePage() {
               onPlantFromPopover={plantSeedFromPlotPopover}
               isGloballyPlanting={currentAction === 'planting'}
               isGloballyHarvesting={currentAction === 'harvesting'}
-              cropData={cropData} // Pass cropData to FarmGrid
+              cropData={cropData}
+              playerTier={playerTierInfo.tier}
             />
           </div>
           <ChatPanel /> 
@@ -136,20 +165,22 @@ export default function HomePage() {
         onClearAction={handleClearAction}
         currentAction={currentAction}
         selectedSeed={selectedSeedToPlant}
-        availableSeeds={availableSeedsForPlanting}
+        availableSeeds={allAvailableSeedsInInventory} // Pass all owned seeds
         inventory={gameState.inventory}
-        cropData={cropData} // Pass cropData for tooltips/names
+        cropData={cropData} 
+        playerTier={playerTierInfo.tier}
       />
 
       <MarketModal
         isOpen={showMarket}
         onClose={() => setShowMarket(false)}
-        marketItems={marketItems} // Use dynamic marketItems
+        marketItems={marketItems} 
         playerGold={gameState.gold}
         playerInventory={gameState.inventory}
         onBuyItem={buyItem}
         onSellItem={sellItem}
-        cropData={cropData} // Pass cropData for display details
+        cropData={cropData}
+        playerTier={playerTierInfo.tier}
       />
       {/* <AdvisorDialog
         isOpen={showAdvisor}
@@ -162,9 +193,9 @@ export default function HomePage() {
         isOpen={showInventoryModal}
         onClose={() => setShowInventoryModal(false)}
         inventory={gameState.inventory}
-        cropData={cropData} // Pass cropData
-        allSeedIds={allSeedIds} // Pass allSeedIds
-        allCropIds={cropData ? Object.keys(cropData) as CropId[] : []} // Derive allCropIds
+        cropData={cropData} 
+        allSeedIds={allSeedIds} 
+        allCropIds={cropData ? Object.keys(cropData) as CropId[] : []} 
       />
       <PlayerProfileModal
         isOpen={showProfileModal}
@@ -174,6 +205,7 @@ export default function HomePage() {
         playerGold={gameState.gold}
         playerXP={gameState.xp}
         xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
+        playerTierInfo={playerTierInfo}
       />
     </div>
   );

@@ -17,14 +17,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CropDetails, CropId } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { TIER_NAMES } from '@/lib/constants'; // Import TIER_NAMES
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface ItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   mode: 'view' | 'edit' | 'create';
-  itemData: CropDetails; // For view/edit, this includes all fields. For create, it's a template.
-  cropId?: CropId; // The ID of the item, used as Firestore document ID. Required for edit/view. For create, it will be set by user.
-  onSave?: (data: CropDetails, idToSave: CropId, originalId?: CropId) => void; // idToSave is the one to use for DB op. originalId for checking if ID changed.
+  itemData: CropDetails; 
+  cropId?: CropId; 
+  onSave?: (data: CropDetails, idToSave: CropId, originalId?: CropId) => void; 
 }
 
 export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData: initialItemData, cropId: initialCropId, onSave }) => {
@@ -36,9 +44,6 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
     setFormData(initialItemData);
     setCurrentCropId(initialCropId);
     if (mode === 'create') {
-        // For new items, seedName can be derived once an ID is input
-        // Or just let user input it if they want custom, but derivation is safer.
-        // Let's ensure seedName reflects the ID for new items.
         if (currentCropId) {
              setFormData(prev => ({...prev, seedName: `${currentCropId}Seed`}));
         } else {
@@ -49,23 +54,28 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const isNumericField = ['timeToGrowing', 'timeToReady', 'harvestYield', 'seedPrice', 'cropPrice'].includes(name);
+    const isNumericField = ['timeToGrowing', 'timeToReady', 'harvestYield', 'seedPrice', 'cropPrice', 'unlockTier'].includes(name);
     
     setFormData(prev => {
         const newFormData = {
             ...prev,
             [name]: isNumericField ? Number(value) : value,
         };
-        // If creating and Item ID changes, update seedName (if we auto-derive)
-        // For now, we'll make Item ID fixed after first input, or handle it on save
         return newFormData;
     });
   };
+  
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      unlockTier: Number(value),
+    }));
+  };
+
 
   const handleCropIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newId = e.target.value.toLowerCase().replace(/\s+/g, '') as CropId;
+    const newId = e.target.value.toLowerCase().replace(/[^a-z0-9]/gi, '') as CropId; // Allow only alphanumeric
     setCurrentCropId(newId);
-    // Auto-derive seedName if in create mode or if we allow ID changes in edit (currently not)
     if (mode === 'create') {
         setFormData(prev => ({ ...prev, seedName: `${newId}Seed` }));
     }
@@ -73,25 +83,33 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
 
   const handleSubmit = () => {
     if (!currentCropId || currentCropId.trim() === '') {
-      toast({ title: "Lỗi", description: "Item ID không được để trống.", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Item ID không được để trống và chỉ chứa chữ cái/số.", variant: "destructive" });
       return;
+    }
+    if (!/^[a-z0-9]+$/i.test(currentCropId)) {
+        toast({ title: "Lỗi", description: "Item ID chỉ được chứa chữ cái và số, không có ký tự đặc biệt hoặc khoảng trắng.", variant: "destructive" });
+        return;
     }
     if (mode === 'create' && (!formData.name || formData.name.trim() === '')) {
         toast({ title: "Lỗi", description: "Tên vật phẩm không được để trống.", variant: "destructive" });
         return;
     }
+    if (formData.unlockTier < 1 || formData.unlockTier > TIER_NAMES.length) {
+        toast({ title: "Lỗi", description: `Bậc mở khóa phải từ 1 đến ${TIER_NAMES.length}.`, variant: "destructive" });
+        return;
+    }
+
 
     const finalData = {...formData};
-    // Ensure seedName is correctly derived from the currentCropId for create/edit
     finalData.seedName = `${currentCropId}Seed`;
 
     if (onSave) {
-      onSave(finalData, currentCropId, initialCropId); // Pass currentCropId as the one to save with
+      onSave(finalData, currentCropId, initialCropId); 
     }
     onClose();
   };
 
-  const title = mode === 'create' ? 'Tạo Vật Phẩm Mới (Database)' : mode === 'edit' ? `Chỉnh Sửa Vật Phẩm: ${initialItemData.name} (Database)` : `Chi Tiết Vật Phẩm: ${initialItemData.name}`;
+  const title = mode === 'create' ? 'Tạo Vật Phẩm Mới (Database)' : mode === 'edit' ? `Chỉnh Sửa: ${initialItemData.name}` : `Chi Tiết: ${initialItemData.name}`;
   const description = mode === 'create' 
     ? "Điền thông tin cho vật phẩm mới. Thay đổi sẽ được lưu vào Firestore." 
     : mode === 'edit' 
@@ -124,7 +142,7 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
                 name="newCropId" 
                 value={currentCropId || ''} 
                 onChange={handleCropIdChange} 
-                placeholder="vd: tomato, supercarrot (không dấu, không cách)"
+                placeholder="vd: tomato, supercarrot (chữ và số)"
                 className="col-span-3" 
               />
             </div>
@@ -141,12 +159,34 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
                 value={formData.seedName || (currentCropId ? `${currentCropId}Seed` : '')} 
                 readOnly 
                 className="col-span-3 bg-muted" 
-                placeholder="Sẽ tự động tạo từ ID Vật Phẩm"
+                placeholder="Tự động tạo từ ID Vật Phẩm"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="icon" className="text-right">Biểu Tượng (Emoji)</Label>
-            <Input id="icon" name="icon" value={formData.icon} onChange={handleChange} readOnly={isReadOnly} className="col-span-3" />
+            <Label htmlFor="icon" className="text-right">Biểu Tượng</Label>
+            <Input id="icon" name="icon" value={formData.icon} onChange={handleChange} readOnly={isReadOnly} className="col-span-3" placeholder="Emoji (vd: 🍅)"/>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="unlockTier" className="text-right">Bậc Mở Khóa*</Label>
+            {isReadOnly ? (
+                 <Input value={`Bậc ${formData.unlockTier} (${TIER_NAMES[formData.unlockTier-1] || 'Không rõ'})`} readOnly className="col-span-3 bg-muted" />
+            ) : (
+                <Select
+                    value={String(formData.unlockTier)}
+                    onValueChange={handleSelectChange}
+                >
+                    <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Chọn bậc mở khóa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {TIER_NAMES.map((name, index) => (
+                        <SelectItem key={index + 1} value={String(index + 1)}>
+                            Bậc {index + 1} - {name}
+                        </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="timeToGrowing" className="text-right">TG Lớn (ms)</Label>

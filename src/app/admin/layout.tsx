@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -30,15 +30,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen>
-      <Sidebar collapsible="icon" side="left" variant="sidebar">
-        <SidebarHeader className="p-4">
+      <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r border-sidebar-border">
+        <SidebarHeader className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
             <Button variant="ghost" size="icon" className="h-10 w-10 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8" asChild>
               <Link href="/">
                 <ShieldCheck className="h-6 w-6 text-primary" />
               </Link>
             </Button>
-            <h2 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">
+            <h2 className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden font-headline">
               Admin HappyFarm
             </h2>
           </div>
@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   tooltip={{ children: item.label, side: 'right', align: 'center' }}
                 >
                   <Link href={item.href}>
@@ -59,6 +59,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={{ children: "Về Trang Game", side: 'right', align: 'center' }}
+                >
+                  <Link href="/">
+                    <Home />
+                    <span>Về Trang Game</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
@@ -68,7 +79,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2">
               <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
               <h1 className="text-lg font-semibold text-foreground">
-                {menuItems.find(item => item.href === pathname)?.label || 'Bảng điều khiển'}
+                {menuItems.find(item => pathname.startsWith(item.href))?.label || 'Bảng điều khiển Admin'}
               </h1>
             </div>
         </header>

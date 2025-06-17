@@ -1,13 +1,15 @@
 
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { Sprout, Gift } from 'lucide-react';
+import { Sprout, Gift, Lock } from 'lucide-react';
 import { LeafIcon } from '@/components/icons/LeafIcon';
 import type { Plot, SeedId, CropId, CropDetails } from '@/types';
-// CROP_DATA is no longer imported directly here, it will be passed as a prop
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getPlayerTierInfo } from '@/lib/constants';
+
 
 interface FarmPlotProps {
   plot: Plot;
@@ -17,7 +19,8 @@ interface FarmPlotProps {
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
   isSelected?: boolean;
-  cropData: Record<CropId, CropDetails>; // Expect cropData as a prop
+  cropData: Record<CropId, CropDetails>; 
+  playerTier: number; // Add playerTier
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -28,13 +31,14 @@ const FarmPlot: FC<FarmPlotProps> = ({
   isGloballyPlanting,
   isGloballyHarvesting,
   isSelected,
-  cropData, // Use this prop
+  cropData, 
+  playerTier,
 }) => {
   const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!plot.plantedAt || !plot.cropId || !cropData[plot.cropId]) { // Check cropData
+    if (!plot.plantedAt || !plot.cropId || !cropData[plot.cropId]) { 
       setTimeLeftDisplay(null);
       return;
     }
@@ -43,7 +47,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
     if (plot.state === 'planted' || plot.state === 'growing') {
       const cropDetail = cropData[plot.cropId];
-      if (!cropDetail) { // Safety check if cropId is somehow invalid
+      if (!cropDetail) { 
         setTimeLeftDisplay(null);
         return;
       }
@@ -106,11 +110,11 @@ const FarmPlot: FC<FarmPlotProps> = ({
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
             {currentCropDetail ? (
-              <span className={cn("text-3xl", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
+              <span className={cn("text-3xl gentle-pulse", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
                 {currentCropDetail.icon}
               </span>
             ) : (
-              <Gift className={cn("w-10 h-10 text-red-500", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
+              <Gift className={cn("w-10 h-10 text-red-500 gentle-pulse", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
             )}
             <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded mt-0.5">Sẵn Sàng</span>
           </div>
@@ -178,33 +182,52 @@ const FarmPlot: FC<FarmPlotProps> = ({
       </PopoverTrigger>
       {plot.state === 'empty' && !isGloballyPlanting && cropData && (
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
+           <TooltipProvider>
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
             {availableSeedsForPopover.length > 0 ? (
               availableSeedsForPopover.map(seedId => {
                 const cropId = seedId.replace('Seed', '') as CropId;
                 const crop = cropData[cropId];
+                const isSeedLocked = playerTier < crop.unlockTier;
+                 const requiredTierName = isSeedLocked ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
+
+
                 return (
-                  <Button
-                    key={seedId}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      onPlantFromPopover(seedId);
-                      setIsSeedSelectorOpen(false);
-                    }}
-                    className="w-full justify-start"
-                    disabled={!crop} // Disable if crop details not found
-                  >
-                    {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
-                    Trồng {crop?.name || seedId}
-                  </Button>
+                  <Tooltip key={seedId} delayDuration={100}>
+                    <TooltipTrigger asChild>
+                      <div className={cn("w-full", isSeedLocked && "opacity-50 cursor-not-allowed")}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (!isSeedLocked) {
+                              onPlantFromPopover(seedId);
+                              setIsSeedSelectorOpen(false);
+                            }
+                          }}
+                          className={cn("w-full justify-start", isSeedLocked && "pointer-events-none")}
+                          disabled={!crop || isSeedLocked} 
+                        >
+                          {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                          Trồng {crop?.name || seedId}
+                          {isSeedLocked && <Lock className="ml-auto h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </TooltipTrigger>
+                    {isSeedLocked && (
+                      <TooltipContent side="right" align="start">
+                        <p>Mở khóa ở {requiredTierName} (Bậc {crop.unlockTier})</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                 );
               })
             ) : (
               <p className="text-xs text-muted-foreground text-center">Không có hạt giống trong kho.</p>
             )}
           </div>
+          </TooltipProvider>
         </PopoverContent>
       )}
     </Popover>

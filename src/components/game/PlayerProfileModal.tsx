@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { UserCircle2, Coins, Star, Award, Mail } from 'lucide-react';
+import { UserCircle2, Coins, Star, Award, Mail, ShieldHalf, BarChart3 } from 'lucide-react';
+import type { TierInfo } from '@/types';
 
 interface PlayerProfileModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface PlayerProfileModalProps {
   playerGold: number;
   playerXP: number;
   xpToNextLevel: number;
+  playerTierInfo: TierInfo;
 }
 
 const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
@@ -33,8 +35,9 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
   playerGold,
   playerXP,
   xpToNextLevel,
+  playerTierInfo,
 }) => {
-  const xpProgress = Math.min((playerXP / xpToNextLevel) * 100, 100);
+  const xpProgress = xpToNextLevel > 0 ? Math.min((playerXP / xpToNextLevel) * 100, 100) : 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -67,6 +70,14 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
               <div className="flex items-center gap-2 text-lg">
+                <ShieldHalf className="w-6 h-6 text-purple-500" />
+                <span className="font-medium">Bậc Hiện Tại:</span>
+              </div>
+              <span className="text-lg font-bold text-primary">{playerTierInfo.tierName} (Bậc {playerTierInfo.tier})</span>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
+              <div className="flex items-center gap-2 text-lg">
                 <Award className="w-6 h-6 text-blue-500" />
                 <span className="font-medium">Cấp Độ:</span>
               </div>
@@ -85,13 +96,18 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2 text-lg">
                   <Star className="w-6 h-6 text-yellow-400" />
-                  <span className="font-medium">Kinh Nghiệm:</span>
+                  <span className="font-medium">Kinh Nghiệm (XP):</span>
                 </div>
                 <span className="text-sm font-semibold text-primary">
-                  {playerXP.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
+                  {playerXP.toLocaleString()} / {xpToNextLevel > 0 ? xpToNextLevel.toLocaleString() : "Tối đa"} XP
                 </span>
               </div>
               <Progress value={xpProgress} className="h-3 w-full" />
+              {playerTierInfo.nextTierLevel && (
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                    Lên Bậc tiếp theo ở Cấp {playerTierInfo.nextTierLevel}
+                </p>
+              )}
             </div>
           </div>
         </div>

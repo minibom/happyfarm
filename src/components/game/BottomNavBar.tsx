@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -19,10 +19,10 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import type { SeedId, Inventory, CropId, CropDetails } from '@/types';
-// CROP_DATA is no longer imported directly
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getPlayerTierInfo } from '@/lib/constants';
 
 interface BottomNavBarProps {
   onOpenInventory: () => void;
@@ -33,9 +33,10 @@ interface BottomNavBarProps {
   onClearAction: () => void;
   currentAction: 'planting' | 'harvesting' | 'none';
   selectedSeed?: SeedId;
-  availableSeeds: SeedId[]; // These are already filtered SeedIds the player owns
+  availableSeeds: SeedId[]; 
   inventory: Inventory;
-  cropData: Record<CropId, CropDetails> | null; // Pass fetched cropData
+  cropData: Record<CropId, CropDetails> | null; 
+  playerTier: number;
 }
 
 const BottomNavBar: FC<BottomNavBarProps> = ({
@@ -49,7 +50,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   selectedSeed,
   availableSeeds,
   inventory,
-  cropData, // Use this
+  cropData,
+  playerTier,
 }) => {
   const router = useRouter();
   const { logOut } = useAuth();
@@ -61,7 +63,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     return cropData[cropId];
   };
   
-  const selectedSeedName = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed)?.name : '';
+  const selectedSeedInfo = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed) : null;
+  const selectedSeedName = selectedSeedInfo?.name;
 
   const handleAdminNavigation = () => {
     router.push('/admin/items');
@@ -79,7 +82,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   };
 
   if (!cropData) {
-    // Optionally render a loading state or minimal bar if cropData is essential for display
     return null; 
   }
 
@@ -100,22 +102,37 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     )}
                     aria-label="Trồng Hạt Giống"
                   >
-                    <Sprout className="h-5 w-5" />
+                    {currentAction === 'planting' && selectedSeedInfo?.icon ? (
+                        <span className="text-xl">{selectedSeedInfo.icon}</span>
+                    ) : (
+                        <Sprout className="h-5 w-5" />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{currentAction === 'planting' && selectedSeedName ? `Trồng (${selectedSeedName})` : 'Trồng Hạt Giống'}</p>
+                <p>{currentAction === 'planting' && selectedSeedName ? `Đang trồng: ${selectedSeedName}` : 'Chọn Hạt Giống Để Trồng'}</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" className="mb-2">
+            <DropdownMenuContent align="end" className="mb-2 max-h-72 overflow-y-auto">
               {availableSeeds.length > 0 ? (
                 availableSeeds.map(seedId => {
                   const crop = getCropInfo(seedId);
+                  if (!crop) return null;
+                  const isSeedLocked = playerTier < crop.unlockTier;
+                  const requiredTierName = isSeedLocked ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
+
                   return (
-                    <DropdownMenuItem key={seedId} onClick={() => onSetPlantMode(seedId)} disabled={!crop}>
+                    <DropdownMenuItem 
+                        key={seedId} 
+                        onClick={() => onSetPlantMode(seedId)} 
+                        disabled={!crop || isSeedLocked}
+                        className={cn(isSeedLocked && "opacity-60")}
+                    >
                       {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
                        Trồng {crop?.name || seedId.replace('Seed','')} ({inventory[seedId]})
+                      {isSeedLocked && <Lock className="ml-auto h-3 w-3 text-muted-foreground" />}
+                      {isSeedLocked && <span className="ml-1 text-xs text-muted-foreground">(Bậc {crop.unlockTier})</span>}
                     </DropdownMenuItem>
                   );
                 })
@@ -140,8 +157,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 size="icon"
                 variant="outline"
                 className={cn(
-                  "p-2 h-12 w-12 rounded-full shadow-md gentle-pulse",
-                  currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
+                  "p-2 h-12 w-12 rounded-full shadow-md",
+                  currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground gentle-pulse"
                 )}
                 aria-label="Thu Hoạch"
               >
@@ -149,7 +166,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Thu Hoạch</p>
+              <p>Bật/Tắt Chế Độ Thu Hoạch</p>
             </TooltipContent>
           </Tooltip>
 
