@@ -73,8 +73,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="bg-muted/30"> {/* Removed md:ml-0 here */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2">
+      <SidebarInset className="bg-muted/30 md:ml-0 flex flex-col h-screen">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 shrink-0">
             <SidebarTrigger className="md:hidden" />
             <div className="flex items-center gap-2">
               <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </h1>
             </div>
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto flex flex-col gap-4 p-4 sm:p-6">
             {children}
         </main>
       </SidebarInset>
