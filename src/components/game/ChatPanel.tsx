@@ -13,16 +13,19 @@ import { rtdb } from '@/lib/firebase';
 import { ref, onValue, push, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
 import type { ChatMessage } from '@/types';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatPanelProps {
   isModalMode?: boolean;
+  userStatus: 'active' | 'banned_chat';
 }
 
-const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false }) => {
+const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const messagesRef = query(ref(rtdb, 'messages'), orderByChild('timestamp'), limitToLast(50));
@@ -53,7 +56,18 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false }) => {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === '' || !user) return;
+    if (!user) return;
+
+    if (userStatus === 'banned_chat') {
+      toast({
+        title: "Bị Cấm Chat",
+        description: "Bạn không thể gửi tin nhắn vì tài khoản đã bị cấm chat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newMessage.trim() === '') return;
 
     const messageData = {
       sender: user.email || 'Người chơi Vô Danh',
@@ -92,13 +106,17 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false }) => {
         <form onSubmit={handleSendMessage} className="flex space-x-2 pt-2 border-t">
           <Input
             type="text"
-            placeholder="Nhập tin nhắn..."
+            placeholder={userStatus === 'banned_chat' ? "Bạn đã bị cấm chat" : "Nhập tin nhắn..."}
             className="flex-grow text-sm"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            disabled={!user}
+            disabled={!user || userStatus === 'banned_chat'}
           />
-          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground" disabled={!user || newMessage.trim() === ''}>
+          <Button 
+            type="submit" 
+            className="bg-accent hover:bg-accent/90 text-accent-foreground" 
+            disabled={!user || userStatus === 'banned_chat' || newMessage.trim() === ''}
+          >
             <Send className="h-4 w-4" />
             <span className="sr-only">Gửi</span>
           </Button>

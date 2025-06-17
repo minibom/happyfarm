@@ -162,6 +162,7 @@ export default function HomePage() {
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
         unlockPlot={unlockPlot}
+        userStatus={gameState.status}
       />
 
       <BottomNavBar
@@ -212,8 +213,7 @@ export default function HomePage() {
       
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
-          {/* Render ChatPanel here directly for modal mode */}
-          <ChatPanel isModalMode />
+          <ChatPanel isModalMode userStatus={gameState.status} />
         </DialogContent>
       </Dialog>
 

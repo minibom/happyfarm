@@ -15,6 +15,7 @@ interface GameAreaProps {
   handlePlotClick: (plotId: number) => void;
   plantSeedFromPlotPopover: (plotId: number, seedId: SeedId) => void;
   unlockPlot: (plotId: number) => void;
+  userStatus: 'active' | 'banned_chat'; // Added userStatus prop
 }
 
 const GameArea: FC<GameAreaProps> = ({
@@ -26,6 +27,7 @@ const GameArea: FC<GameAreaProps> = ({
   handlePlotClick,
   plantSeedFromPlotPopover,
   unlockPlot,
+  userStatus, // Use userStatus prop
 }) => {
   return (
     <main className="flex flex-col items-center w-full max-w-7xl mt-4">
@@ -45,7 +47,8 @@ const GameArea: FC<GameAreaProps> = ({
           />
         </div>
         <div className="flex-shrink-0 hidden md:block">
-          <ChatPanel />
+          {/* Pass userStatus to ChatPanel here */}
+          <ChatPanel userStatus={userStatus} />
         </div>
       </div>
     </main>
