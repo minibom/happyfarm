@@ -12,30 +12,30 @@ export const INITIAL_LEVEL = 1;
 export const CROP_DATA: Record<CropId, CropDetails> = {
   tomato: {
     name: 'Tomato',
-    seedName: 'tomatoSeed', // Changed from 'Tomato Seed'
+    seedName: 'tomatoSeed',
     icon: '🍅',
-    timeToGrowing: 5 * 1000, // 5 seconds
-    timeToReady: 10 * 1000,  // 10 seconds total
+    timeToGrowing: 60 * 1000, // 1 minute
+    timeToReady: 120 * 1000,  // 2 minutes total
     harvestYield: 3,
     seedPrice: 5,
     cropPrice: 2,
   },
   carrot: {
     name: 'Carrot',
-    seedName: 'carrotSeed', // Changed from 'Carrot Seed'
+    seedName: 'carrotSeed',
     icon: '🥕',
-    timeToGrowing: 8 * 1000, // 8 seconds
-    timeToReady: 15 * 1000, // 15 seconds total
+    timeToGrowing: 120 * 1000, // 2 minutes
+    timeToReady: 240 * 1000, // 4 minutes total
     harvestYield: 2,
     seedPrice: 8,
     cropPrice: 5,
   },
   corn: {
     name: 'Corn',
-    seedName: 'cornSeed', // Changed from 'Corn Seed'
+    seedName: 'cornSeed',
     icon: '🌽',
-    timeToGrowing: 12 * 1000, // 12 seconds
-    timeToReady: 25 * 1000,  // 25 seconds total
+    timeToGrowing: 180 * 1000, // 3 minutes
+    timeToReady: 360 * 1000,  // 6 minutes total
     harvestYield: 1,
     seedPrice: 12,
     cropPrice: 15,
@@ -43,7 +43,6 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
 };
 
 export const ALL_CROP_IDS = Object.keys(CROP_DATA) as CropId[];
-// This now correctly maps to 'tomatoSeed', etc. and matches SeedId type
 export const ALL_SEED_IDS = ALL_CROP_IDS.map(cropId => CROP_DATA[cropId].seedName as SeedId);
 
 
@@ -53,9 +52,9 @@ export const INITIAL_PLOTS: Plot[] = Array.from({ length: TOTAL_PLOTS }, (_, i) 
 }));
 
 export const INITIAL_INVENTORY: GameState['inventory'] = {
-  tomatoSeed: 5, // Changed key
-  carrotSeed: 3, // Changed key
-  cornSeed: 0,   // Changed key
+  tomatoSeed: 5,
+  carrotSeed: 3,
+  cornSeed: 0,
   tomato: 0,
   carrot: 0,
   corn: 0,
@@ -75,17 +74,17 @@ export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {
 };
 
 export const MARKET_ITEMS: MarketItem[] = [
-  ...ALL_CROP_IDS.map(cropId => ({ 
-    id: CROP_DATA[cropId].seedName as SeedId, 
-    name: `${CROP_DATA[cropId].name} Seed`, // Display name
-    price: CROP_DATA[cropId].seedPrice, 
-    type: 'seed' as 'seed' 
+  ...ALL_CROP_IDS.map(cropId => ({
+    id: CROP_DATA[cropId].seedName as SeedId,
+    name: `${CROP_DATA[cropId].name} Seed`,
+    price: CROP_DATA[cropId].seedPrice,
+    type: 'seed' as 'seed'
   })),
-  ...ALL_CROP_IDS.map(cropId => ({ 
-    id: cropId, 
-    name: CROP_DATA[cropId].name, 
-    price: CROP_DATA[cropId].cropPrice, 
-    type: 'crop' as 'crop' 
+  ...ALL_CROP_IDS.map(cropId => ({
+    id: cropId,
+    name: CROP_DATA[cropId].name,
+    price: CROP_DATA[cropId].cropPrice,
+    type: 'crop' as 'crop'
   })),
 ];
 
