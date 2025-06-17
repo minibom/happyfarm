@@ -1,7 +1,7 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -14,19 +14,73 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   const menuItems = [
     { href: '/admin/items', label: 'Quản lý Vật phẩm', icon: ShoppingBasket },
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
+
+  useEffect(() => {
+    if (authLoading) {
+      setIsCheckingPermissions(true);
+      return;
+    }
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    const adminUidsString = process.env.NEXT_PUBLIC_ADMIN_UIDS || '';
+    const adminUids = adminUidsString.split(',').map(uid => uid.trim()).filter(uid => uid);
+
+    if (adminUids.length === 0) {
+        console.warn("NEXT_PUBLIC_ADMIN_UIDS is not set. No one will have admin access.");
+    }
+
+    if (adminUids.includes(user.uid)) {
+      setIsAdmin(true);
+    } else {
+      toast({
+        title: "Truy Cập Bị Từ Chối",
+        description: "Bạn không có quyền truy cập vào trang quản trị.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      router.push('/');
+    }
+    setIsCheckingPermissions(false);
+  }, [user, authLoading, router, toast]);
+
+  if (authLoading || isCheckingPermissions) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-xl text-muted-foreground">Đang kiểm tra quyền truy cập...</p>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    // User is not an admin, and redirection should be in progress.
+    // Render null or a minimal message while redirecting to prevent content flashing.
+    return null;
+  }
 
   return (
     <SidebarProvider defaultOpen style={{ '--sidebar-width': '20%' }}>
@@ -73,7 +127,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="bg-muted/30 md:ml-0 flex flex-col h-screen">
+      <SidebarInset className="bg-muted/30 flex flex-col h-screen">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 shrink-0">
             <SidebarTrigger className="md:hidden" />
             <div className="flex items-center gap-2">
@@ -90,4 +144,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
