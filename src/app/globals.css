@@ -30,14 +30,16 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 50 25% 92%;
-    --sidebar-foreground: 0 0% 3.9%;
-    --sidebar-primary: 50 70% 50%;
-    --sidebar-primary-foreground: 0 0% 3.9%;
-    --sidebar-accent: 80 60% 40%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 50 30% 80%;
-    --sidebar-ring: 50 70% 50%;
+
+    /* Sidebar Specific Colors - Light Theme */
+    --sidebar-background: 47 33% 94%; /* Slightly darker than main background for contrast */
+    --sidebar-foreground: 0 0% 10%; /* Darker text for readability on sidebar */
+    --sidebar-border: 50 20% 85%; /* Subtle border */
+    --sidebar-primary: 50 70% 45%; /* Slightly deeper primary for sidebar active states */
+    --sidebar-primary-foreground: 0 0% 98%; /* Light text on sidebar primary */
+    --sidebar-accent: 80 50% 50%; /* Sidebar accent for hover, slightly adjusted */
+    --sidebar-accent-foreground: 0 0% 98%; /* Light text on sidebar accent */
+    --sidebar-ring: 50 70% 50%; /* Ring color for focus states in sidebar */
   }
 
   .dark {
@@ -65,14 +67,16 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 50 70% 50%;
-    --sidebar-primary-foreground: 0 0% 3.9%;
-    --sidebar-accent: 80 60% 40%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 50 70% 50%;
+
+    /* Sidebar Specific Colors - Dark Theme */
+    --sidebar-background: 240 6% 12%; /* Slightly lighter than main dark background */
+    --sidebar-foreground: 0 0% 90%; /* Lighter text for readability on dark sidebar */
+    --sidebar-border: 240 4% 20%; /* Subtle border for dark theme */
+    --sidebar-primary: 50 70% 55%; /* Brighter primary for dark sidebar active states */
+    --sidebar-primary-foreground: 0 0% 10%; /* Dark text on dark sidebar primary */
+    --sidebar-accent: 80 50% 55%; /* Dark sidebar accent, slightly brighter */
+    --sidebar-accent-foreground: 0 0% 10%; /* Dark text on dark sidebar accent */
+    --sidebar-ring: 50 70% 55%;
   }
 }
 
@@ -107,7 +111,7 @@
   50% { opacity: 1; transform: scale(1.05); }
   100% { opacity: 0.7; transform: scale(1); }
 }
-/* Old twinkle, can be removed if not used elsewhere or kept for other effects */
+
 .twinkle {
   animation: twinkle-animation 0.5s ease-out;
 }
@@ -116,4 +120,9 @@
   0% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(1.2); }
   100% { opacity: 1; transform: scale(1); }
+}
+
+html, body {
+  height: 100%;
+  overflow-x: hidden; /* Prevent horizontal scroll on main body */
 }
