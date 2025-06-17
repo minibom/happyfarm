@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react'; // Added UserCircle2
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -18,8 +18,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import type { SeedId, Inventory, CropId } from '@/types';
-import { CROP_DATA } from '@/lib/constants';
+import type { SeedId, Inventory, CropId, CropDetails } from '@/types';
+// CROP_DATA is no longer imported directly
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -27,20 +27,21 @@ import { useToast } from '@/hooks/use-toast';
 interface BottomNavBarProps {
   onOpenInventory: () => void;
   onOpenMarket: () => void;
-  onOpenProfile: () => void; // Added
+  onOpenProfile: () => void;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onClearAction: () => void;
   currentAction: 'planting' | 'harvesting' | 'none';
   selectedSeed?: SeedId;
-  availableSeeds: SeedId[];
+  availableSeeds: SeedId[]; // These are already filtered SeedIds the player owns
   inventory: Inventory;
+  cropData: Record<CropId, CropDetails> | null; // Pass fetched cropData
 }
 
 const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenInventory,
   onOpenMarket,
-  onOpenProfile, // Added
+  onOpenProfile,
   onSetPlantMode,
   onToggleHarvestMode,
   onClearAction,
@@ -48,14 +49,16 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   selectedSeed,
   availableSeeds,
   inventory,
+  cropData, // Use this
 }) => {
   const router = useRouter();
   const { logOut } = useAuth();
   const { toast } = useToast();
 
   const getCropInfo = (seedId: SeedId) => {
+    if (!cropData) return null;
     const cropId = seedId.replace('Seed', '') as CropId;
-    return CROP_DATA[cropId];
+    return cropData[cropId];
   };
   
   const selectedSeedName = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed)?.name : '';
@@ -74,6 +77,11 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
       toast({ title: "Đăng Xuất Thất Bại", description: "Không thể đăng xuất. Vui lòng thử lại.", variant: "destructive" });
     }
   };
+
+  if (!cropData) {
+    // Optionally render a loading state or minimal bar if cropData is essential for display
+    return null; 
+  }
 
   return (
     <TooltipProvider>
@@ -105,8 +113,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 availableSeeds.map(seedId => {
                   const crop = getCropInfo(seedId);
                   return (
-                    <DropdownMenuItem key={seedId} onClick={() => onSetPlantMode(seedId)}>
-                      <span className="mr-2 text-lg">{crop?.icon}</span> Trồng {crop?.name} ({inventory[seedId]})
+                    <DropdownMenuItem key={seedId} onClick={() => onSetPlantMode(seedId)} disabled={!crop}>
+                      {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                       Trồng {crop?.name || seedId.replace('Seed','')} ({inventory[seedId]})
                     </DropdownMenuItem>
                   );
                 })
@@ -131,7 +140,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 size="icon"
                 variant="outline"
                 className={cn(
-                  "p-2 h-12 w-12 rounded-full shadow-md",
+                  "p-2 h-12 w-12 rounded-full shadow-md gentle-pulse",
                   currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                 )}
                 aria-label="Thu Hoạch"

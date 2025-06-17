@@ -6,39 +6,64 @@ import { Button } from '@/components/ui/button';
 import { UploadCloud, DatabaseZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CROP_DATA } from '@/lib/constants';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
+import type { CropId, CropDetails } from '@/types';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
 
-  const handlePushData = () => {
-    console.log("Simulating: Pushing local item data to database...");
-    console.log("Data to be pushed (from src/lib/constants.ts):", CROP_DATA);
-    
-    // In a real scenario, you would:
-    // 1. Iterate through CROP_DATA.
-    // 2. For each item, create a document in a Firestore collection (e.g., 'gameItems').
-    // Example:
-    // const itemRef = doc(db, 'gameItems', cropId);
-    // await setDoc(itemRef, CROP_DATA[cropId]);
-
+  const handlePushData = async () => {
     toast({
-      title: "Cấu Hình Hệ Thống (Mô Phỏng)",
-      description: "Đã mô phỏng việc đẩy dữ liệu vật phẩm từ 'src/lib/constants.ts' lên cơ sở dữ liệu. Kiểm tra console để xem dữ liệu. Trong một ứng dụng thực tế, hành động này sẽ ghi dữ liệu vào Firestore.",
-      duration: 10000,
-      className: "bg-sky-500 text-white"
+      title: "Đang Xử Lý...",
+      description: "Bắt đầu đẩy dữ liệu vật phẩm cục bộ lên Firestore. Vui lòng đợi...",
+      duration: 5000,
     });
+
+    try {
+      const batch = writeBatch(db);
+      let itemCount = 0;
+
+      for (const cropId in CROP_DATA) {
+        if (Object.prototype.hasOwnProperty.call(CROP_DATA, cropId)) {
+          const itemData = CROP_DATA[cropId as CropId] as CropDetails;
+          const itemRef = doc(db, 'gameItems', cropId);
+          batch.set(itemRef, itemData);
+          itemCount++;
+        }
+      }
+
+      await batch.commit();
+
+      toast({
+        title: "Thành Công!",
+        description: `Đã đẩy ${itemCount} vật phẩm từ 'src/lib/constants.ts' lên collection 'gameItems' trong Firestore.`,
+        duration: 10000,
+        className: "bg-green-500 text-white"
+      });
+      console.log("Data pushed to Firestore:", CROP_DATA);
+
+    } catch (error) {
+      console.error("Error pushing data to Firestore:", error);
+      toast({
+        title: "Lỗi Đẩy Dữ Liệu",
+        description: `Không thể đẩy dữ liệu lên Firestore. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+        duration: 10000,
+      });
+    }
   };
 
   return (
     <Card className="shadow-xl">
       <CardHeader>
         <CardTitle className="text-3xl font-bold text-primary font-headline">
-          Cấu Hình Hệ Thống (Placeholder)
+          Cấu Hình Hệ Thống
         </CardTitle>
         <CardDescription>
           Trang này dành cho các cài đặt và hành động quản trị cấp cao.
           <br />
-          <strong>Lưu ý:</strong> Các chức năng hiện tại chỉ mang tính chất minh họa và mô phỏng.
+          <strong>Lưu ý:</strong> Hãy cẩn thận khi thực hiện các hành động trên trang này.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -46,22 +71,22 @@ export default function AdminConfigPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
                 <DatabaseZap className="h-6 w-6 text-primary" />
-                <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Vật Phẩm</CardTitle>
+                <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Vật Phẩm (Cục Bộ {'>'} Database)</CardTitle>
             </div>
             <CardDescription>
-              Chức năng này (trong tương lai) sẽ cho phép đẩy cấu hình vật phẩm từ file 
-              <code>src/lib/constants.ts</code> lên một collection trong Firestore.
-              Điều này hữu ích nếu bạn muốn quản lý vật phẩm từ cơ sở dữ liệu thay vì code.
+              Chức năng này sẽ đẩy TOÀN BỘ cấu hình vật phẩm từ file 
+              <code>src/lib/constants.ts</code> lên collection <code>gameItems</code> trong Firestore.
+              Sử dụng chức năng này để khởi tạo dữ liệu vật phẩm trên database hoặc ghi đè toàn bộ dữ liệu trên database bằng dữ liệu cục bộ.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={handlePushData} className="bg-accent hover:bg-accent/90">
               <UploadCloud className="mr-2 h-5 w-5" />
-              Đẩy Dữ Liệu Vật Phẩm Lên Database (Mô Phỏng)
+              Đẩy Dữ Liệu Vật Phẩm Lên Database
             </Button>
             <p className="mt-2 text-sm text-muted-foreground">
-              Việc này sẽ ghi đè dữ liệu vật phẩm hiện có trên database (nếu có) bằng dữ liệu từ file constants cục bộ.
-              Hành động này cần được thực hiện cẩn thận.
+              Thao tác này sẽ <strong>GHI ĐÈ</strong> toàn bộ dữ liệu vật phẩm hiện có trên collection <code>gameItems</code> bằng dữ liệu từ file constants cục bộ.
+              Hãy chắc chắn bạn hiểu rõ tác động trước khi thực hiện.
             </p>
           </CardContent>
         </Card>

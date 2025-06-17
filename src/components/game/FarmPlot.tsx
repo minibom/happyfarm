@@ -3,20 +3,21 @@ import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import { Sprout, Gift } from 'lucide-react';
 import { LeafIcon } from '@/components/icons/LeafIcon';
-import type { Plot, SeedId, CropId } from '@/types';
-import { CROP_DATA } from '@/lib/constants';
+import type { Plot, SeedId, CropId, CropDetails } from '@/types';
+// CROP_DATA is no longer imported directly here, it will be passed as a prop
 import { cn } from '@/lib/utils';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 
 interface FarmPlotProps {
   plot: Plot;
-  onClick: () => void; // Original click handler from HomePage for global actions
+  onClick: () => void;
   availableSeedsForPopover: SeedId[];
   onPlantFromPopover: (seedId: SeedId) => void;
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
   isSelected?: boolean;
+  cropData: Record<CropId, CropDetails>; // Expect cropData as a prop
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -27,12 +28,13 @@ const FarmPlot: FC<FarmPlotProps> = ({
   isGloballyPlanting,
   isGloballyHarvesting,
   isSelected,
+  cropData, // Use this prop
 }) => {
   const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!plot.plantedAt || !plot.cropId) {
+    if (!plot.plantedAt || !plot.cropId || !cropData[plot.cropId]) { // Check cropData
       setTimeLeftDisplay(null);
       return;
     }
@@ -40,7 +42,11 @@ const FarmPlot: FC<FarmPlotProps> = ({
     let intervalId: NodeJS.Timeout;
 
     if (plot.state === 'planted' || plot.state === 'growing') {
-      const cropDetail = CROP_DATA[plot.cropId];
+      const cropDetail = cropData[plot.cropId];
+      if (!cropDetail) { // Safety check if cropId is somehow invalid
+        setTimeLeftDisplay(null);
+        return;
+      }
       const targetTime = plot.state === 'planted'
         ? plot.plantedAt + cropDetail.timeToGrowing
         : plot.plantedAt + cropDetail.timeToReady;
@@ -51,8 +57,6 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
         if (remaining === 0) {
           setTimeLeftDisplay("00:00");
-          // The game loop in useGameLogic will handle the state transition
-          // so we don't strictly need to clearInterval here if the component might re-render due to state change
         } else {
           const totalSeconds = Math.floor(remaining / 1000);
           const minutes = Math.floor(totalSeconds / 60);
@@ -61,17 +65,19 @@ const FarmPlot: FC<FarmPlotProps> = ({
         }
       };
 
-      updateTimer(); // Initial call
+      updateTimer();
       intervalId = setInterval(updateTimer, 1000);
     } else {
-      setTimeLeftDisplay(null); // Clear timer if not planted or growing
+      setTimeLeftDisplay(null);
     }
 
-    return () => clearInterval(intervalId); // Cleanup interval on unmount or dependency change
-  }, [plot.state, plot.plantedAt, plot.cropId]);
+    return () => clearInterval(intervalId);
+  }, [plot.state, plot.plantedAt, plot.cropId, cropData]);
 
   const getPlotContent = () => {
-    const cropName = plot.cropId ? CROP_DATA[plot.cropId]?.name : null;
+    const currentCropDetail = plot.cropId ? cropData[plot.cropId] : null;
+    const cropName = currentCropDetail?.name;
+
     const cropNameElement = cropName ? (
       <span className="text-xs font-medium text-center text-yellow-900 dark:text-yellow-200 -mb-1">
         {cropName}
@@ -99,9 +105,9 @@ const FarmPlot: FC<FarmPlotProps> = ({
         return (
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
-            {plot.cropId && CROP_DATA[plot.cropId] ? (
+            {currentCropDetail ? (
               <span className={cn("text-3xl", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
-                {CROP_DATA[plot.cropId].icon}
+                {currentCropDetail.icon}
               </span>
             ) : (
               <Gift className={cn("w-10 h-10 text-red-500", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
@@ -116,13 +122,13 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   const handlePlotGUIClick = () => {
     if (isGloballyPlanting || isGloballyHarvesting) {
-      onClick(); // Defer to global actions if active
+      onClick();
     }
     else if (plot.state === 'empty') {
-      setIsSeedSelectorOpen(true); // Open local seed selector if plot is empty and no global action
+      setIsSeedSelectorOpen(true);
     }
     else {
-      onClick(); // Fallback, could be for info or other actions if plot not empty and no global action
+      onClick();
     }
   };
 
@@ -141,10 +147,9 @@ const FarmPlot: FC<FarmPlotProps> = ({
   if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
     actionableClass = 'ring-4 ring-yellow-400 ring-offset-2';
   }
-  if (isSelected) { // This might be for a future "selected plot info" feature
+  if (isSelected) {
      actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
   }
-
 
   return (
     <Popover open={isSeedSelectorOpen} onOpenChange={setIsSeedSelectorOpen}>
@@ -156,7 +161,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
             stateClasses[plot.state],
             actionableClass
           )}
-          aria-label={`Thửa đất ${plot.id + 1}, trạng thái: ${plot.state}${plot.cropId ? `, cây trồng: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
+          aria-label={`Thửa đất ${plot.id + 1}, trạng thái: ${plot.state}${plot.cropId && cropData[plot.cropId] ? `, cây trồng: ${cropData[plot.cropId].name}` : ''}`}
           role="button"
           tabIndex={0}
         >
@@ -171,13 +176,14 @@ const FarmPlot: FC<FarmPlotProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      {plot.state === 'empty' && !isGloballyPlanting && ( // Only show popover if not in global planting mode
+      {plot.state === 'empty' && !isGloballyPlanting && cropData && (
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
             {availableSeedsForPopover.length > 0 ? (
               availableSeedsForPopover.map(seedId => {
-                const crop = CROP_DATA[seedId.replace('Seed', '') as CropId];
+                const cropId = seedId.replace('Seed', '') as CropId;
+                const crop = cropData[cropId];
                 return (
                   <Button
                     key={seedId}
@@ -188,8 +194,10 @@ const FarmPlot: FC<FarmPlotProps> = ({
                       setIsSeedSelectorOpen(false);
                     }}
                     className="w-full justify-start"
+                    disabled={!crop} // Disable if crop details not found
                   >
-                    <span className="mr-2 text-lg">{crop?.icon}</span> Trồng {crop?.name || seedId}
+                    {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                    Trồng {crop?.name || seedId}
                   </Button>
                 );
               })

@@ -12,18 +12,19 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { InventoryItem, MarketItem } from '@/types';
+import type { InventoryItem, MarketItem, CropDetails, CropId } from '@/types';
 import { Coins, MinusCircle, PlusCircle, ShoppingCart, Wheat } from 'lucide-react';
-import { CROP_DATA } from '@/lib/constants';
+// CROP_DATA is no longer imported directly
 
 interface MarketModalProps {
   isOpen: boolean;
   onClose: () => void;
-  marketItems: MarketItem[];
+  marketItems: MarketItem[] | null; // Can be null while loading
   playerGold: number;
   playerInventory: Record<InventoryItem, number>;
   onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
   onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void;
+  cropData: Record<CropId, CropDetails> | null; // Pass fetched cropData
 }
 
 const MarketModal: FC<MarketModalProps> = ({
@@ -34,8 +35,27 @@ const MarketModal: FC<MarketModalProps> = ({
   playerInventory,
   onBuyItem,
   onSellItem,
+  cropData,
 }) => {
   const [quantities, setQuantities] = useState<Record<InventoryItem, number>>({});
+
+  if (!marketItems || !cropData) {
+     return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="sm:max-w-md">
+                 <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
+                        <ShoppingCart className="w-7 h-7 text-primary" /> Chợ
+                    </DialogTitle>
+                </DialogHeader>
+                <p className="text-muted-foreground text-center py-8">Đang tải dữ liệu chợ...</p>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Đóng</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+  }
 
   const handleQuantityChange = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop') => {
     setQuantities(prev => {
@@ -43,7 +63,7 @@ const MarketModal: FC<MarketModalProps> = ({
       let newQuantity = currentQuantity + delta;
       if (newQuantity < 0) newQuantity = 0;
       
-      if (type === 'crop') { // Selling
+      if (type === 'crop') {
         const maxSellable = playerInventory[itemId] || 0;
         if (newQuantity > maxSellable) newQuantity = maxSellable;
       }
@@ -59,8 +79,12 @@ const MarketModal: FC<MarketModalProps> = ({
       <div className="space-y-3 pr-2">
         {items.map(item => {
           const quantity = quantities[item.id] || 0;
-          const cropDetails = item.type === 'crop' ? CROP_DATA[item.id as keyof typeof CROP_DATA] : CROP_DATA[item.id.replace('Seed','') as keyof typeof CROP_DATA]
-          const displayName = item.name; // MarketItem already has localized name
+          // Use cropData to get icon if it's a crop, or for seed's related crop
+          const cropDetails = item.type === 'crop' 
+            ? cropData[item.id as CropId] 
+            : cropData[item.id.replace('Seed','') as CropId];
+          
+          const displayName = item.name; 
           const displayIcon = item.type === 'crop' ? cropDetails?.icon : undefined;
 
           return (
@@ -116,7 +140,7 @@ const MarketModal: FC<MarketModalProps> = ({
             <ShoppingCart className="w-7 h-7 text-primary" /> Chợ
           </DialogTitle>
           <DialogDescription>
-            Mua hạt giống và bán nông sản thu hoạch được. Vàng hiện tại: {playerGold}
+            Mua hạt giống và bán nông sản thu hoạch được. Vàng hiện tại: {playerGold.toLocaleString()}
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="buy" className="w-full">
