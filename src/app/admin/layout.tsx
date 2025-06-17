@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -15,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2 } from 'lucide-react';
+import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const menuItems = [
     { href: '/admin/items', label: 'Quản lý Vật phẩm', icon: ShoppingBasket },
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
+    { href: '/admin/tiers', label: 'Quản lý Bậc', icon: BarChart3 },
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
