@@ -17,6 +17,7 @@ import { Coins, MinusCircle, PlusCircle, ShoppingCart, Wheat, Lock } from 'lucid
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TIER_NAMES, getPlayerTierInfo } from '@/lib/constants';
+import { Input } from '@/components/ui/input'; // Import Input component
 
 interface MarketModalProps {
   isOpen: boolean;
@@ -76,7 +77,7 @@ const MarketModal: FC<MarketModalProps> = ({
     );
   }
 
-  const handleQuantityChange = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => {
+  const handleQuantityButtonClick = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => {
     if (type === 'seed' && playerTier < itemUnlockTier && delta > 0) return;
 
     setQuantities(prev => {
@@ -91,6 +92,29 @@ const MarketModal: FC<MarketModalProps> = ({
       return { ...prev, [itemId]: newQuantity };
     });
   };
+
+  const handleQuantityInputChange = (
+    itemId: InventoryItem,
+    value: string,
+    type: 'seed' | 'crop',
+    itemUnlockTier: number
+  ) => {
+    if (type === 'seed' && playerTier < itemUnlockTier) return;
+
+    let numValue = parseInt(value, 10);
+    if (isNaN(numValue) || value === '') {
+      numValue = 0;
+    }
+    if (numValue < 0) numValue = 0;
+
+    if (type === 'crop') {
+      const maxSellable = playerInventory[itemId] || 0;
+      if (numValue > maxSellable) numValue = maxSellable;
+    }
+
+    setQuantities(prev => ({ ...prev, [itemId]: numValue }));
+  };
+
 
   const renderSeedMarketGrid = () => (
     <ScrollArea className="max-h-[60vh]">
@@ -129,11 +153,18 @@ const MarketModal: FC<MarketModalProps> = ({
                     <span>{item.price}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-auto">
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityChange(item.id, -1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
+                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
                       <MinusCircle className="w-4 h-4" />
                     </Button>
-                    <span className="w-6 text-center font-medium text-sm">{isLockedForPurchase ? 0 : quantity}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityChange(item.id, 1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
+                    <Input
+                      type="number"
+                      value={isLockedForPurchase ? 0 : quantity}
+                      onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
+                      className="h-7 w-10 text-center px-1 text-sm"
+                      readOnly={isLockedForPurchase}
+                      min="0"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
                       <PlusCircle className="w-4 h-4" />
                     </Button>
                   </div>
@@ -181,11 +212,18 @@ const MarketModal: FC<MarketModalProps> = ({
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityChange(item.id, -1, item.type, item.unlockTier)} className="h-7 w-7">
+                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-7 w-7">
                       <MinusCircle className="w-5 h-5" />
                     </Button>
-                    <span className="w-8 text-center font-medium">{quantity}</span>
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityChange(item.id, 1, item.type, item.unlockTier)} className="h-7 w-7">
+                    <Input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
+                      className="h-8 w-12 text-center px-1"
+                      min="0"
+                      max={playerInventory[item.id] || 0}
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-7 w-7">
                       <PlusCircle className="w-5 h-5" />
                     </Button>
                   </div>
@@ -246,3 +284,4 @@ const MarketModal: FC<MarketModalProps> = ({
 };
 
 export default MarketModal;
+
