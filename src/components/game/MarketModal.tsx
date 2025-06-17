@@ -70,7 +70,7 @@ const MarketModal: FC<MarketModalProps> = ({
         const bIsLocked = b.unlockTier > playerTier;
 
         if (aIsLocked !== bIsLocked) {
-            return aIsLocked ? 1 : -1;
+            return aIsLocked ? 1 : -1; // Unlocked items first
         }
         if (a.unlockTier !== b.unlockTier) {
             return a.unlockTier - b.unlockTier;
@@ -161,7 +161,6 @@ const MarketModal: FC<MarketModalProps> = ({
 
 
   const renderSeedMarketGrid = () => (
-    <ScrollArea className="h-full">
       <TooltipProvider>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
@@ -239,12 +238,10 @@ const MarketModal: FC<MarketModalProps> = ({
             )}
         </div>
       </TooltipProvider>
-    </ScrollArea>
   );
 
   const renderCropSellList = () => (
-    <ScrollArea className="h-full">
-      <div className="space-y-3">
+      <div className="space-y-3 p-1">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
           const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
@@ -299,7 +296,6 @@ const MarketModal: FC<MarketModalProps> = ({
             <p className="text-center text-muted-foreground py-4">Không có nông sản nào trong kho để bán.</p>
         )}
       </div>
-    </ScrollArea>
   );
 
 
@@ -319,11 +315,15 @@ const MarketModal: FC<MarketModalProps> = ({
             <TabsTrigger value="buy">Mua Hạt Giống</TabsTrigger>
             <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
           </TabsList>
-          <TabsContent value="buy" className="mt-4 flex-grow min-h-0">
-            {renderSeedMarketGrid()}
+          <TabsContent value="buy" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-grow">
+              {renderSeedMarketGrid()}
+            </ScrollArea>
           </TabsContent>
-          <TabsContent value="sell" className="mt-4 flex-grow min-h-0">
-            {renderCropSellList()}
+          <TabsContent value="sell" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-grow">
+              {renderCropSellList()}
+            </ScrollArea>
           </TabsContent>
         </Tabs>
         <DialogFooter>
