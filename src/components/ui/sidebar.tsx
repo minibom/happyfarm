@@ -240,9 +240,9 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "duration-200 relative h-svh transition-[width] ease-linear",
-            open ? "w-[--sidebar-width]" : (collapsible === "icon" ? "w-[--sidebar-width-icon]" : "w-0"),
-             variant === "inset" && open ? "w-[--sidebar-width]" : 
-             variant === "inset" && !open && collapsible === "icon" ? "w-[--sidebar-width-icon]" : 
+            open ? "w-[var(--sidebar-width)]" : (collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : "w-0"),
+             variant === "inset" && open ? "w-[var(--sidebar-width)]" : 
+             variant === "inset" && !open && collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : 
              variant === "inset" && !open && collapsible === "offcanvas" ? "w-0" : "",
              (variant === "floating" || variant === "inset") && open ? "p-2" : "",
              (variant === "floating" || variant === "inset") && !open && collapsible === "icon" ? "p-2 w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]" : ""
@@ -252,7 +252,7 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "duration-200 fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] ease-linear md:flex flex-col",
-            open ? "w-[--sidebar-width]" : (collapsible === "icon" ? "w-[--sidebar-width-icon]" : "w-0"),
+            open ? "w-[var(--sidebar-width)]" : (collapsible === "icon" ? "w-[var(--sidebar-width-icon)]" : "w-0"),
             side === "left" ? "left-0" : "right-0",
             !open && collapsible === "offcanvas" && side === "left" ? "left-[calc(var(--sidebar-width)*-1)]" : "",
             !open && collapsible === "offcanvas" && side === "right" ? "right-[calc(var(--sidebar-width)*-1)]" : "",
@@ -347,10 +347,9 @@ SidebarRail.displayName = "SidebarRail"
 
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> // Changed from main to div to avoid multiple main tags
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const { open, isMobile, state } = useSidebar();
-  // On mobile, SidebarInset should take full width as sidebar is a sheet
   if (isMobile) {
       return <div ref={ref} className={cn("flex-1", className)} {...props} />;
   }
@@ -359,16 +358,14 @@ const SidebarInset = React.forwardRef<
       ref={ref}
       className={cn(
         "relative flex min-h-svh flex-1 flex-col bg-background transition-[margin-left,margin-right] duration-200 ease-linear",
-        // Adjust margin based on sidebar state and variant for desktop
-        // This logic needs to be carefully aligned with Sidebar component's width calculations
-        (state === 'expanded' && "md:ml-[var(--sidebar-width)]"), // Default variant
-        (state === 'collapsed' && "md:ml-[var(--sidebar-width-icon)]"), // Icon variant
+        // Removed general margins that caused double push with default "sidebar" variant.
+        // "inset" and "floating" variants handle their margins via peer-data classes.
 
         // Handling for 'inset' and 'floating' variants
         "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))]",
         "md:peer-data-[variant=inset]:m-2",
         (state === 'expanded' && "md:peer-data-[variant=inset]:ml-[calc(var(--sidebar-width)_+_theme(spacing.2))]"),
-        (state === 'collapsed' && "md:peer-data-[variant=inset]:ml-[calc(var(--sidebar-width-icon)_+_theme(spacing.2)_+_theme(spacing.2))]"), // icon width + inset padding
+        (state === 'collapsed' && "md:peer-data-[variant=inset]:ml-[calc(var(--sidebar-width-icon)_+_theme(spacing.2)_+_theme(spacing.2))]"),
         "md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
 
         "peer-data-[variant=floating]:min-h-[calc(100svh-theme(spacing.4))]",
@@ -819,4 +816,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
