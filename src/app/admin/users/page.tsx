@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -137,10 +138,6 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      {/* 
-        THAY ĐỔI 1: Card là flex-container DỌC, chiếm hết không gian (flex-1)
-        và `min-h-0` để ngăn nội dung đẩy nó ra ngoài.
-      */}
       <Card className="shadow-xl flex flex-col flex-1 min-h-0">
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -165,15 +162,7 @@ export default function AdminUsersPage() {
           </div>
         </CardHeader>
 
-        {/*
-          THAY ĐỔI 2: CardContent chiếm hết không gian còn lại bên trong Card.
-          `overflow-hidden` là quan trọng để chứa `ScrollArea`.
-        */}
         <CardContent className="flex-1 overflow-hidden">
-          {/* 
-            THAY ĐỔI 3: ScrollArea sẽ có chiều cao 100% của CardContent
-            và trở thành VÙNG CUỘN DUY NHẤT cho bảng.
-          */}
           <ScrollArea className="h-full">
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
@@ -244,7 +233,6 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
-      {/* Modal không thay đổi */}
       {selectedUser && (
         <UserDetailModal
             isOpen={isModalOpen}
