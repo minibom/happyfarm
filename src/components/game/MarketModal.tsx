@@ -162,7 +162,8 @@ const MarketModal: FC<MarketModalProps> = ({
 
   const renderSeedMarketGrid = () => (
       <TooltipProvider>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
+        {/* Wrapper div for the grid */}
+        <div className="grid w-full grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
             const quantity = quantities[item.id] || 0;
             const isLockedForPurchase = playerTier < item.unlockTier;
@@ -241,7 +242,7 @@ const MarketModal: FC<MarketModalProps> = ({
   );
 
   const renderCropSellList = () => (
-      <div className="space-y-3 p-1">
+      <div className="w-full space-y-3 p-1">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
           const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
@@ -317,6 +318,13 @@ const MarketModal: FC<MarketModalProps> = ({
           </TabsList>
           <TabsContent value="buy" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
             <ScrollArea className="flex-grow">
+             {/* The grid is now the direct child of ScrollArea.
+                 If Radix ScrollArea styles its direct child with `display: table`,
+                 this change might not be enough.
+                 However, the issue is likely that the grid itself overflows its container.
+                 The `w-full` on the grid div should ideally prevent it from
+                 being wider than the ScrollArea's viewport.
+              */}
               {renderSeedMarketGrid()}
             </ScrollArea>
           </TabsContent>
@@ -335,4 +343,3 @@ const MarketModal: FC<MarketModalProps> = ({
 };
 
 export default MarketModal;
-
