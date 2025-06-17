@@ -16,7 +16,7 @@ interface FarmPlotProps {
   onPlantFromPopover: (seedId: SeedId) => void;
   isGloballyPlanting: boolean; 
   isGloballyHarvesting: boolean;
-  isSelected?: boolean; // This prop seems unused, consider removing if not needed
+  isSelected?: boolean; 
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -72,7 +72,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   const getPlotContent = () => {
     switch (plot.state) {
       case 'empty':
-        return <div className="text-xs text-muted-foreground">Empty</div>;
+        return <div className="text-xs text-muted-foreground">Trống</div>;
       case 'planted':
         return <Sprout className="w-8 h-8 text-green-700 plot-sway" />;
       case 'growing':
@@ -85,7 +85,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
             ) : (
               <Gift className="w-10 h-10 text-red-500 plot-sway" />
             )}
-            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded">Ready</span>
+            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded">Sẵn Sàng</span>
           </div>
         );
       default:
@@ -94,15 +94,12 @@ const FarmPlot: FC<FarmPlotProps> = ({
   };
 
   const handlePlotGUIClick = () => {
-    // If a global action (planting or harvesting) is active, defer to the main onClick from HomePage
     if (isGloballyPlanting || isGloballyHarvesting) {
       onClick();
     } 
-    // If plot is empty and no global action is active, open local seed selector popover
     else if (plot.state === 'empty') {
       setIsSeedSelectorOpen(true);
     } 
-    // For other cases (e.g., clicking a non-empty plot with no global action), defer to main onClick
     else {
       onClick();
     }
@@ -118,12 +115,12 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   let actionableClass = '';
   if (isGloballyPlanting && plot.state === 'empty') {
-    actionableClass = 'ring-4 ring-green-500 ring-offset-2'; // Green ring for plantable
+    actionableClass = 'ring-4 ring-green-500 ring-offset-2'; 
   }
   if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
-    actionableClass = 'ring-4 ring-yellow-400 ring-offset-2'; // Yellow ring for harvestable
+    actionableClass = 'ring-4 ring-yellow-400 ring-offset-2'; 
   }
-  if (isSelected) { // isSelected might not be needed if actionableClass takes precedence
+  if (isSelected) { 
      actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
   }
 
@@ -138,7 +135,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
             stateClasses[plot.state],
             actionableClass
           )}
-          aria-label={`Farm plot ${plot.id + 1}, state: ${plot.state}${plot.cropId ? `, crop: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
+          aria-label={`Thửa đất ${plot.id + 1}, trạng thái: ${plot.state}${plot.cropId ? `, cây trồng: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
           role="button"
           tabIndex={0}
         >
@@ -153,10 +150,10 @@ const FarmPlot: FC<FarmPlotProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      {plot.state === 'empty' && !isGloballyPlanting && ( // Only show popover if not in global planting mode
+      {plot.state === 'empty' && !isGloballyPlanting && ( 
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium mb-1 text-center">Plant a seed:</p>
+            <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
             {availableSeedsForPopover.length > 0 ? (
               availableSeedsForPopover.map(seedId => {
                 const crop = CROP_DATA[seedId.replace('Seed', '') as CropId];
@@ -171,12 +168,12 @@ const FarmPlot: FC<FarmPlotProps> = ({
                     }}
                     className="w-full justify-start"
                   >
-                    <span className="mr-2 text-lg">{crop?.icon}</span> Plant {crop?.name || seedId}
+                    <span className="mr-2 text-lg">{crop?.icon}</span> Trồng {crop?.name || seedId}
                   </Button>
                 );
               })
             ) : (
-              <p className="text-xs text-muted-foreground text-center">No seeds in inventory.</p>
+              <p className="text-xs text-muted-foreground text-center">Không có hạt giống trong kho.</p>
             )}
           </div>
         </PopoverContent>

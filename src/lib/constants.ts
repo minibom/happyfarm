@@ -11,7 +11,7 @@ export const INITIAL_LEVEL = 1;
 
 export const CROP_DATA: Record<CropId, CropDetails> = {
   tomato: {
-    name: 'Tomato',
+    name: 'Cà Chua', // Tomato
     seedName: 'tomatoSeed',
     icon: '🍅',
     timeToGrowing: 60 * 1000, // 1 minute
@@ -21,7 +21,7 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
     cropPrice: 2,
   },
   carrot: {
-    name: 'Carrot',
+    name: 'Cà Rốt', // Carrot
     seedName: 'carrotSeed',
     icon: '🥕',
     timeToGrowing: 120 * 1000, // 2 minutes
@@ -31,7 +31,7 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
     cropPrice: 5,
   },
   corn: {
-    name: 'Corn',
+    name: 'Ngô', // Corn
     seedName: 'cornSeed',
     icon: '🌽',
     timeToGrowing: 180 * 1000, // 3 minutes
@@ -76,13 +76,13 @@ export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {
 export const MARKET_ITEMS: MarketItem[] = [
   ...ALL_CROP_IDS.map(cropId => ({
     id: CROP_DATA[cropId].seedName as SeedId,
-    name: `${CROP_DATA[cropId].name} Seed`,
+    name: `${CROP_DATA[cropId].name} (Hạt Giống)`, // e.g. "Cà Chua Hạt Giống"
     price: CROP_DATA[cropId].seedPrice,
     type: 'seed' as 'seed'
   })),
   ...ALL_CROP_IDS.map(cropId => ({
     id: cropId,
-    name: CROP_DATA[cropId].name,
+    name: CROP_DATA[cropId].name, // e.g. "Cà Chua"
     price: CROP_DATA[cropId].cropPrice,
     type: 'crop' as 'crop'
   })),

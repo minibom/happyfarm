@@ -8,14 +8,13 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Send } from 'lucide-react';
 
-// Dummy messages for now
 const messages = [
-  { id: 1, sender: 'FarmerJoe', text: 'Welcome to the chat!' },
-  { id: 2, sender: 'PlantLover22', text: 'My tomatoes are growing so fast! 🍅' },
-  { id: 3, sender: 'You', text: 'Hey everyone!' },
-  { id: 4, sender: 'CornKing', text: 'Anyone got tips for growing corn?' },
-  { id: 5, sender: 'BerryBest', text: 'Just harvested some amazing carrots! 🥕🥕🥕' },
-  { id: 6, sender: 'You', text: 'Nice! I\'m hoping for a good corn harvest.' },
+  { id: 1, sender: 'NongDanVuiVe', text: 'Chào mừng đến với phòng chat!' },
+  { id: 2, sender: 'YeuCayTrong22', text: 'Cà chua của tôi lớn nhanh quá! 🍅' },
+  { id: 3, sender: 'Bạn', text: 'Chào mọi người!' },
+  { id: 4, sender: 'VuaNgo', text: 'Có ai có mẹo trồng ngô không?' },
+  { id: 5, sender: 'CaRotNgonNhat', text: 'Mới thu hoạch được mớ cà rốt tuyệt vời! 🥕🥕🥕' },
+  { id: 6, sender: 'Bạn', text: 'Tuyệt! Mình đang hy vọng vụ ngô bội thu.' },
 ];
 
 const ChatPanel: FC = () => {
@@ -24,7 +23,7 @@ const ChatPanel: FC = () => {
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
           <MessageCircle className="mr-2 h-6 w-6" />
-          Farm Chat
+          Trò Chuyện Nông Trại
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col p-4 pt-0">
@@ -32,7 +31,7 @@ const ChatPanel: FC = () => {
           <div className="space-y-3">
             {messages.map((msg) => (
               <div key={msg.id} className="text-sm leading-relaxed">
-                <span className={`font-semibold ${msg.sender === 'You' ? 'text-accent' : 'text-primary/90'}`}>
+                <span className={`font-semibold ${msg.sender === 'Bạn' ? 'text-accent' : 'text-primary/90'}`}>
                   {msg.sender}:
                 </span>{' '}
                 <span className="text-foreground/90">{msg.text}</span>
@@ -41,10 +40,10 @@ const ChatPanel: FC = () => {
           </div>
         </ScrollArea>
         <div className="flex space-x-2 pt-2 border-t">
-          <Input type="text" placeholder="Type a message..." className="flex-grow text-sm" />
+          <Input type="text" placeholder="Nhập tin nhắn..." className="flex-grow text-sm" />
           <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <Send className="h-4 w-4" />
-            <span className="sr-only">Send</span>
+            <span className="sr-only">Gửi</span>
           </Button>
         </div>
       </CardContent>

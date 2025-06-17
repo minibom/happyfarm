@@ -38,14 +38,13 @@ export const useGameLogic = () => {
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          // Create a deep copy and remove undefined values before saving
           const stateToSave = JSON.parse(JSON.stringify(gameStateRef.current, (key, value) => {
-            return value === undefined ? null : value; // Replace undefined with null for Firestore
+            return value === undefined ? null : value; 
           }));
           await setDoc(gameDocRef, stateToSave);
         } catch (error) {
           console.error("Failed to save game state:", error);
-          toast({ title: "Save Error", description: "Could not save your game progress to the cloud.", variant: "destructive" });
+          toast({ title: "Lỗi Lưu Trữ", description: "Không thể lưu tiến trình trò chơi của bạn vào đám mây.", variant: "destructive" });
         }
       }, 1000); 
     }
@@ -53,7 +52,7 @@ export const useGameLogic = () => {
   
   useEffect(() => {
     if (isInitialized && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level) {
-      toast({ title: "Level Up!", description: `Congratulations! You've reached level ${gameState.level}!`, className: "bg-primary text-primary-foreground" });
+      toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${gameState.level}!`, className: "bg-primary text-primary-foreground" });
     }
     prevLevelRef.current = gameState.level;
   }, [gameState.level, isInitialized, toast]);
@@ -77,7 +76,6 @@ export const useGameLogic = () => {
                 id: loadedPlotData.id !== undefined ? loadedPlotData.id : basePlot.id,
                 state: loadedPlotData.state || basePlot.state,
               };
-              // Only add cropId and plantedAt if they are valid (not undefined or null)
               if (loadedPlotData.cropId) {
                 newPlot.cropId = loadedPlotData.cropId;
               }
@@ -115,7 +113,7 @@ export const useGameLogic = () => {
         setIsInitialized(true);
       }, (error) => {
         console.error("Error listening to game state:", error);
-        toast({ title: "Connection Error", description: "Could not sync game data.", variant: "destructive" });
+        toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
         if (!isInitialized) {
             setGameState(INITIAL_GAME_STATE);
             prevLevelRef.current = INITIAL_GAME_STATE.level;
@@ -172,16 +170,16 @@ export const useGameLogic = () => {
     const cropId = seedId.replace('Seed', '') as CropId;
 
     if (!CROP_DATA[cropId]) {
-      toast({ title: "Error", description: "Invalid seed type.", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Loại hạt giống không hợp lệ.", variant: "destructive" });
       return;
     }
     if (currentGameState.inventory[seedId] <= 0) {
-      toast({ title: "No Seeds", description: `You don't have any ${CROP_DATA[cropId].name} seeds.`, variant: "destructive" });
+      toast({ title: "Không Đủ Hạt Giống", description: `Bạn không có hạt giống ${CROP_DATA[cropId].name}.`, variant: "destructive" });
       return;
     }
     const currentPlot = currentGameState.plots.find(p => p.id === plotId);
     if (!currentPlot || currentPlot.state !== 'empty') {
-      toast({ title: "Plot Occupied", description: "This plot is not empty.", variant: "destructive" });
+      toast({ title: "Đất Đã Có Cây", description: "Thửa đất này không trống.", variant: "destructive" });
       return;
     }
 
@@ -194,7 +192,7 @@ export const useGameLogic = () => {
       const newInventory = { ...prev.inventory, [seedId]: prev.inventory[seedId] - 1 };
       return { ...prev, plots: newPlots, inventory: newInventory };
     });
-    toast({ title: "Planted!", description: `${CROP_DATA[cropId].name} planted on plot ${plotId + 1}.` });
+    toast({ title: "Đã Trồng!", description: `Đã trồng ${CROP_DATA[cropId].name} trên thửa đất ${plotId + 1}.` });
   }, [toast]);
 
   const harvestCrop = useCallback(async (plotId: number) => {
@@ -202,7 +200,7 @@ export const useGameLogic = () => {
     const plotToHarvest = currentGameState.plots.find(p => p.id === plotId);
 
     if (!plotToHarvest || plotToHarvest.state !== 'ready_to_harvest' || !plotToHarvest.cropId) {
-      toast({ title: "Not Ready", description: "This plot is not ready for harvest.", variant: "destructive" });
+      toast({ title: "Chưa Sẵn Sàng", description: "Thửa đất này chưa sẵn sàng để thu hoạch.", variant: "destructive" });
       return;
     }
 
@@ -212,7 +210,6 @@ export const useGameLogic = () => {
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
-          // Omit cropId and plantedAt for empty plots
           const { cropId, plantedAt, ...restOfPlot } = p;
           return { ...restOfPlot, state: 'empty' as const };
         }
@@ -232,7 +229,7 @@ export const useGameLogic = () => {
       return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel };
     });
 
-    toast({ title: "Harvested!", description: `Harvested ${cropDetail.harvestYield} ${cropDetail.name}(s) and earned ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
+    toast({ title: "Đã Thu Hoạch!", description: `Thu hoạch được ${cropDetail.harvestYield} ${cropDetail.name} và nhận được ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
   }, [toast]);
 
   const buyItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
@@ -241,7 +238,7 @@ export const useGameLogic = () => {
     const totalCost = quantity * price;
 
     if (currentGameState.gold < totalCost) {
-      toast({ title: "Not Enough Gold", description: "You don't have enough gold.", variant: "destructive" });
+      toast({ title: "Không Đủ Vàng", description: "Bạn không có đủ vàng.", variant: "destructive" });
       return;
     }
 
@@ -251,15 +248,17 @@ export const useGameLogic = () => {
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory };
     });
-    toast({ title: "Purchased!", description: `Bought ${quantity} x ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId}.`, className: "bg-accent text-accent-foreground" });
+    const itemName = MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId;
+    toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${itemName}.`, className: "bg-accent text-accent-foreground" });
   }, [toast]);
 
   const sellItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
     const currentGameState = gameStateRef.current;
+    const itemName = MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId;
 
     if ((currentGameState.inventory[itemId] || 0) < quantity) {
-      toast({ title: "Not Enough Items", description: `You don't have ${quantity} ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId}.`, variant: "destructive" });
+      toast({ title: "Không Đủ Vật Phẩm", description: `Bạn không có ${quantity} ${itemName}.`, variant: "destructive" });
       return;
     }
 
@@ -270,7 +269,7 @@ export const useGameLogic = () => {
       newInventory[itemId] -= quantity;
       return { ...prev, gold: prev.gold + totalGain, inventory: newInventory };
     });
-    toast({ title: "Sold!", description: `Sold ${quantity} x ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId}.`, className: "bg-primary text-primary-foreground" });
+    toast({ title: "Đã Bán!", description: `Bán ${quantity} x ${itemName}.`, className: "bg-primary text-primary-foreground" });
   }, [toast]);
 
   const fetchAdvisorTip = useCallback(async () => {
@@ -297,8 +296,8 @@ export const useGameLogic = () => {
       setAdvisorTip(tip.advice);
     } catch (error) {
       console.error("Failed to get farming advice:", error);
-      setAdvisorTip("Hmm, I'm having trouble thinking right now. Try again later!");
-      toast({ title: "Advisor Error", description: "Could not fetch advice.", variant: "destructive" });
+      setAdvisorTip("Hmm, tôi đang gặp chút khó khăn trong việc suy nghĩ. Hãy thử lại sau!");
+      toast({ title: "Lỗi Cố Vấn", description: "Không thể lấy lời khuyên.", variant: "destructive" });
     } finally {
       setIsAdvisorLoading(false);
     }

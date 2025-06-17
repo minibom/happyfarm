@@ -23,14 +23,14 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await signIn(email, password);
-      toast({ title: "Logged In", description: "Welcome back to Happy Farm!", className: "bg-primary text-primary-foreground" });
+      toast({ title: "Đăng Nhập Thành Công", description: "Chào mừng trở lại Happy Farm!", className: "bg-primary text-primary-foreground" });
       router.push('/');
     } catch (err: any) {
       console.error("Login failed:", err);
       const errorMessage = err.code === 'auth/invalid-credential' 
-        ? "Invalid email or password. Please try again."
-        : err.message || "Failed to log in. Please try again.";
-      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
+        ? "Email hoặc mật khẩu không hợp lệ. Vui lòng thử lại."
+        : err.message || "Đăng nhập thất bại. Vui lòng thử lại.";
+      toast({ title: "Đăng Nhập Thất Bại", description: errorMessage, variant: "destructive" });
     }
   };
 
@@ -39,9 +39,9 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary font-headline flex items-center justify-center">
-            <LogIn className="mr-2 h-8 w-8" /> Login to Happy Farm
+            <LogIn className="mr-2 h-8 w-8" /> Đăng Nhập Happy Farm
           </CardTitle>
-          <CardDescription>Enter your credentials to access your farm.</CardDescription>
+          <CardDescription>Nhập thông tin đăng nhập để vào nông trại của bạn.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -52,13 +52,13 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="ban@example.com"
                 required
                 className="text-base"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mật Khẩu</Label>
               <Input
                 id="password"
                 type="password"
@@ -71,15 +71,15 @@ export default function LoginPage() {
             </div>
             {authError && <p className="text-sm text-destructive text-center">{authError.message}</p>}
             <Button type="submit" className="w-full text-lg py-3" disabled={loading}>
-              {loading ? 'Logging In...' : 'Login'}
+              {loading ? 'Đang Đăng Nhập...' : 'Đăng Nhập'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm">
-            Don't have an account?{' '}
+            Chưa có tài khoản?{' '}
             <Link href="/register" className="font-medium text-primary hover:underline">
-              Register here
+              Đăng ký tại đây
             </Link>
           </p>
         </CardFooter>

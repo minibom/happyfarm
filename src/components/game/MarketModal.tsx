@@ -60,7 +60,7 @@ const MarketModal: FC<MarketModalProps> = ({
         {items.map(item => {
           const quantity = quantities[item.id] || 0;
           const cropDetails = item.type === 'crop' ? CROP_DATA[item.id as keyof typeof CROP_DATA] : CROP_DATA[item.id.replace('Seed','') as keyof typeof CROP_DATA]
-          const displayName = cropDetails?.name || item.name;
+          const displayName = item.name; // MarketItem already has localized name
           const displayIcon = item.type === 'crop' ? cropDetails?.icon : undefined;
 
           return (
@@ -96,10 +96,10 @@ const MarketModal: FC<MarketModalProps> = ({
                     disabled={quantity === 0 || (actionType === 'buy' && playerGold < item.price * quantity)}
                     className={actionType === 'buy' ? 'bg-accent hover:bg-accent/90' : 'bg-blue-500 hover:bg-blue-500/90'}
                   >
-                    {actionType === 'buy' ? 'Buy' : 'Sell'}
+                    {actionType === 'buy' ? 'Mua' : 'Bán'}
                   </Button>
                 </div>
-                {actionType === 'sell' && <p className="text-xs text-muted-foreground mt-1">You have: {playerInventory[item.id] || 0}</p>}
+                {actionType === 'sell' && <p className="text-xs text-muted-foreground mt-1">Bạn có: {playerInventory[item.id] || 0}</p>}
               </CardContent>
             </Card>
           );
@@ -113,16 +113,16 @@ const MarketModal: FC<MarketModalProps> = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
-            <ShoppingCart className="w-7 h-7 text-primary" /> Market
+            <ShoppingCart className="w-7 h-7 text-primary" /> Chợ
           </DialogTitle>
           <DialogDescription>
-            Buy seeds and sell your harvested crops. Current Gold: {playerGold}
+            Mua hạt giống và bán nông sản thu hoạch được. Vàng hiện tại: {playerGold}
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="buy" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="buy">Buy Seeds</TabsTrigger>
-            <TabsTrigger value="sell">Sell Crops</TabsTrigger>
+            <TabsTrigger value="buy">Mua Hạt Giống</TabsTrigger>
+            <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
           </TabsList>
           <TabsContent value="buy" className="mt-4">
             {renderMarketList(seedsToBuy, 'buy')}
@@ -132,7 +132,7 @@ const MarketModal: FC<MarketModalProps> = ({
           </TabsContent>
         </Tabs>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

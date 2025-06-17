@@ -1,3 +1,4 @@
+
 import type { FC } from 'react';
 import {
   Dialog,
@@ -25,19 +26,19 @@ const AdvisorDialog: FC<AdvisorDialogProps> = ({ isOpen, onClose, advice, onGetN
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
-            <Brain className="w-7 h-7 text-primary" /> Farming Advisor
+            <Brain className="w-7 h-7 text-primary" /> Cố Vấn Nông Trại
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 my-4">
           <Image 
-            src="https://placehold.co/100x100.png" // Placeholder for NPC image
-            alt="Farming Advisor NPC" 
+            src="https://placehold.co/100x100.png" 
+            alt="NPC Cố Vấn Nông Trại" 
             width={100} 
             height={100} 
             className="rounded-full shadow-lg border-4 border-primary"
             data-ai-hint="friendly farmer"
           />
-          {isLoading && <p className="text-muted-foreground">Thinking...</p>}
+          {isLoading && <p className="text-muted-foreground">Đang suy nghĩ...</p>}
           {!isLoading && advice && (
             <DialogDescription className="text-center text-lg bg-secondary/50 p-4 rounded-md shadow">
               {advice}
@@ -45,15 +46,15 @@ const AdvisorDialog: FC<AdvisorDialogProps> = ({ isOpen, onClose, advice, onGetN
           )}
           {!isLoading && !advice && (
              <DialogDescription className="text-center text-lg bg-secondary/50 p-4 rounded-md shadow">
-              Click below to get some advice!
+              Nhấn nút bên dưới để nhận lời khuyên!
             </DialogDescription>
           )}
         </div>
         <DialogFooter className="sm:justify-between">
-          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
           <Button onClick={onGetNewAdvice} disabled={isLoading} className="bg-accent hover:bg-accent/90">
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Getting Advice...' : 'Get New Advice'}
+            {isLoading ? 'Đang lấy lời khuyên...' : 'Lời Khuyên Mới'}
           </Button>
         </DialogFooter>
       </DialogContent>

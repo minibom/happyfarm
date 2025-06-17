@@ -9,11 +9,11 @@ import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
-import ChatPanel from '@/components/game/ChatPanel'; // New import
+import ChatPanel from '@/components/game/ChatPanel';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { ALL_SEED_IDS } from '@/lib/constants';
+import { ALL_SEED_IDS, MARKET_ITEMS } from '@/lib/constants'; // Ensure MARKET_ITEMS is imported
 import { Loader2 } from 'lucide-react';
 
 
@@ -94,7 +94,7 @@ export default function HomePage() {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
-        Loading Happy Farm...
+        Đang tải Happy Farm...
       </div>
     );
   }
@@ -106,8 +106,8 @@ export default function HomePage() {
       <main className="flex flex-col items-center w-full max-w-7xl mt-4">
         <h1 className="text-3xl sm:text-4xl font-bold text-primary font-headline my-4 text-center">Happy Farm</h1>
         
-        <div className="flex flex-row w-full gap-6 justify-center items-start"> {/* Container for grid and chat */}
-          <div className="flex-shrink-0"> {/* Wrapper for FarmGrid */}
+        <div className="flex flex-row w-full gap-6 justify-center items-start">
+          <div className="flex-shrink-0"> 
             <FarmGrid
               plots={gameState.plots}
               onPlotClick={handlePlotClick}
@@ -117,7 +117,7 @@ export default function HomePage() {
               isGloballyHarvesting={currentAction === 'harvesting'}
             />
           </div>
-          <ChatPanel /> {/* New ChatPanel component */}
+          <ChatPanel /> 
         </div>
       </main>
       
@@ -136,7 +136,7 @@ export default function HomePage() {
       <MarketModal
         isOpen={showMarket}
         onClose={() => setShowMarket(false)}
-        marketItems={MARKET_ITEMS}
+        marketItems={MARKET_ITEMS} // Pass MARKET_ITEMS here
         playerGold={gameState.gold}
         playerInventory={gameState.inventory}
         onBuyItem={buyItem}

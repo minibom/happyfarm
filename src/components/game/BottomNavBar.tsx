@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import type { SeedId, Inventory, CropId } from '@/types';
 import { CROP_DATA } from '@/lib/constants';
@@ -48,9 +49,17 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     return CROP_DATA[cropId];
   };
 
-  const getButtonVariant = (action: 'planting' | 'harvesting') => {
-    return currentAction === action ? 'default' : 'outline';
+  const getButtonVariant = (action: 'planting' | 'harvesting', buttonFor: 'plant' | 'harvest') => {
+    if (action === 'planting' && buttonFor === 'plant') {
+      return currentAction === 'planting' ? 'default' : 'outline';
+    }
+    if (action === 'harvesting' && buttonFor === 'harvest') {
+      return currentAction === 'harvesting' ? 'default' : 'outline';
+    }
+    return 'outline';
   };
+  
+  const selectedSeedName = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed)?.name : '';
 
   return (
     <TooltipProvider>
@@ -62,17 +71,17 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="lg"
-                    variant={getButtonVariant('planting')}
+                    variant={getButtonVariant('planting', 'plant')}
                     className={cn("p-3 h-14 w-14 rounded-full shadow-md", 
                                  currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                    aria-label="Plant Seed"
+                    aria-label="Trồng Hạt Giống"
                   >
                     <Sprout className="h-7 w-7" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Plant {selectedSeed && currentAction === 'planting' ? `(${getCropInfo(selectedSeed)?.name})` : ''}</p>
+                <p>Trồng {selectedSeedName ? `(${selectedSeedName})` : 'Hạt Giống'}</p>
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="mb-2">
@@ -81,17 +90,20 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   const crop = getCropInfo(seedId);
                   return (
                     <DropdownMenuItem key={seedId} onClick={() => onSetPlantMode(seedId)}>
-                      <span className="mr-2 text-lg">{crop?.icon}</span> Plant {crop?.name} ({inventory[seedId]})
+                      <span className="mr-2 text-lg">{crop?.icon}</span> Trồng {crop?.name} ({inventory[seedId]})
                     </DropdownMenuItem>
                   );
                 })
               ) : (
-                <DropdownMenuItem disabled>No seeds to plant</DropdownMenuItem>
+                <DropdownMenuItem disabled>Không có hạt giống để trồng</DropdownMenuItem>
               )}
               {currentAction === 'planting' && (
-                 <DropdownMenuItem onClick={onClearAction} className="text-destructive">
-                    Cancel Planting
-                 </DropdownMenuItem>
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onClearAction} className="text-destructive">
+                     Hủy Chế Độ Trồng
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -101,16 +113,16 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onToggleHarvestMode}
                 size="lg"
-                variant={getButtonVariant('harvesting')}
+                variant={getButtonVariant('harvesting', 'harvest')}
                 className={cn("p-3 h-14 w-14 rounded-full shadow-md",
                                 currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
-                aria-label="Harvest Crops"
+                aria-label="Thu Hoạch"
               >
                 <Hand className="h-7 w-7" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Harvest</p>
+              <p>Thu Hoạch</p>
             </TooltipContent>
           </Tooltip>
 
@@ -120,13 +132,13 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 onClick={onOpenInventory}
                 size="lg"
                 className="p-3 h-14 w-14 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
-                aria-label="Open Inventory"
+                aria-label="Mở Kho"
               >
                 <PackageSearch className="h-7 w-7" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Inventory (Kho)</p>
+              <p>Kho</p>
             </TooltipContent>
           </Tooltip>
 
@@ -136,13 +148,13 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 onClick={onOpenMarket}
                 size="lg"
                 className="p-3 h-14 w-14 rounded-full shadow-md bg-accent hover:bg-accent/90"
-                aria-label="Open Market"
+                aria-label="Mở Chợ"
               >
                 <ShoppingCart className="h-7 w-7" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Market (Chợ)</p>
+              <p>Chợ</p>
             </TooltipContent>
           </Tooltip>
         </div>

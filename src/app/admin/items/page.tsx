@@ -21,16 +21,16 @@ export default function AdminItemsPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-primary font-headline">
-            Admin - Crop Item Configuration
+            Quản Trị - Cấu Hình Vật Phẩm Cây Trồng
           </CardTitle>
           <CardDescription>
-            This page displays the current configuration for crop items in the game.
-            These values are defined in <code>src/lib/constants.ts</code>.
+            Trang này hiển thị cấu hình hiện tại cho các vật phẩm cây trồng trong trò chơi.
+            Các giá trị này được định nghĩa trong <code>src/lib/constants.ts</code>.
             <br />
-            <strong>To modify these values, please describe the changes you want to the AI assistant.</strong>
+            <strong>Để sửa đổi các giá trị này, vui lòng mô tả những thay đổi bạn muốn cho trợ lý AI.</strong>
             <br />
-            For a production application, this data would ideally be managed in a database (e.g., Firestore)
-            with a proper admin interface to edit and save changes directly. This page is currently read-only.
+            Đối với một ứng dụng sản xuất, dữ liệu này lý tưởng nhất nên được quản lý trong cơ sở dữ liệu (ví dụ: Firestore)
+            với một giao diện quản trị phù hợp để chỉnh sửa và lưu các thay đổi trực tiếp. Trang này hiện chỉ có thể đọc.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -38,14 +38,14 @@ export default function AdminItemsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Icon</TableHead>
-                  <TableHead>Name (ID)</TableHead>
-                  <TableHead>Seed Name</TableHead>
-                  <TableHead>Grow Time (ms)</TableHead>
-                  <TableHead>Ready Time (ms)</TableHead>
-                  <TableHead>Yield</TableHead>
-                  <TableHead>Seed Price</TableHead>
-                  <TableHead>Crop Price</TableHead>
+                  <TableHead>Biểu Tượng</TableHead>
+                  <TableHead>Tên (ID)</TableHead>
+                  <TableHead>Tên Hạt Giống</TableHead>
+                  <TableHead>Thời Gian Lớn (ms)</TableHead>
+                  <TableHead>Thời Gian Sẵn Sàng (ms)</TableHead>
+                  <TableHead>Sản Lượng</TableHead>
+                  <TableHead>Giá Hạt Giống</TableHead>
+                  <TableHead>Giá Nông Sản</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -59,7 +59,7 @@ export default function AdminItemsPage() {
                         <Badge variant="outline" className="text-xs">{cropId}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-xs">{item.seedName}</Badge>
+                        <Badge variant="secondary" className="text-xs">{item.seedName.replace('Seed', ' Hạt Giống')}</Badge>
                       </TableCell>
                       <TableCell>{item.timeToGrowing.toLocaleString()}</TableCell>
                       <TableCell>{item.timeToReady.toLocaleString()}</TableCell>

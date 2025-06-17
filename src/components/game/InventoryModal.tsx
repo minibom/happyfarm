@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Inventory, SeedId, CropId } from '@/types';
 import { CROP_DATA, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
-import { PackageSearch, Wheat } from 'lucide-react';
+import { PackageSearch, Wheat, Sprout } from 'lucide-react'; // Added Sprout for seeds
 
 interface InventoryModalProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ const InventoryModal: FC<InventoryModalProps> = ({ isOpen, onClose, inventory })
     const cropId = seedId.replace('Seed', '') as CropId;
     const cropDetail = CROP_DATA[cropId];
     return {
-      name: cropDetail ? `${cropDetail.name} Seed` : seedId,
+      name: cropDetail ? `${cropDetail.name} (Hạt Giống)` : seedId,
     };
   };
 
@@ -40,19 +40,21 @@ const InventoryModal: FC<InventoryModalProps> = ({ isOpen, onClose, inventory })
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
             <PackageSearch className="w-7 h-7 text-primary" />
-            Your Inventory
+            Kho Đồ Của Bạn
           </DialogTitle>
           <DialogDescription>
-            Here's what you currently have.
+            Đây là những gì bạn hiện có.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-72 my-4">
           {seeds.length === 0 && crops.length === 0 && (
-            <p className="text-muted-foreground text-center">Your inventory is empty.</p>
+            <p className="text-muted-foreground text-center">Kho đồ của bạn trống rỗng.</p>
           )}
           {seeds.length > 0 && (
             <>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1"><Wheat className="w-5 h-5 text-green-600" />Seeds</h3>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
+                <Sprout className="w-5 h-5 text-green-600" />Hạt Giống
+              </h3>
               <ul className="space-y-1 mb-4 pr-2">
                 {seeds.map((seedId) => (
                   <li key={seedId} className="flex justify-between items-center p-2 bg-secondary/50 rounded-md">
@@ -65,7 +67,9 @@ const InventoryModal: FC<InventoryModalProps> = ({ isOpen, onClose, inventory })
           )}
           {crops.length > 0 && (
             <>
-              <h3 className="text-lg font-semibold mb-2">Crops</h3>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1">
+                <Wheat className="w-5 h-5 text-yellow-600" />Nông Sản (Thành Phẩm)
+                </h3>
               <ul className="space-y-1 pr-2">
                 {crops.map((cropId) => (
                   <li key={cropId} className="flex justify-between items-center p-2 bg-secondary/50 rounded-md">
@@ -81,7 +85,7 @@ const InventoryModal: FC<InventoryModalProps> = ({ isOpen, onClose, inventory })
           )}
         </ScrollArea>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

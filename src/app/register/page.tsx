@@ -23,19 +23,19 @@ export default function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toast({ title: "Registration Failed", description: "Passwords do not match.", variant: "destructive" });
+      toast({ title: "Đăng Ký Thất Bại", description: "Mật khẩu không khớp.", variant: "destructive" });
       return;
     }
     try {
       await signUp(email, password);
-      toast({ title: "Registered Successfully!", description: "Welcome to Happy Farm! You can now log in.", className: "bg-primary text-primary-foreground" });
-      router.push('/'); // Or router.push('/login') if you prefer
+      toast({ title: "Đăng Ký Thành Công!", description: "Chào mừng đến với Happy Farm! Bạn có thể đăng nhập ngay bây giờ.", className: "bg-primary text-primary-foreground" });
+      router.push('/'); 
     } catch (err: any) {
       console.error("Registration failed:", err);
        const errorMessage = err.code === 'auth/email-already-in-use' 
-        ? "This email is already registered. Please try logging in."
-        : err.message || "Failed to register. Please try again.";
-      toast({ title: "Registration Failed", description: errorMessage, variant: "destructive" });
+        ? "Email này đã được đăng ký. Vui lòng thử đăng nhập."
+        : err.message || "Đăng ký thất bại. Vui lòng thử lại.";
+      toast({ title: "Đăng Ký Thất Bại", description: errorMessage, variant: "destructive" });
     }
   };
 
@@ -44,9 +44,9 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold text-primary font-headline flex items-center justify-center">
-            <UserPlus className="mr-2 h-8 w-8" /> Register for Happy Farm
+            <UserPlus className="mr-2 h-8 w-8" /> Đăng Ký Happy Farm
           </CardTitle>
-          <CardDescription>Create your account to start farming.</CardDescription>
+          <CardDescription>Tạo tài khoản để bắt đầu trồng trọt.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -57,25 +57,25 @@ export default function RegisterPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="ban@example.com"
                 required
                 className="text-base"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Mật Khẩu</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="•••••••• (min. 6 characters)"
+                placeholder="•••••••• (tối thiểu 6 ký tự)"
                 required
                 className="text-base"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Xác Nhận Mật Khẩu</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -88,15 +88,15 @@ export default function RegisterPage() {
             </div>
             {authError && <p className="text-sm text-destructive text-center">{authError.message}</p>}
             <Button type="submit" className="w-full text-lg py-3" disabled={loading}>
-              {loading ? 'Registering...' : 'Register'}
+              {loading ? 'Đang Đăng Ký...' : 'Đăng Ký'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm">
-            Already have an account?{' '}
+            Đã có tài khoản?{' '}
             <Link href="/login" className="font-medium text-primary hover:underline">
-              Login here
+              Đăng nhập tại đây
             </Link>
           </p>
         </CardFooter>

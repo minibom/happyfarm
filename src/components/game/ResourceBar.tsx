@@ -23,11 +23,10 @@ const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level }) => {
   const handleLogout = async () => {
     try {
       await logOut();
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      // Navigation to /login is handled by AuthProvider
+      toast({ title: "Đã Đăng Xuất", description: "Bạn đã đăng xuất thành công." });
     } catch (error) {
       console.error("Logout failed:", error);
-      toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
+      toast({ title: "Đăng Xuất Thất Bại", description: "Không thể đăng xuất. Vui lòng thử lại.", variant: "destructive" });
     }
   };
 
@@ -47,11 +46,11 @@ const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level }) => {
         </div>
         <div className="flex items-center space-x-2 text-lg">
           <Award className="w-7 h-7 text-blue-500" />
-          <span className="font-semibold">Level: {level}</span>
+          <span className="font-semibold">Cấp: {level}</span>
         </div>
         {user && (
           <Button onClick={handleLogout} variant="outline" size="sm" className="sm:ml-auto">
-            <LogOut className="mr-2 h-4 w-4" /> Logout
+            <LogOut className="mr-2 h-4 w-4" /> Đăng Xuất
           </Button>
         )}
       </CardContent>
