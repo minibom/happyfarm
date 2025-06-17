@@ -9,10 +9,11 @@ import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
+import ChatPanel from '@/components/game/ChatPanel'; // New import
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { ALL_SEED_IDS, MARKET_ITEMS, CROP_DATA } from '@/lib/constants';
+import { ALL_SEED_IDS } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 
@@ -32,7 +33,7 @@ export default function HomePage() {
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
-  const [showAdvisor, setShowAdvisor] = useState(false); // Retain advisor state if needed later
+  const [showAdvisor, setShowAdvisor] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
@@ -57,14 +58,10 @@ export default function HomePage() {
         harvestCrop(plotId);
       }
     }
-    // If plot is empty and currentAction is 'none', FarmPlot's internal popover logic takes precedence.
-    // The onClick passed to FarmPlot from here will be called by FarmPlot if it doesn't open its popover.
   };
   
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
     plantCrop(plotId, seedId);
-    // If a global action was active, planting from popover might clear it or not, depending on desired UX.
-    // For now, let's assume it doesn't clear global action to allow continuous mass planting/harvesting.
   };
 
   const handleSetPlantMode = (seedId: SeedId) => {
@@ -82,7 +79,7 @@ export default function HomePage() {
       setCurrentAction('none');
     } else {
       setCurrentAction('harvesting');
-      setSelectedSeedToPlant(undefined); // Ensure no seed is selected when switching to harvest
+      setSelectedSeedToPlant(undefined); 
     }
   };
   
@@ -108,19 +105,22 @@ export default function HomePage() {
       
       <main className="flex flex-col items-center w-full max-w-7xl mt-4">
         <h1 className="text-3xl sm:text-4xl font-bold text-primary font-headline my-4 text-center">Happy Farm</h1>
-        <FarmGrid
-          plots={gameState.plots}
-          onPlotClick={handlePlotClick}
-          availableSeedsForPopover={availableSeedsForPlanting}
-          onPlantFromPopover={plantSeedFromPlotPopover}
-          isGloballyPlanting={currentAction === 'planting'}
-          isGloballyHarvesting={currentAction === 'harvesting'}
-        />
+        
+        <div className="flex flex-row w-full gap-6 justify-center items-start"> {/* Container for grid and chat */}
+          <div className="flex-shrink-0"> {/* Wrapper for FarmGrid */}
+            <FarmGrid
+              plots={gameState.plots}
+              onPlotClick={handlePlotClick}
+              availableSeedsForPopover={availableSeedsForPlanting}
+              onPlantFromPopover={plantSeedFromPlotPopover}
+              isGloballyPlanting={currentAction === 'planting'}
+              isGloballyHarvesting={currentAction === 'harvesting'}
+            />
+          </div>
+          <ChatPanel /> {/* New ChatPanel component */}
+        </div>
       </main>
       
-      {/* Advisor Dialog can be triggered from somewhere else if needed, e.g. a ? icon or from ResourceBar */}
-      {/* For now, removing ActionButtons also removes the explicit advisor trigger */}
-
       <BottomNavBar 
         onOpenInventory={() => setShowInventoryModal(true)}
         onOpenMarket={() => setShowMarket(true)}
