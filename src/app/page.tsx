@@ -100,7 +100,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4">
+    <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4 pb-24">
       <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
       
       <main className="flex flex-col items-center w-full max-w-7xl mt-4">
