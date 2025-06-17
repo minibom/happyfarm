@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { InventoryItem, MarketItem, CropDetails, CropId } from '@/types';
-import { Coins, MinusCircle, PlusCircle, ShoppingCart, Wheat, Lock } from 'lucide-react';
+import { Coins, MinusCircle, PlusCircle, ShoppingCart, Wheat, Lock, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TIER_NAMES, getPlayerTierInfo } from '@/lib/constants';
@@ -30,6 +30,23 @@ interface MarketModalProps {
   cropData: Record<CropId, CropDetails> | null;
   playerTier: number;
 }
+
+const formatMilliseconds = (ms: number) => {
+  if (ms <= 0) return "0s";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  let formattedTime = "";
+  if (minutes > 0) {
+    formattedTime += `${minutes}m `;
+  }
+  // Show seconds if minutes is 0 or if there are remaining seconds, or if it's exactly 0ms (covered by first line)
+  if (seconds > 0 || minutes === 0) {
+    formattedTime += `${seconds}s`;
+  }
+  return formattedTime.trim() || "0s"; // Fallback for edge cases if string is empty
+};
+
 
 const MarketModal: FC<MarketModalProps> = ({
   isOpen,
@@ -54,13 +71,13 @@ const MarketModal: FC<MarketModalProps> = ({
         const bIsLocked = b.unlockTier > playerTier;
 
         if (aIsLocked !== bIsLocked) {
-            return aIsLocked ? 1 : -1; 
+            return aIsLocked ? 1 : -1;
         }
 
         if (a.unlockTier !== b.unlockTier) {
             return a.unlockTier - b.unlockTier;
         }
-        
+
         const cropDetailsA = cropData[a.id.replace('Seed', '') as CropId];
         const cropDetailsB = cropData[b.id.replace('Seed', '') as CropId];
 
@@ -73,9 +90,9 @@ const MarketModal: FC<MarketModalProps> = ({
 
   const cropsToSell = useMemo(() => {
     if (!marketItems || !playerInventory || !cropData) return [];
-    return marketItems.filter(item => 
+    return marketItems.filter(item =>
       item.type === 'crop' && (playerInventory[item.id] || 0) > 0
-    ).sort((a,b) => { 
+    ).sort((a,b) => {
         const cropDetailsA = cropData[a.id as CropId];
         const cropDetailsB = cropData[b.id as CropId];
         if (cropDetailsA && cropDetailsB) {
@@ -130,7 +147,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
     let numValue = parseInt(value, 10);
     if (isNaN(numValue) || value === '') {
-      numValue = 0; 
+      numValue = 0;
     }
     if (numValue < 0) numValue = 0;
 
@@ -138,9 +155,8 @@ const MarketModal: FC<MarketModalProps> = ({
       const maxSellable = playerInventory[itemId] || 0;
       if (numValue > maxSellable) numValue = maxSellable;
     }
-    
+
     if (type === 'seed' && playerTier < itemUnlockTier) {
-        // If item is locked, input should always reflect 0, ignore typed value if > 0
         setQuantities(prev => ({ ...prev, [itemId]: 0 }));
     } else {
         setQuantities(prev => ({ ...prev, [itemId]: numValue }));
@@ -149,7 +165,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
 
   const renderSeedMarketGrid = () => (
-    <ScrollArea className="max-h-96"> {/* Changed from max-h-[60vh] */}
+    <ScrollArea className="max-h-96">
       <TooltipProvider>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
@@ -158,6 +174,9 @@ const MarketModal: FC<MarketModalProps> = ({
             const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
 
             const itemIcon = item.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
+            const cropDetail = cropData[item.id.replace('Seed', '') as CropId];
+            const totalHarvestTime = cropDetail ? cropDetail.timeToGrowing + cropDetail.timeToReady : 0;
+            const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
 
             return (
               <Card key={item.id} className={cn("overflow-hidden shadow-md flex flex-col", isLockedForPurchase && "bg-muted/60 opacity-70")}>
@@ -183,6 +202,10 @@ const MarketModal: FC<MarketModalProps> = ({
                   <div className="flex items-center gap-1 text-sm text-primary my-0.5">
                     <Coins className="w-4 h-4" />
                     <span>{item.price}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                    <Clock className="w-3 h-3" />
+                    <span>{formattedHarvestTime}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-auto">
                     <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
@@ -224,7 +247,7 @@ const MarketModal: FC<MarketModalProps> = ({
   );
 
   const renderCropSellList = () => (
-    <ScrollArea className="max-h-96"> {/* Changed from max-h-[60vh] */}
+    <ScrollArea className="max-h-96">
       <div className="space-y-3 pr-2">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
@@ -316,4 +339,3 @@ const MarketModal: FC<MarketModalProps> = ({
 };
 
 export default MarketModal;
-
