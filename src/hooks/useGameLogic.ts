@@ -130,7 +130,7 @@ export const useGameLogic = () => {
       const newTierInfo = getPlayerTierInfo(gameState.level);
       toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${gameState.level}!`, className: "bg-primary text-primary-foreground" });
       if (newTierInfo.tier > oldTierInfo.tier) {
-        toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được Bậc ${newTierInfo.tierName}! Các vật phẩm mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
+        toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được Bậc ${newTierInfo.tierName}! Các vật phẩm mới có thể đã được mở khóa và buff mới đã được kích hoạt.`, className: "bg-accent text-accent-foreground", duration: 7000 });
       }
     }
     if (gameDataLoaded) {
@@ -148,7 +148,7 @@ export const useGameLogic = () => {
 
     if (!userId) { 
       setGameState(INITIAL_GAME_STATE);
-      setGameDataLoaded(false); // Reset gameDataLoaded when user logs out
+      setGameDataLoaded(false); 
       return;
     }
 
@@ -198,10 +198,8 @@ export const useGameLogic = () => {
           loadedState.email = user?.email || firestoreData.email || INITIAL_GAME_STATE.email;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
           
-          // Client reads lastLogin from Firestore, doesn't update it for session timing.
-          loadedState.lastLogin = firestoreData.lastLogin || 0; 
-          // lastUpdate is read from Firestore. Game actions will update it locally, then it's saved.
-          loadedState.lastUpdate = firestoreData.lastUpdate || 0; 
+          loadedState.lastLogin = firestoreData.lastLogin || 0; // Use Firestore's value or 0
+          loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || 0;
           
           finalStateToSet = loadedState;
 
@@ -209,8 +207,8 @@ export const useGameLogic = () => {
           const newInitialUserState: GameState = {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
-            lastLogin: Date.now(), // Set lastLogin for new user
-            lastUpdate: Date.now(), // Set lastUpdate for new user
+            lastLogin: Date.now(), 
+            lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             email: user?.email || undefined,
             status: 'active' as const,
@@ -251,6 +249,7 @@ export const useGameLogic = () => {
 
   useEffect(() => {
     if (!isInitialized || !userId || !cropData) return;
+    const currentTierInfo = playerTierInfo; // Use the state version which is updated
 
     const gameLoop = setInterval(() => {
       setGameState(prev => {
@@ -262,12 +261,17 @@ export const useGameLogic = () => {
           const currentCropDetail = plot.cropId ? cropData[plot.cropId] : null;
           if (!currentCropDetail) return plot; 
 
+          const growthTimeReduction = currentTierInfo.growthTimeReductionPercent;
+          const effectiveTimeToGrowing = currentCropDetail.timeToGrowing * (1 - growthTimeReduction);
+          const effectiveTimeToReady = currentCropDetail.timeToReady * (1 - growthTimeReduction);
+
+
           if (plot.state === 'planted' && plot.plantedAt) {
-            if (now >= plot.plantedAt + currentCropDetail.timeToGrowing) {
+            if (now >= plot.plantedAt + effectiveTimeToGrowing) {
               return { ...plot, state: 'growing' as const };
             }
           } else if (plot.state === 'growing' && plot.plantedAt) {
-            if (now >= plot.plantedAt + currentCropDetail.timeToReady) { 
+            if (now >= plot.plantedAt + effectiveTimeToReady) { 
               return { ...plot, state: 'ready_to_harvest' as const };
             }
           }
@@ -282,7 +286,7 @@ export const useGameLogic = () => {
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [isInitialized, userId, cropData]); 
+  }, [isInitialized, userId, cropData, playerTierInfo]); // Added playerTierInfo to dependencies
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
@@ -331,6 +335,7 @@ export const useGameLogic = () => {
 
   const harvestCrop = useCallback(async (plotId: number) => {
     const currentGameState = gameStateRef.current;
+    const currentTierInfo = playerTierInfo; // Use the state version
      if (!cropData) {
         toast({ title: "Lỗi", description: "Dữ liệu cây trồng chưa tải xong.", variant: "destructive" });
         return;
@@ -348,7 +353,9 @@ export const useGameLogic = () => {
     }
 
     const cropDetail = cropData[plotToHarvest.cropId];
-    const earnedXp = cropDetail.harvestYield * 5; 
+    const baseXp = cropDetail.harvestYield * 5; 
+    const earnedXp = Math.floor(baseXp * (1 + currentTierInfo.xpBoostPercent));
+
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
@@ -375,7 +382,7 @@ export const useGameLogic = () => {
     });
 
     toast({ title: "Đã Thu Hoạch!", description: `Thu hoạch được ${cropDetail.harvestYield} ${cropDetail.name} và nhận được ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
-  }, [toast, cropData]);
+  }, [toast, cropData, playerTierInfo]);
 
   const buyItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
@@ -416,6 +423,7 @@ export const useGameLogic = () => {
   const sellItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
     const currentGameState = gameStateRef.current;
+    const currentTierInfo = playerTierInfo; // Use the state version
      if (!marketItems) {
         toast({ title: "Lỗi", description: "Dữ liệu chợ chưa tải.", variant: "destructive" });
         return;
@@ -429,13 +437,14 @@ export const useGameLogic = () => {
 
     setGameState(prev => {
       if ((prev.inventory[itemId] || 0) < quantity) return prev; 
-      const totalGain = quantity * price;
+      const baseGain = quantity * price;
+      const totalGain = Math.floor(baseGain * (1 + currentTierInfo.sellPriceBoostPercent));
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
       return { ...prev, gold: prev.gold + totalGain, inventory: newInventory, lastUpdate: Date.now() };
     });
     toast({ title: "Đã Bán!", description: `Bán ${quantity} x ${itemName}.`, className: "bg-primary text-primary-foreground" });
-  }, [toast, marketItems]);
+  }, [toast, marketItems, playerTierInfo]);
 
   const unlockPlot = useCallback((plotIdToUnlock: number) => {
     const currentGameState = gameStateRef.current;
@@ -479,4 +488,3 @@ export const useGameLogic = () => {
     allCropIds,
   };
 };
-

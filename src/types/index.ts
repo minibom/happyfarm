@@ -61,6 +61,9 @@ export interface TierInfo {
   icon: string;
   colorClass: string;
   nextTierLevel?: number;
+  xpBoostPercent: number;
+  sellPriceBoostPercent: number;
+  growthTimeReductionPercent: number;
 }
 
 // For Admin User Page
@@ -68,4 +71,3 @@ export interface AdminUserView extends GameState {
   uid: string;
   // email is already optional in GameState, so it's covered
 }
-
