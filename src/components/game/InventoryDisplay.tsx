@@ -1,7 +1,8 @@
+
 import type { FC } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Inventory } from '@/types';
+import type { Inventory, SeedId, CropId } from '@/types';
 import { CROP_DATA, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
 import { PackageSearch, Wheat } from 'lucide-react';
 
@@ -12,6 +13,14 @@ interface InventoryDisplayProps {
 const InventoryDisplay: FC<InventoryDisplayProps> = ({ inventory }) => {
   const seeds = ALL_SEED_IDS.filter(id => inventory[id] > 0);
   const crops = ALL_CROP_IDS.filter(id => inventory[id] > 0);
+
+  const getSeedDisplayInfo = (seedId: SeedId) => {
+    const cropId = seedId.replace('Seed', '') as CropId;
+    const cropDetail = CROP_DATA[cropId];
+    return {
+      name: cropDetail ? `${cropDetail.name} Seed` : seedId, // e.g. "Tomato Seed"
+    };
+  };
 
   return (
     <Card className="shadow-lg">
@@ -32,7 +41,7 @@ const InventoryDisplay: FC<InventoryDisplayProps> = ({ inventory }) => {
               <ul className="space-y-1 mb-4">
                 {seeds.map((seedId) => (
                   <li key={seedId} className="flex justify-between items-center p-2 bg-secondary/50 rounded-md">
-                    <span>{CROP_DATA[seedId.replace('Seed','') as keyof typeof CROP_DATA]?.seedName || seedId}</span>
+                    <span>{getSeedDisplayInfo(seedId).name}</span>
                     <span className="font-bold text-primary">{inventory[seedId]}</span>
                   </li>
                 ))}
