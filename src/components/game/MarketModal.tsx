@@ -1,4 +1,5 @@
-import type { FC, useState } from 'react';
+
+import React, { type FC, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -34,7 +35,7 @@ const MarketModal: FC<MarketModalProps> = ({
   onBuyItem,
   onSellItem,
 }) => {
-  const [quantities, setQuantities] = React.useState<Record<InventoryItem, number>>({});
+  const [quantities, setQuantities] = useState<Record<InventoryItem, number>>({});
 
   const handleQuantityChange = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop') => {
     setQuantities(prev => {
