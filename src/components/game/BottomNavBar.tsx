@@ -48,16 +48,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     const cropId = seedId.replace('Seed', '') as CropId;
     return CROP_DATA[cropId];
   };
-
-  const getButtonVariant = (action: 'planting' | 'harvesting', buttonFor: 'plant' | 'harvest') => {
-    if (action === 'planting' && buttonFor === 'plant') {
-      return currentAction === 'planting' ? 'default' : 'outline';
-    }
-    if (action === 'harvesting' && buttonFor === 'harvest') {
-      return currentAction === 'harvesting' ? 'default' : 'outline';
-    }
-    return 'outline';
-  };
   
   const selectedSeedName = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed)?.name : '';
 
@@ -70,18 +60,20 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="lg"
-                    variant={getButtonVariant('planting', 'plant')}
-                    className={cn("p-3 h-14 w-14 rounded-full shadow-md", 
-                                 currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
+                    size="lg" // Keep lg for consistency, but internal padding/icon size is adjusted
+                    variant="outline"
+                    className={cn(
+                      "p-3 h-12 w-12 rounded-full shadow-md", 
+                      currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
+                    )}
                     aria-label="Trồng Hạt Giống"
                   >
-                    <Sprout className="h-7 w-7" />
+                    <Sprout className="h-6 w-6" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Trồng {selectedSeedName ? `(${selectedSeedName})` : 'Hạt Giống'}</p>
+                <p>{currentAction === 'planting' && selectedSeedName ? `Trồng (${selectedSeedName})` : 'Trồng Hạt Giống'}</p>
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" className="mb-2">
@@ -113,12 +105,14 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onToggleHarvestMode}
                 size="lg"
-                variant={getButtonVariant('harvesting', 'harvest')}
-                className={cn("p-3 h-14 w-14 rounded-full shadow-md",
-                                currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground")}
+                variant="outline"
+                className={cn(
+                  "p-3 h-12 w-12 rounded-full shadow-md",
+                  currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
+                )}
                 aria-label="Thu Hoạch"
               >
-                <Hand className="h-7 w-7" />
+                <Hand className="h-6 w-6" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -131,10 +125,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onOpenInventory}
                 size="lg"
-                className="p-3 h-14 w-14 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
+                className="p-3 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
                 aria-label="Mở Kho"
               >
-                <PackageSearch className="h-7 w-7" />
+                <PackageSearch className="h-6 w-6" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -147,10 +141,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <Button
                 onClick={onOpenMarket}
                 size="lg"
-                className="p-3 h-14 w-14 rounded-full shadow-md bg-accent hover:bg-accent/90"
+                className="p-3 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90"
                 aria-label="Mở Chợ"
               >
-                <ShoppingCart className="h-7 w-7" />
+                <ShoppingCart className="h-6 w-6" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

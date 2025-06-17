@@ -51,7 +51,8 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
         if (remaining === 0) {
           setTimeLeftDisplay("00:00");
-          clearInterval(intervalId);
+          // The game loop in useGameLogic will handle the state transition
+          // so we don't strictly need to clearInterval here if the component might re-render due to state change
         } else {
           const totalSeconds = Math.floor(remaining / 1000);
           const minutes = Math.floor(totalSeconds / 60);
@@ -60,13 +61,13 @@ const FarmPlot: FC<FarmPlotProps> = ({
         }
       };
 
-      updateTimer();
+      updateTimer(); // Initial call
       intervalId = setInterval(updateTimer, 1000);
     } else {
-      setTimeLeftDisplay(null);
+      setTimeLeftDisplay(null); // Clear timer if not planted or growing
     }
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(intervalId); // Cleanup interval on unmount or dependency change
   }, [plot.state, plot.plantedAt, plot.cropId]);
 
   const getPlotContent = () => {
@@ -99,9 +100,11 @@ const FarmPlot: FC<FarmPlotProps> = ({
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
             {plot.cropId && CROP_DATA[plot.cropId] ? (
-              <span className="text-3xl plot-sway">{CROP_DATA[plot.cropId].icon}</span>
+              <span className={cn("text-3xl", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
+                {CROP_DATA[plot.cropId].icon}
+              </span>
             ) : (
-              <Gift className="w-10 h-10 text-red-500 plot-sway" />
+              <Gift className={cn("w-10 h-10 text-red-500", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
             )}
             <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded mt-0.5">Sẵn Sàng</span>
           </div>
@@ -113,13 +116,13 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   const handlePlotGUIClick = () => {
     if (isGloballyPlanting || isGloballyHarvesting) {
-      onClick();
+      onClick(); // Defer to global actions if active
     }
     else if (plot.state === 'empty') {
-      setIsSeedSelectorOpen(true);
+      setIsSeedSelectorOpen(true); // Open local seed selector if plot is empty and no global action
     }
     else {
-      onClick();
+      onClick(); // Fallback, could be for info or other actions if plot not empty and no global action
     }
   };
 
@@ -138,7 +141,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
     actionableClass = 'ring-4 ring-yellow-400 ring-offset-2';
   }
-  if (isSelected) {
+  if (isSelected) { // This might be for a future "selected plot info" feature
      actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
   }
 
@@ -168,7 +171,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      {plot.state === 'empty' && !isGloballyPlanting && (
+      {plot.state === 'empty' && !isGloballyPlanting && ( // Only show popover if not in global planting mode
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
