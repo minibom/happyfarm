@@ -12,8 +12,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { rtdb } from '@/lib/firebase';
 import { ref, onValue, push, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
 import type { ChatMessage } from '@/types';
+import { cn } from '@/lib/utils';
 
-const ChatPanel: FC = () => {
+interface ChatPanelProps {
+  isModalMode?: boolean;
+}
+
+const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -61,7 +66,10 @@ const ChatPanel: FC = () => {
   };
 
   return (
-    <Card className="w-96 h-[600px] flex flex-col shadow-xl rounded-lg">
+    <Card className={cn(
+      "flex flex-col shadow-xl rounded-lg",
+      isModalMode ? "w-full h-full max-h-[80vh] bg-background" : "w-96 h-[600px]"
+    )}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
           <MessageCircle className="mr-2 h-6 w-6" />

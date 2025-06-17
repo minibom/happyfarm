@@ -14,8 +14,9 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS } from '@/lib/constants';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 
 export default function HomePage() {
@@ -28,7 +29,7 @@ export default function HomePage() {
     harvestCrop,
     buyItem,
     sellItem,
-    unlockPlot, // Get unlockPlot from useGameLogic
+    unlockPlot,
     isInitialized,
     playerTierInfo,
     marketItems,
@@ -39,6 +40,7 @@ export default function HomePage() {
   const [showMarket, setShowMarket] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -53,11 +55,8 @@ export default function HomePage() {
     const plot = gameState.plots.find(p => p.id === plotId);
     if (!plot || !cropData) return;
 
-    // Check if plot is locked
     if (plotId >= gameState.unlockedPlotsCount) {
       if (plotId === gameState.unlockedPlotsCount && gameState.unlockedPlotsCount < TOTAL_PLOTS) {
-        const cost = getPlotUnlockCost(plotId);
-        // Confirm and unlock action can be triggered here or directly in FarmPlot component
         unlockPlot(plotId);
       } else if (gameState.unlockedPlotsCount < TOTAL_PLOTS) {
         toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất trước đó theo thứ tự.", variant: "destructive" });
@@ -67,7 +66,6 @@ export default function HomePage() {
       return;
     }
 
-    // If plot is unlocked, proceed with existing logic
     if (currentAction === 'planting' && selectedSeedToPlant) {
       const seedCropDetail = cropData[selectedSeedToPlant.replace('Seed','') as CropId];
       if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
@@ -84,7 +82,6 @@ export default function HomePage() {
 
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
      if (!cropData) return;
-     // Check if plot is locked first
      if (plotId >= gameState.unlockedPlotsCount) {
         toast({ title: "Đất Bị Khóa", description: "Không thể trồng trên ô đất bị khóa.", variant: "destructive"});
         return;
@@ -169,10 +166,12 @@ export default function HomePage() {
               cropData={cropData}
               playerTier={playerTierInfo.tier}
               unlockedPlotsCount={gameState.unlockedPlotsCount}
-              onUnlockPlot={unlockPlot} // Pass down the unlockPlot function
+              onUnlockPlot={unlockPlot}
             />
           </div>
-          <ChatPanel />
+          <div className="flex-shrink-0 hidden md:block">
+            <ChatPanel />
+          </div>
         </div>
       </main>
 
@@ -180,6 +179,7 @@ export default function HomePage() {
         onOpenInventory={() => setShowInventoryModal(true)}
         onOpenMarket={() => setShowMarket(true)}
         onOpenProfile={() => setShowProfileModal(true)}
+        onOpenChatModal={() => setIsChatModalOpen(true)}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onClearAction={handleClearAction}
@@ -220,6 +220,13 @@ export default function HomePage() {
         xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
         playerTierInfo={playerTierInfo}
       />
+      
+      <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
+        <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
+          <ChatPanel isModalMode />
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +28,7 @@ interface BottomNavBarProps {
   onOpenInventory: () => void;
   onOpenMarket: () => void;
   onOpenProfile: () => void;
+  onOpenChatModal: () => void;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onClearAction: () => void;
@@ -43,6 +44,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenInventory,
   onOpenMarket,
   onOpenProfile,
+  onOpenChatModal,
   onSetPlantMode,
   onToggleHarvestMode,
   onClearAction,
@@ -93,6 +95,26 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     <TooltipProvider>
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
+          {/* Chat Button - Visible on small screens only */}
+           <div className="block md:hidden">
+            <Tooltip>
+                <TooltipTrigger asChild>
+                <Button
+                    onClick={onOpenChatModal}
+                    variant="outline"
+                    className={cn(buttonBaseClass)}
+                    aria-label="Mở Trò Chuyện"
+                >
+                    <MessageSquare className={iconClass} />
+                    <span className={labelClass}>Chat</span>
+                </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                <p>Mở Trò Chuyện</p>
+                </TooltipContent>
+            </Tooltip>
+           </div>
+          
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -114,7 +136,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="top">
                 <p>{currentAction === 'planting' && selectedSeedName ? `Đang trồng: ${selectedSeedName}` : 'Chọn Hạt Giống Để Trồng'}</p>
               </TooltipContent>
             </Tooltip>
@@ -169,7 +191,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <span className={labelClass}>Thu Hoạch</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="top">
               <p>Bật/Tắt Chế Độ Thu Hoạch</p>
             </TooltipContent>
           </Tooltip>
@@ -186,7 +208,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <span className={labelClass}>Kho</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="top">
               <p>Kho Đồ</p>
             </TooltipContent>
           </Tooltip>
@@ -203,7 +225,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <span className={labelClass}>Chợ</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="top">
               <p>Chợ</p>
             </TooltipContent>
           </Tooltip>
@@ -220,7 +242,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   <span className={labelClass}>Hồ Sơ</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
+            <TooltipContent side="top">
                 <p>Thông tin Người chơi</p>
             </TooltipContent>
           </Tooltip>
@@ -239,7 +261,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="top">
                 <p>Cài Đặt & Quản trị</p>
               </TooltipContent>
             </Tooltip>
