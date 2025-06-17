@@ -14,9 +14,9 @@ interface FarmPlotProps {
   onClick: () => void; // Original click handler from HomePage for global actions
   availableSeedsForPopover: SeedId[];
   onPlantFromPopover: (seedId: SeedId) => void;
-  isGloballyPlanting: boolean; 
+  isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
-  isSelected?: boolean; 
+  isSelected?: boolean;
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -26,7 +26,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onPlantFromPopover,
   isGloballyPlanting,
   isGloballyHarvesting,
-  isSelected, 
+  isSelected,
 }) => {
   const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
@@ -50,7 +50,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
         const remaining = Math.max(0, targetTime - now);
 
         if (remaining === 0) {
-          setTimeLeftDisplay("00:00"); 
+          setTimeLeftDisplay("00:00");
           clearInterval(intervalId);
         } else {
           const totalSeconds = Math.floor(remaining / 1000);
@@ -70,22 +70,40 @@ const FarmPlot: FC<FarmPlotProps> = ({
   }, [plot.state, plot.plantedAt, plot.cropId]);
 
   const getPlotContent = () => {
+    const cropName = plot.cropId ? CROP_DATA[plot.cropId]?.name : null;
+    const cropNameElement = cropName ? (
+      <span className="text-xs font-medium text-center text-yellow-900 dark:text-yellow-200 -mb-1">
+        {cropName}
+      </span>
+    ) : null;
+
     switch (plot.state) {
       case 'empty':
         return <div className="text-xs text-muted-foreground">Trống</div>;
       case 'planted':
-        return <Sprout className="w-8 h-8 text-green-700 plot-sway" />;
+        return (
+          <div className="flex flex-col items-center justify-center h-full">
+            {cropNameElement}
+            <Sprout className="w-8 h-8 text-green-700 plot-sway" />
+          </div>
+        );
       case 'growing':
-        return <LeafIcon className="w-10 h-10 text-green-600 plot-sway" />;
+        return (
+          <div className="flex flex-col items-center justify-center h-full">
+            {cropNameElement}
+            <LeafIcon className="w-10 h-10 text-green-600 plot-sway" />
+          </div>
+        );
       case 'ready_to_harvest':
         return (
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center justify-center h-full">
+            {cropNameElement}
             {plot.cropId && CROP_DATA[plot.cropId] ? (
               <span className="text-3xl plot-sway">{CROP_DATA[plot.cropId].icon}</span>
             ) : (
               <Gift className="w-10 h-10 text-red-500 plot-sway" />
             )}
-            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded">Sẵn Sàng</span>
+            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded mt-0.5">Sẵn Sàng</span>
           </div>
         );
       default:
@@ -96,15 +114,15 @@ const FarmPlot: FC<FarmPlotProps> = ({
   const handlePlotGUIClick = () => {
     if (isGloballyPlanting || isGloballyHarvesting) {
       onClick();
-    } 
+    }
     else if (plot.state === 'empty') {
       setIsSeedSelectorOpen(true);
-    } 
+    }
     else {
       onClick();
     }
   };
-  
+
   const baseClasses = "w-24 h-28 sm:w-28 sm:h-32 md:w-32 md:h-36 rounded-lg shadow-md flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 relative overflow-hidden border-2 border-yellow-800/50";
   const stateClasses = {
     empty: 'bg-yellow-700/30 hover:bg-yellow-700/40',
@@ -115,12 +133,12 @@ const FarmPlot: FC<FarmPlotProps> = ({
 
   let actionableClass = '';
   if (isGloballyPlanting && plot.state === 'empty') {
-    actionableClass = 'ring-4 ring-green-500 ring-offset-2'; 
+    actionableClass = 'ring-4 ring-green-500 ring-offset-2';
   }
   if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
-    actionableClass = 'ring-4 ring-yellow-400 ring-offset-2'; 
+    actionableClass = 'ring-4 ring-yellow-400 ring-offset-2';
   }
-  if (isSelected) { 
+  if (isSelected) {
      actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
   }
 
@@ -150,7 +168,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      {plot.state === 'empty' && !isGloballyPlanting && ( 
+      {plot.state === 'empty' && !isGloballyPlanting && (
         <PopoverContent className="w-auto p-2" side="bottom" align="center">
           <div className="flex flex-col gap-1">
             <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
