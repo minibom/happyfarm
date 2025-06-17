@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Eye, Trash2, ShieldAlert, Users, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { useToast } from '@/hooks/use-toast';
@@ -108,7 +107,6 @@ export default function AdminUsersPage() {
         return;
       }
     } else {
-        // ... (các hành động mô phỏng khác giữ nguyên)
     }
     if (action === 'view_game_state' && userToUpdate) {
         openUserModal(userToUpdate);
@@ -128,7 +126,7 @@ export default function AdminUsersPage() {
             <Users className="h-7 w-7"/> Quản Lý Người Dùng
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
+        <CardContent className="flex-1 flex items-center justify-center p-6 pt-0">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="ml-4 text-xl">Đang tải dữ liệu người dùng từ Firestore...</p>
         </CardContent>
@@ -162,9 +160,8 @@ export default function AdminUsersPage() {
           </div>
         </CardHeader>
 
-        <CardContent className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <Table>
+        <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
+            <Table className="relative border-separate border-spacing-0">
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
                   <TableHead className="w-[150px]">User ID</TableHead>
@@ -229,7 +226,6 @@ export default function AdminUsersPage() {
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
         </CardContent>
       </Card>
 

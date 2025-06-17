@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, PlusCircle, Trash2, Edit, Loader2, ShoppingBasket } from 'lucide-react';
@@ -74,7 +73,6 @@ export default function AdminItemsPage() {
     }
     
     const dataToSave = { ...data };
-    // This logic might need adjustment if you allow changing the ID
     dataToSave.seedName = `${effectiveId} Hạt Giống`;
 
 
@@ -107,7 +105,6 @@ export default function AdminItemsPage() {
     }
   }
 
-  // --- Màn hình Loading ---
   if (isLoading && items.length === 0) {
     return (
       <Card className="shadow-xl flex-1 flex flex-col min-h-0">
@@ -116,7 +113,7 @@ export default function AdminItemsPage() {
                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm
             </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center">
+        <CardContent className="flex-1 flex items-center justify-center p-6 pt-0">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="ml-4 text-xl">Đang tải dữ liệu vật phẩm từ Firestore...</p>
         </CardContent>
@@ -143,9 +140,8 @@ export default function AdminItemsPage() {
           </div>
         </CardHeader>
         
-        <CardContent className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            <Table>
+        <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
+            <Table className="relative border-separate border-spacing-0">
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
                   <TableHead className="w-[50px]">Icon</TableHead>
@@ -193,7 +189,6 @@ export default function AdminItemsPage() {
                          <Button variant="ghost" size="icon" onClick={() => openModal('edit', item)} className="hover:text-blue-600" title="Chỉnh sửa">
                           <Edit className="h-5 w-5" />
                         </Button>
-                        {/* Consider adding a Confirmation Dialog before deleting */}
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)} className="hover:text-destructive" title="Xóa">
                           <Trash2 className="h-5 w-5" />
                         </Button>
@@ -203,7 +198,6 @@ export default function AdminItemsPage() {
                 )}
               </TableBody>
             </Table>
-          </ScrollArea>
         </CardContent>
       </Card>
 
