@@ -97,16 +97,15 @@ export const useGameLogic = () => {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveGameStateToFirestore = useCallback(() => {
-    if (userId && gameDataLoaded && itemDataLoaded) { // Ensure data is loaded before attempting to save
+    if (userId && gameDataLoaded && itemDataLoaded) { 
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          // Use gameStateRef.current to ensure the latest state is saved, especially with debouncing
           const stateToSave = JSON.parse(JSON.stringify(gameStateRef.current, (key, value) => {
-            return value === undefined ? null : value; // Convert undefined to null for Firestore
+            return value === undefined ? null : value; 
           }));
           await setDoc(gameDocRef, stateToSave);
         } catch (error) {
@@ -119,7 +118,6 @@ export const useGameLogic = () => {
 
 
   useEffect(() => {
-    // This effect triggers saving whenever gameState changes, IF conditions are met.
     if (gameDataLoaded && itemDataLoaded && userId) {
       saveGameStateToFirestore();
     }
@@ -135,101 +133,87 @@ export const useGameLogic = () => {
         toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được Bậc ${newTierInfo.tierName}! Các vật phẩm mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
       }
     }
-    // Update prevLevelRef *after* checking, but only if gameDataLoaded to avoid issues during initial load transitions
     if (gameDataLoaded) {
         prevLevelRef.current = gameState.level;
     }
   }, [gameState.level, gameDataLoaded, toast]);
 
-  // Effect to handle user authentication state changes and initial data load trigger
   useEffect(() => {
     if (authLoading) {
-      setGameDataLoaded(false); // Reset flag while auth is in progress
+      setGameDataLoaded(false); 
       return;
     }
 
     let unsubscribe: Unsubscribe | undefined;
 
-    if (!userId) { // User logged out or not yet logged in
+    if (!userId) { 
       setGameState(INITIAL_GAME_STATE);
-      setGameDataLoaded(false); // Data for a specific user is no longer loaded
-      // itemDataLoaded, cropData, marketItems are global, so not reset here.
+      setGameDataLoaded(false);
       return;
     }
 
-    // Proceed only if:
-    // 1. User is logged in (userId is present)
-    // 2. Essential item data is loaded (itemDataLoaded and cropData are ready)
-    // 3. Game data for THIS user session hasn't been loaded yet (!gameDataLoaded)
     if (userId && itemDataLoaded && cropData && allSeedIds.length > 0 && allCropIds.length > 0 && !gameDataLoaded) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
         if (docSnap.exists()) {
-          const loadedState = docSnap.data() as GameState;
+          const firestoreData = docSnap.data() as GameState;
+          let loadedState = { ...INITIAL_GAME_STATE, ...firestoreData }; // Merge, Firestore data takes precedence
 
-          // Plots validation
-          let plots = loadedState.plots || [];
-          if (!Array.isArray(plots) || plots.length !== TOTAL_PLOTS) {
-            plots = INITIAL_GAME_STATE.plots.map((p, i) => ({ ...p, id: i }));
-          } else {
-            plots = plots.map((loadedPlotData, index) => {
-              const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' as PlotState };
-              const newPlot: Plot = {
-                id: loadedPlotData.id !== undefined ? loadedPlotData.id : basePlot.id,
-                state: loadedPlotData.state || basePlot.state,
-              };
-              if (loadedPlotData.cropId) newPlot.cropId = loadedPlotData.cropId;
-              if (loadedPlotData.plantedAt) newPlot.plantedAt = loadedPlotData.plantedAt;
-              return newPlot;
-            });
-          }
+          let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
+            ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
+                const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' as PlotState };
+                const newPlot: Plot = {
+                  id: loadedPlotData.id !== undefined ? loadedPlotData.id : basePlot.id,
+                  state: loadedPlotData.state || basePlot.state,
+                };
+                if (loadedPlotData.cropId) newPlot.cropId = loadedPlotData.cropId;
+                if (loadedPlotData.plantedAt) newPlot.plantedAt = loadedPlotData.plantedAt;
+                return newPlot;
+              })
+            : INITIAL_GAME_STATE.plots.map((p, i) => ({ ...p, id: i }));
           loadedState.plots = plots;
 
-          // Inventory validation (cropData is guaranteed to be available here)
           const validatedInventory: Inventory = {};
-          allSeedIds.forEach(id => validatedInventory[id] = 0);
-          allCropIds.forEach(id => validatedInventory[id] = 0);
-           // Apply defaults from INITIAL_GAME_STATE.inventory first
-          for (const key in INITIAL_GAME_STATE.inventory) {
-            if (Object.prototype.hasOwnProperty.call(INITIAL_GAME_STATE.inventory, key)) {
-                 validatedInventory[key as InventoryItem] = INITIAL_GAME_STATE.inventory[key as InventoryItem];
-            }
-          }
-          // Then overwrite with loaded data for known items
-          if (loadedState.inventory && typeof loadedState.inventory === 'object') {
-            for (const key in loadedState.inventory) {
+          allSeedIds.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
+          allCropIds.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
+
+          if (firestoreData.inventory && typeof firestoreData.inventory === 'object') {
+            for (const key in firestoreData.inventory) {
               const itemKey = key as InventoryItem;
               if (Object.prototype.hasOwnProperty.call(validatedInventory, itemKey)) {
-                validatedInventory[itemKey] = loadedState.inventory[itemKey] || 0;
+                validatedInventory[itemKey] = firestoreData.inventory[itemKey] || 0;
               }
             }
           }
           loadedState.inventory = validatedInventory;
-
-          // Other fields validation/initialization
-          loadedState.gold = typeof loadedState.gold === 'number' ? loadedState.gold : INITIAL_GAME_STATE.gold;
-          loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
-          loadedState.level = typeof loadedState.level === 'number' ? loadedState.level : INITIAL_GAME_STATE.level;
-          loadedState.unlockedPlotsCount = typeof loadedState.unlockedPlotsCount === 'number' && loadedState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && loadedState.unlockedPlotsCount <= TOTAL_PLOTS
-            ? loadedState.unlockedPlotsCount
+          
+          loadedState.gold = typeof firestoreData.gold === 'number' ? firestoreData.gold : INITIAL_GAME_STATE.gold;
+          loadedState.xp = typeof firestoreData.xp === 'number' ? firestoreData.xp : INITIAL_GAME_STATE.xp;
+          loadedState.level = typeof firestoreData.level === 'number' ? firestoreData.level : INITIAL_GAME_STATE.level;
+          loadedState.unlockedPlotsCount = typeof firestoreData.unlockedPlotsCount === 'number' && firestoreData.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && firestoreData.unlockedPlotsCount <= TOTAL_PLOTS
+            ? firestoreData.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
           
-          loadedState.email = user?.email || loadedState.email || 'N/A';
-          loadedState.lastLogin = Date.now();
-          loadedState.status = loadedState.status || 'active';
-          loadedState.lastUpdate = Date.now();
+          loadedState.email = user?.email || firestoreData.email || 'N/A';
+          loadedState.status = firestoreData.status || 'active';
+
+          // If gameDataLoaded is false, it means this is the first load for this user session.
+          // So, update lastLogin to now. Otherwise, use the value from Firestore.
+          loadedState.lastLogin = (!gameDataLoaded) ? Date.now() : (firestoreData.lastLogin || Date.now());
+          // lastUpdate should reflect the value from Firestore. Game actions will update it locally.
+          loadedState.lastUpdate = firestoreData.lastUpdate || Date.now();
           
           finalStateToSet = loadedState;
 
-        } else { // Document doesn't exist, initialize new user state
+        } else { 
           const newInitialUserState: GameState = {
-            ...INITIAL_GAME_STATE, // Spreads INITIAL_GAME_STATE which has correctly derived inventory
-            inventory: { ...INITIAL_GAME_STATE.inventory }, // Ensure deep copy for inventory
+            ...INITIAL_GAME_STATE,
+            inventory: { ...INITIAL_GAME_STATE.inventory },
             lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             email: user?.email || 'N/A',
-            lastLogin: Date.now(),
+            lastLogin: Date.now(), // Set for new user
             status: 'active' as const,
           };
           finalStateToSet = newInitialUserState;
@@ -240,13 +224,16 @@ export const useGameLogic = () => {
         }
         
         setGameState(finalStateToSet);
-        prevLevelRef.current = finalStateToSet.level; // Set for the first successful load/init
-        setGameDataLoaded(true); // Mark that data for this user session is now processed
+        prevLevelRef.current = finalStateToSet.level;
+        // Set gameDataLoaded to true *after* the first successful state set from onSnapshot
+        // This check ensures it's only set once per user session initialization.
+        if (!gameDataLoaded) {
+            setGameDataLoaded(true);
+        }
 
       }, (error) => {
         console.error("Error listening to game state:", error);
         toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
-        // Fallback: set to initial state and mark as loaded to prevent loops/UI hangs
         setGameState(INITIAL_GAME_STATE);
         prevLevelRef.current = INITIAL_GAME_STATE.level;
         setGameDataLoaded(true);
@@ -256,7 +243,7 @@ export const useGameLogic = () => {
         if (unsubscribe) unsubscribe();
       };
     }
-  }, [userId, authLoading, itemDataLoaded, cropData, allSeedIds, allCropIds, user, toast, gameDataLoaded]); // gameDataLoaded is a key dependency here to control the one-time setup
+  }, [userId, authLoading, itemDataLoaded, cropData, allSeedIds, allCropIds, user, toast]); 
 
   useEffect(() => {
      setIsInitialized(gameDataLoaded && itemDataLoaded && !!userId && !authLoading);
@@ -267,28 +254,26 @@ export const useGameLogic = () => {
 
     const gameLoop = setInterval(() => {
       setGameState(prev => {
-        // Ensure prev and its properties are defined before proceeding
         if (!prev || !prev.plots || !cropData) return prev;
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
           if (plot.id >= prev.unlockedPlotsCount) return plot;
 
           const currentCropDetail = plot.cropId ? cropData[plot.cropId] : null;
-          if (!currentCropDetail) return plot; // No crop or invalid cropId for this plot
+          if (!currentCropDetail) return plot; 
 
           if (plot.state === 'planted' && plot.plantedAt) {
             if (now >= plot.plantedAt + currentCropDetail.timeToGrowing) {
               return { ...plot, state: 'growing' as const };
             }
           } else if (plot.state === 'growing' && plot.plantedAt) {
-            if (now >= plot.plantedAt + currentCropDetail.timeToReady) { // timeToReady is total time from planting
+            if (now >= plot.plantedAt + currentCropDetail.timeToReady) { 
               return { ...plot, state: 'ready_to_harvest' as const };
             }
           }
           return plot;
         });
 
-        // Only update state if plots actually changed to avoid unnecessary re-renders
         if (JSON.stringify(updatedPlots) !== JSON.stringify(prev.plots)) {
           return { ...prev, plots: updatedPlots, lastUpdate: now };
         }
@@ -297,7 +282,7 @@ export const useGameLogic = () => {
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [isInitialized, userId, cropData]); // cropData dependency is important for game loop logic
+  }, [isInitialized, userId, cropData]); 
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
@@ -363,12 +348,11 @@ export const useGameLogic = () => {
     }
 
     const cropDetail = cropData[plotToHarvest.cropId];
-    const earnedXp = cropDetail.harvestYield * 5; // Example XP calculation
+    const earnedXp = cropDetail.harvestYield * 5; 
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
-          // Reset plot state correctly, removing crop-specific data
           const { cropId: oldCropId, plantedAt, ...restOfPlot } = p;
           return { ...restOfPlot, state: 'empty' as const, cropId: undefined, plantedAt: undefined };
         }
@@ -420,7 +404,7 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev; // Double check gold before state update
+      if (prev.gold < totalCost) return prev; 
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, lastUpdate: Date.now() };
@@ -444,7 +428,7 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check inventory
+      if ((prev.inventory[itemId] || 0) < quantity) return prev; 
       const totalGain = quantity * price;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
@@ -495,5 +479,3 @@ export const useGameLogic = () => {
     allCropIds,
   };
 };
-
-    
