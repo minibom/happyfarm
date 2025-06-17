@@ -4,12 +4,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
-import FarmGrid from '@/components/game/FarmGrid';
 import MarketModal from '@/components/game/MarketModal';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
-import ChatPanel from '@/components/game/ChatPanel';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
+import GameArea from '@/components/game/GameArea'; // Import the new component
+import ChatPanel from '@/components/game/ChatPanel'; // Keep for modal chat
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId } from '@/types';
@@ -153,27 +153,16 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4 pb-24">
       <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
 
-      <main className="flex flex-col items-center w-full max-w-7xl mt-4">
-        <div className="flex flex-row w-full gap-6 justify-center items-start">
-          <div className="flex-shrink-0">
-            <FarmGrid
-              plots={gameState.plots}
-              onPlotClick={handlePlotClick}
-              availableSeedsForPopover={availableSeedsForPlanting}
-              onPlantFromPopover={plantSeedFromPlotPopover}
-              isGloballyPlanting={currentAction === 'planting'}
-              isGloballyHarvesting={currentAction === 'harvesting'}
-              cropData={cropData}
-              playerTier={playerTierInfo.tier}
-              unlockedPlotsCount={gameState.unlockedPlotsCount}
-              onUnlockPlot={unlockPlot}
-            />
-          </div>
-          <div className="flex-shrink-0 hidden md:block">
-            <ChatPanel />
-          </div>
-        </div>
-      </main>
+      <GameArea
+        gameState={gameState}
+        cropData={cropData}
+        playerTierInfo={playerTierInfo}
+        currentAction={currentAction}
+        availableSeedsForPlanting={availableSeedsForPlanting}
+        handlePlotClick={handlePlotClick}
+        plantSeedFromPlotPopover={plantSeedFromPlotPopover}
+        unlockPlot={unlockPlot}
+      />
 
       <BottomNavBar
         onOpenInventory={() => setShowInventoryModal(true)}
@@ -223,6 +212,7 @@ export default function HomePage() {
       
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
+          {/* Render ChatPanel here directly for modal mode */}
           <ChatPanel isModalMode />
         </DialogContent>
       </Dialog>
