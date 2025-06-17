@@ -17,7 +17,7 @@ import { Coins, MinusCircle, PlusCircle, ShoppingCart, Wheat, Lock } from 'lucid
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TIER_NAMES, getPlayerTierInfo } from '@/lib/constants';
-import { Input } from '@/components/ui/input'; // Import Input component
+import { Input } from '@/components/ui/input';
 
 interface MarketModalProps {
   isOpen: boolean;
@@ -45,18 +45,47 @@ const MarketModal: FC<MarketModalProps> = ({
   const [quantities, setQuantities] = useState<Record<InventoryItem, number>>({});
 
   const seedsToDisplay = useMemo(() => {
-    if (!marketItems) return [];
-    return marketItems.filter(item =>
+    if (!marketItems || !cropData) return [];
+    const filteredSeeds = marketItems.filter(item =>
       item.type === 'seed' && (item.unlockTier <= playerTier || item.unlockTier === playerTier + 1)
     );
-  }, [marketItems, playerTier]);
+    // Sort: unlocked first (by tier, then name), then locked (next tier, by name).
+    return filteredSeeds.sort((a, b) => {
+        const aIsLocked = a.unlockTier > playerTier;
+        const bIsLocked = b.unlockTier > playerTier;
+
+        if (aIsLocked !== bIsLocked) {
+            return aIsLocked ? 1 : -1; // Unlocked items first
+        }
+
+        // If both are locked or both are unlocked, sort by tier then by name
+        if (a.unlockTier !== b.unlockTier) {
+            return a.unlockTier - b.unlockTier;
+        }
+        
+        const cropDetailsA = cropData[a.id.replace('Seed', '') as CropId];
+        const cropDetailsB = cropData[b.id.replace('Seed', '') as CropId];
+
+        if (cropDetailsA && cropDetailsB) {
+            return cropDetailsA.name.localeCompare(cropDetailsB.name);
+        }
+        return 0;
+    });
+  }, [marketItems, playerTier, cropData]);
 
   const cropsToSell = useMemo(() => {
-    if (!marketItems || !playerInventory) return [];
+    if (!marketItems || !playerInventory || !cropData) return [];
     return marketItems.filter(item => 
       item.type === 'crop' && (playerInventory[item.id] || 0) > 0
-    );
-  }, [marketItems, playerInventory]);
+    ).sort((a,b) => { // Optional: sort sellable crops by name
+        const cropDetailsA = cropData[a.id as CropId];
+        const cropDetailsB = cropData[b.id as CropId];
+        if (cropDetailsA && cropDetailsB) {
+            return cropDetailsA.name.localeCompare(cropDetailsB.name);
+        }
+        return 0;
+    });
+  }, [marketItems, playerInventory, cropData]);
 
 
   if (!marketItems || !cropData) {
@@ -134,20 +163,20 @@ const MarketModal: FC<MarketModalProps> = ({
                     {typeof itemIcon === 'string' ? <span className="text-3xl my-1">{itemIcon}</span> : <div className="my-1">{itemIcon}</div>}
                     {isLockedForPurchase && (
                       <div className="absolute top-0 right-0 p-1 bg-black/50 rounded-bl-md">
-                        <Lock className="w-3 h-3 text-white" />
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Lock className="w-3 h-3 text-white cursor-help" />
+                            </TooltipTrigger>
+                             {requiredTierInfo && (
+                                <TooltipContent>
+                                    <p>Mở khóa ở {requiredTierInfo.tierName} (Bậc {item.unlockTier})</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
                       </div>
                     )}
                   </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={item.name}>{item.name}</span>
-                    </TooltipTrigger>
-                    {isLockedForPurchase && requiredTierInfo && (
-                        <TooltipContent>
-                            <p>Mở khóa ở {requiredTierInfo.tierName} (Bậc {item.unlockTier})</p>
-                        </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={item.name}>{item.name}</span>
                   <div className="flex items-center gap-1 text-sm text-primary my-0.5">
                     <Coins className="w-4 h-4" />
                     <span>{item.price}</span>
