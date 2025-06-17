@@ -57,13 +57,37 @@ export default function HomePage() {
   }, [newItemDescription, isDescriptionLoading]);
 
   const handlePlotClick = (plotId: number) => {
+    const plot = gameState.plots.find(p => p.id === plotId);
+    if (!plot) return;
+
+    // If in global planting mode (seed selected from ActionButtons)
     if (currentAction === 'planting' && selectedSeedToPlant) {
-      plantCrop(plotId, selectedSeedToPlant);
-    } else if (currentAction === 'harvesting') {
-      harvestCrop(plotId);
-    } else {
-      console.log(`Plot ${plotId} clicked. No action selected.`);
+      if (plot.state === 'empty') {
+        plantCrop(plotId, selectedSeedToPlant);
+      } else {
+        // Optionally, toast that plot is not empty or do nothing
+        console.log("Plot not empty for global planting action.");
+      }
+    } 
+    // If in global harvesting mode
+    else if (currentAction === 'harvesting') {
+      if (plot.state === 'ready_to_harvest') {
+        harvestCrop(plotId);
+      } else {
+        // Optionally, toast that plot is not ready or do nothing
+        console.log("Plot not ready for global harvesting action.");
+      }
+    } 
+    // If no global action, and plot is not empty (empty plot click is handled by FarmPlot's popover)
+    else if (plot.state !== 'empty' && currentAction === 'none') {
+      console.log(`Plot ${plotId} clicked. State: ${plot.state}. No global action. No local action defined for non-empty plots without global action.`);
     }
+    // If plot is empty and currentAction is 'none', FarmPlot's internal popover logic takes precedence via its own click handler.
+    // The onClick passed to FarmPlot from here will be called by FarmPlot if it doesn't open its popover.
+  };
+  
+  const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
+    plantCrop(plotId, seedId);
   };
 
   const togglePlantMode = (seedId: SeedId) => {
@@ -78,7 +102,7 @@ export default function HomePage() {
 
   const toggleHarvestMode = () => {
     setCurrentAction(prev => (prev === 'harvesting' ? 'none' : 'harvesting'));
-    setSelectedSeedToPlant(undefined);
+    setSelectedSeedToPlant(undefined); // Ensure no seed is selected when switching to harvest
   };
 
   const availableSeedsForPlanting = ALL_SEED_IDS.filter(seedId => gameState.inventory[seedId] > 0);
@@ -102,8 +126,10 @@ export default function HomePage() {
           <FarmGrid
             plots={gameState.plots}
             onPlotClick={handlePlotClick}
-            isPlanting={currentAction === 'planting'}
-            isHarvesting={currentAction === 'harvesting'}
+            availableSeedsForPopover={availableSeedsForPlanting}
+            onPlantFromPopover={plantSeedFromPlotPopover}
+            isGloballyPlanting={currentAction === 'planting'}
+            isGloballyHarvesting={currentAction === 'harvesting'}
           />
         </div>
         

@@ -1,19 +1,75 @@
 import type { FC } from 'react';
+import { useState, useEffect } from 'react';
 import { Sprout, Gift } from 'lucide-react';
 import { LeafIcon } from '@/components/icons/LeafIcon';
-import type { Plot } from '@/types';
+import type { Plot, SeedId, CropId } from '@/types';
 import { CROP_DATA } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
 interface FarmPlotProps {
   plot: Plot;
-  onClick: () => void;
-  isSelected?: boolean;
-  isPlanting?: boolean;
-  isHarvesting?: boolean;
+  onClick: () => void; // Original click handler from HomePage for global actions
+  availableSeedsForPopover: SeedId[];
+  onPlantFromPopover: (seedId: SeedId) => void;
+  isGloballyPlanting: boolean; // True if currentAction === 'planting' in HomePage
+  isGloballyHarvesting: boolean; // True if currentAction === 'harvesting' in HomePage
+  isSelected?: boolean; // Propagated from FarmGrid if needed, but primary interaction changes
 }
 
-const FarmPlot: FC<FarmPlotProps> = ({ plot, onClick, isSelected, isPlanting, isHarvesting }) => {
+const FarmPlot: FC<FarmPlotProps> = ({
+  plot,
+  onClick,
+  availableSeedsForPopover,
+  onPlantFromPopover,
+  isGloballyPlanting,
+  isGloballyHarvesting,
+  isSelected,
+}) => {
+  const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
+  const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!plot.plantedAt || !plot.cropId) {
+      setTimeLeftDisplay(null);
+      return;
+    }
+
+    let intervalId: NodeJS.Timeout;
+
+    if (plot.state === 'planted' || plot.state === 'growing') {
+      const cropDetail = CROP_DATA[plot.cropId];
+      const targetTime = plot.state === 'planted'
+        ? plot.plantedAt + cropDetail.timeToGrowing
+        : plot.plantedAt + cropDetail.timeToReady;
+
+      const updateTimer = () => {
+        const now = Date.now();
+        const remaining = Math.max(0, targetTime - now);
+
+        if (remaining === 0) {
+          // The actual state transition is handled by useGameLogic.
+          // This timer will stop, and the component will re-render with the new plot state.
+          setTimeLeftDisplay("00:00"); // Show 00:00 briefly before state change
+          clearInterval(intervalId);
+        } else {
+          const totalSeconds = Math.floor(remaining / 1000);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          setTimeLeftDisplay(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        }
+      };
+
+      updateTimer();
+      intervalId = setInterval(updateTimer, 1000);
+    } else {
+      setTimeLeftDisplay(null);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [plot.state, plot.plantedAt, plot.cropId]);
+
   const getPlotContent = () => {
     switch (plot.state) {
       case 'empty':
@@ -37,43 +93,93 @@ const FarmPlot: FC<FarmPlotProps> = ({ plot, onClick, isSelected, isPlanting, is
         return null;
     }
   };
+
+  const handlePlotGUIClick = () => {
+    if (plot.state === 'empty' && !isGloballyPlanting) {
+      // If plot is empty and not in global planting mode, open local seed selector
+      if (availableSeedsForPopover.length > 0) {
+        setIsSeedSelectorOpen(true);
+      } else {
+        onClick(); // No seeds to plant, fall back to default behavior (e.g., show a toast if implemented)
+      }
+    } else {
+      // For all other cases (e.g. global planting active, harvesting, clicking non-empty plot)
+      // defer to the main click handler from HomePage
+      onClick();
+    }
+  };
   
-  const baseClasses = "w-24 h-28 sm:w-28 sm:h-32 md:w-32 md:h-36 rounded-lg shadow-md flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105";
+  const baseClasses = "w-24 h-28 sm:w-28 sm:h-32 md:w-32 md:h-36 rounded-lg shadow-md flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 relative overflow-hidden border-2 border-yellow-800/50";
   const stateClasses = {
-    empty: 'bg-yellow-700/30 hover:bg-yellow-700/40', // Soil color
+    empty: 'bg-yellow-700/30 hover:bg-yellow-700/40',
     planted: 'bg-lime-700/30 hover:bg-lime-700/40',
     growing: 'bg-green-700/40 hover:bg-green-700/50',
     ready_to_harvest: 'bg-primary/40 hover:bg-primary/50 border-2 border-primary',
   };
 
   let actionableClass = '';
-  if (isPlanting && plot.state === 'empty') {
+  if (isGloballyPlanting && plot.state === 'empty') {
     actionableClass = 'ring-4 ring-accent ring-offset-2';
   }
-  if (isHarvesting && plot.state === 'ready_to_harvest') {
+  if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
     actionableClass = 'ring-4 ring-blue-500 ring-offset-2';
   }
 
-
   return (
-    <div
-      onClick={onClick}
-      className={cn(
-        baseClasses,
-        stateClasses[plot.state],
-        isSelected && 'ring-4 ring-primary ring-offset-2',
-        actionableClass,
-        'relative overflow-hidden border-2 border-yellow-800/50'
+    <Popover open={isSeedSelectorOpen} onOpenChange={setIsSeedSelectorOpen}>
+      <PopoverTrigger asChild>
+        <div
+          onClick={handlePlotGUIClick}
+          className={cn(
+            baseClasses,
+            stateClasses[plot.state],
+            isSelected && 'ring-4 ring-primary ring-offset-2', // isSelected might be less relevant now
+            actionableClass
+          )}
+          aria-label={`Farm plot ${plot.id + 1}, state: ${plot.state}${plot.cropId ? `, crop: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
+          role="button"
+          tabIndex={0}
+        >
+          <div className="absolute top-1 left-1 text-xs bg-black/30 text-white px-1 rounded">
+            {plot.id + 1}
+          </div>
+          {getPlotContent()}
+          {(plot.state === 'planted' || plot.state === 'growing') && timeLeftDisplay && (
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded">
+              {timeLeftDisplay}
+            </div>
+          )}
+        </div>
+      </PopoverTrigger>
+      {plot.state === 'empty' && (
+        <PopoverContent className="w-auto p-2" side="bottom" align="center">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium mb-1 text-center">Plant a seed:</p>
+            {availableSeedsForPopover.length > 0 ? (
+              availableSeedsForPopover.map(seedId => {
+                const crop = CROP_DATA[seedId.replace('Seed', '') as CropId];
+                return (
+                  <Button
+                    key={seedId}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onPlantFromPopover(seedId);
+                      setIsSeedSelectorOpen(false);
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <span className="mr-2">{crop?.icon}</span> Plant {crop?.name || seedId}
+                  </Button>
+                );
+              })
+            ) : (
+              <p className="text-xs text-muted-foreground text-center">No seeds in inventory.</p>
+            )}
+          </div>
+        </PopoverContent>
       )}
-      aria-label={`Farm plot ${plot.id + 1}, state: ${plot.state}${plot.cropId ? `, crop: ${CROP_DATA[plot.cropId!]?.name}` : ''}`}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="absolute top-1 left-1 text-xs bg-black/30 text-white px-1 rounded">
-        {plot.id + 1}
-      </div>
-      {getPlotContent()}
-    </div>
+    </Popover>
   );
 };
 
