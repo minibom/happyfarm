@@ -11,7 +11,10 @@ interface FarmGridProps {
   onPlantFromPopover: (plotId: number, seedId: SeedId) => void;
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
-  cropData: Record<CropId, CropDetails>; // Added to pass crop details down
+  cropData: Record<CropId, CropDetails>;
+  playerTier: number;
+  unlockedPlotsCount: number; // New prop
+  onUnlockPlot: (plotId: number) => void; // New prop
 }
 
 const FarmGrid: FC<FarmGridProps> = ({
@@ -22,10 +25,13 @@ const FarmGrid: FC<FarmGridProps> = ({
   onPlantFromPopover,
   isGloballyPlanting,
   isGloballyHarvesting,
-  cropData, // Use this
+  cropData,
+  playerTier,
+  unlockedPlotsCount, // Use new prop
+  onUnlockPlot, // Use new prop
 }) => {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 p-4 bg-green-200/30 rounded-lg shadow-inner">
+    <div className="grid grid-cols-5 gap-1 sm:gap-2 p-2 sm:p-3 bg-green-200/30 rounded-lg shadow-inner">
       {plots.map((plot) => (
         <FarmPlot
           key={plot.id}
@@ -36,7 +42,12 @@ const FarmGrid: FC<FarmGridProps> = ({
           onPlantFromPopover={(seedId) => onPlantFromPopover(plot.id, seedId)}
           isGloballyPlanting={isGloballyPlanting}
           isGloballyHarvesting={isGloballyHarvesting}
-          cropData={cropData} // Pass down
+          cropData={cropData}
+          playerTier={playerTier}
+          isLocked={plot.id >= unlockedPlotsCount} // Determine if locked
+          unlockCost={plot.id === unlockedPlotsCount ? cropData.tomato.seedPrice : 0} // Example, replace with actual cost logic
+          onUnlockPlot={() => onUnlockPlot(plot.id)}
+          unlockedPlotsCount={unlockedPlotsCount}
         />
       ))}
     </div>

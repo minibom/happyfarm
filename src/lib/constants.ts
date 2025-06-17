@@ -1,25 +1,26 @@
 
 import type { CropDetails, CropId, GameState, Plot, MarketItem, SeedId, TierInfo } from '@/types';
 
-export const GRID_ROWS = 3;
-export const GRID_COLS = 5;
-export const TOTAL_PLOTS = GRID_ROWS * GRID_COLS;
+export const GRID_ROWS = 5; // Updated
+export const GRID_COLS = 5; // Updated
+export const TOTAL_PLOTS = GRID_ROWS * GRID_COLS; // Now 25
 
 export const INITIAL_GOLD = 100;
 export const INITIAL_XP = 0;
 export const INITIAL_LEVEL = 1;
+export const INITIAL_UNLOCKED_PLOTS = 10; // Player starts with 10 plots
 
 export const TIER_NAMES: string[] = [
-  "Nông Dân Tập Sự",    // Tier 1 (Level 1-9)
-  "Chủ Vườn Chăm Chỉ",  // Tier 2 (Level 10-19)
-  "Nhà Trồng Trọt Khéo Léo",// Tier 3 (Level 20-29)
-  "Chuyên Gia Mùa Vụ", // Tier 4 (Level 30-39)
-  "Bậc Thầy Nông Sản",  // Tier 5 (Level 40-49)
-  "Lão Nông Uyên Bác",  // Tier 6 (Level 50-59)
-  "Phú Nông Giàu Có",    // Tier 7 (Level 60-69)
-  "Hoàng Gia Nông Nghiệp",// Tier 8 (Level 70-79)
-  "Thần Nông Tái Thế",  // Tier 9 (Level 80-89)
-  "Huyền Thoại Đất Đai" // Tier 10 (Level 90+)
+  "Nông Dân Tập Sự",
+  "Chủ Vườn Chăm Chỉ",
+  "Nhà Trồng Trọt Khéo Léo",
+  "Chuyên Gia Mùa Vụ",
+  "Bậc Thầy Nông Sản",
+  "Lão Nông Uyên Bác",
+  "Phú Nông Giàu Có",
+  "Hoàng Gia Nông Nghiệp",
+  "Thần Nông Tái Thế",
+  "Huyền Thoại Đất Đai"
 ];
 
 export const getPlayerTierInfo = (level: number): TierInfo => {
@@ -27,6 +28,16 @@ export const getPlayerTierInfo = (level: number): TierInfo => {
   const tierName = TIER_NAMES[tier - 1] || TIER_NAMES[TIER_NAMES.length - 1];
   const nextTierLevel = tier < TIER_NAMES.length ? tier * 10 + 1 : undefined;
   return { tier, tierName, nextTierLevel };
+};
+
+// Function to determine plot unlock cost
+export const getPlotUnlockCost = (plotIndex: number): number => {
+  // plotIndex is 0-based. Plots 0-9 are free.
+  // Plot 10 (index 10) is the first to cost.
+  if (plotIndex < INITIAL_UNLOCKED_PLOTS) return 0;
+  const baseCost = 500;
+  const increment = 250;
+  return baseCost + (plotIndex - INITIAL_UNLOCKED_PLOTS) * increment;
 };
 
 
@@ -79,6 +90,7 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
   sugarcane: { name: 'Mía', seedName: 'sugarcaneSeed', icon: '🎋', timeToGrowing: 190000, timeToReady: 380000, harvestYield: 3, seedPrice: 14, cropPrice: 6, unlockTier: 7 },
   plum: { name: 'Mận', seedName: 'plumSeed', icon: '🍑', timeToGrowing: 165000, timeToReady: 330000, harvestYield: 4, seedPrice: 18, cropPrice: 5, unlockTier: 7 },
   asparagus: { name: 'Măng Tây', seedName: 'asparagusSeed', icon: '🌿', timeToGrowing: 100000, timeToReady: 220000, harvestYield: 4, seedPrice: 15, cropPrice: 4, unlockTier: 7 },
+  starfruit: { name: 'Khế', seedName: 'starfruitSeed', icon: '🌟', timeToGrowing: 180000, timeToReady: 350000, harvestYield: 5, seedPrice: 20, cropPrice: 5, unlockTier: 7 },
   
   cherry: { name: 'Anh Đào', seedName: 'cherrySeed', icon: '🍒', timeToGrowing: 110000, timeToReady: 250000, harvestYield: 8, seedPrice: 22, cropPrice: 3, unlockTier: 8 },
   orange: { name: 'Cam', seedName: 'orangeSeed', icon: '🍊', timeToGrowing: 170000, timeToReady: 350000, harvestYield: 3, seedPrice: 16, cropPrice: 7, unlockTier: 8 },
@@ -86,47 +98,36 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
   pumpkin: { name: 'Bí Ngô', seedName: 'pumpkinSeed', icon: '🎃', timeToGrowing: 220000, timeToReady: 470000, harvestYield: 1, seedPrice: 20, cropPrice: 25, unlockTier: 8 },
   artichoke: { name: 'Atiso', seedName: 'artichokeSeed', icon: '🌸', timeToGrowing: 190000, timeToReady: 390000, harvestYield: 1, seedPrice: 22, cropPrice: 25, unlockTier: 8 },
   lentil: { name: 'Đậu Lăng', seedName: 'lentilSeed', icon: '🟤', timeToGrowing: 130000, timeToReady: 280000, harvestYield: 12, seedPrice: 11, cropPrice: 1, unlockTier: 8 },
+  lychee: { name: 'Vải Thiều', seedName: 'lycheeSeed', icon: '🔴', timeToGrowing: 220000, timeToReady: 450000, harvestYield: 10, seedPrice: 25, cropPrice: 3, unlockTier: 8 },
   
   watermelon: { name: 'Dưa Hấu', seedName: 'watermelonSeed', icon: '🍉', timeToGrowing: 200000, timeToReady: 450000, harvestYield: 1, seedPrice: 25, cropPrice: 30, unlockTier: 9 },
   avocado: { name: 'Bơ', seedName: 'avocadoSeed', icon: '🥑', timeToGrowing: 220000, timeToReady: 480000, harvestYield: 2, seedPrice: 28, cropPrice: 18, unlockTier: 9 },
   olive: { name: 'Ô Liu', seedName: 'oliveSeed', icon: '🫒', timeToGrowing: 240000, timeToReady: 490000, harvestYield: 6, seedPrice: 26, cropPrice: 5, unlockTier: 9 },
   chestnut: { name: 'Hạt Dẻ', seedName: 'chestnutSeed', icon: '🌰', timeToGrowing: 280000, timeToReady: 550000, harvestYield: 2, seedPrice: 35, cropPrice: 20, unlockTier: 9 },
+  dragonfruit: { name: 'Thanh Long', seedName: 'dragonfruitSeed', icon: '🩷', timeToGrowing: 200000, timeToReady: 400000, harvestYield: 2, seedPrice: 30, cropPrice: 18, unlockTier: 9 },
 
   pineapple: { name: 'Dứa (Thơm)', seedName: 'pineappleSeed', icon: '🍍', timeToGrowing: 250000, timeToReady: 500000, harvestYield: 1, seedPrice: 30, cropPrice: 35, unlockTier: 10 },
   coconut: { name: 'Dừa', seedName: 'coconutSeed', icon: '🥥', timeToGrowing: 300000, timeToReady: 600000, harvestYield: 1, seedPrice: 40, cropPrice: 45, unlockTier: 10 },
-  // Add more items here, ensuring they also have `unlockTier`
   durian: { name: 'Sầu Riêng', seedName: 'durianSeed', icon: '🤢', timeToGrowing: 400000, timeToReady: 800000, harvestYield: 1, seedPrice: 100, cropPrice: 150, unlockTier: 10 },
-  starfruit: { name: 'Khế', seedName: 'starfruitSeed', icon: '🌟', timeToGrowing: 180000, timeToReady: 350000, harvestYield: 5, seedPrice: 20, cropPrice: 5, unlockTier: 7 },
-  lychee: { name: 'Vải Thiều', seedName: 'lycheeSeed', icon: '🔴', timeToGrowing: 220000, timeToReady: 450000, harvestYield: 10, seedPrice: 25, cropPrice: 3, unlockTier: 8 },
-  dragonfruit: { name: 'Thanh Long', seedName: 'dragonfruitSeed', icon: '🩷', timeToGrowing: 200000, timeToReady: 400000, harvestYield: 2, seedPrice: 30, cropPrice: 18, unlockTier: 9 },
-
 };
-
 
 export const ALL_CROP_IDS = Object.keys(CROP_DATA) as CropId[];
 export const ALL_SEED_IDS = ALL_CROP_IDS.map(cropId => CROP_DATA[cropId].seedName as SeedId);
 
-
 export const INITIAL_PLOTS: Plot[] = Array.from({ length: TOTAL_PLOTS }, (_, i) => ({
   id: i,
-  state: 'empty',
+  state: 'empty', // The actual 'locked' state will be determined by unlockedPlotsCount
 }));
 
-export const INITIAL_INVENTORY: GameState['inventory'] = {
-  tomatoSeed: 5, carrotSeed: 3, cornSeed: 2, strawberrySeed: 2, potatoSeed: 1, lettuceSeed: 1,
-  tomato: 0, carrot: 0, corn: 0, strawberry: 0, potato: 0, lettuce: 0,
-};
-
-// Initialize all other defined seeds and crops to 0 in inventory
+export const INITIAL_INVENTORY: GameState['inventory'] = {};
 ALL_SEED_IDS.forEach(seedId => {
-  if (!INITIAL_INVENTORY[seedId]) {
-    INITIAL_INVENTORY[seedId] = 0;
-  }
+  INITIAL_INVENTORY[seedId] = seedId === 'tomatoSeed' ? 5 :
+                              seedId === 'carrotSeed' ? 3 :
+                              seedId === 'cornSeed' || seedId === 'strawberrySeed' ? 2 :
+                              seedId === 'potatoSeed' || seedId === 'lettuceSeed' ? 1 : 0;
 });
 ALL_CROP_IDS.forEach(cropId => {
-  if (!INITIAL_INVENTORY[cropId]) {
-    INITIAL_INVENTORY[cropId] = 0;
-  }
+  INITIAL_INVENTORY[cropId] = 0;
 });
 
 
@@ -137,32 +138,11 @@ export const INITIAL_GAME_STATE: GameState = {
   plots: INITIAL_PLOTS,
   inventory: INITIAL_INVENTORY,
   lastUpdate: Date.now(),
+  unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
 };
 
 export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {
   return Math.floor(100 * Math.pow(level, 1.5));
 };
-
-// MARKET_ITEMS will now be derived dynamically in useGameLogic based on CROP_DATA from Firestore
-// This constant can be removed or kept for reference/fallback if needed.
-// For now, I'll comment it out to emphasize the shift to dynamic market items.
-/*
-export const MARKET_ITEMS: MarketItem[] = [
-  ...ALL_CROP_IDS.map(cropId => ({
-    id: CROP_DATA[cropId].seedName as SeedId,
-    name: `${CROP_DATA[cropId].name} (Hạt Giống)`,
-    price: CROP_DATA[cropId].seedPrice,
-    type: 'seed' as 'seed',
-    unlockTier: CROP_DATA[cropId].unlockTier, // Add unlockTier here
-  })),
-  ...ALL_CROP_IDS.map(cropId => ({
-    id: cropId,
-    name: CROP_DATA[cropId].name,
-    price: CROP_DATA[cropId].cropPrice,
-    type: 'crop' as 'crop',
-    unlockTier: CROP_DATA[cropId].unlockTier, // Add unlockTier here, though usually crops are always sellable
-  })),
-];
-*/
 
 export const LOCAL_STORAGE_GAME_KEY = 'happyFarmGame';

@@ -5,11 +5,12 @@ import {
   INITIAL_GAME_STATE,
   LEVEL_UP_XP_THRESHOLD,
   TOTAL_PLOTS,
-  CROP_DATA as FALLBACK_CROP_DATA, 
-  getPlayerTierInfo, // Import tier helper
+  CROP_DATA as FALLBACK_CROP_DATA,
+  getPlayerTierInfo,
+  getPlotUnlockCost, // Import new function
+  INITIAL_UNLOCKED_PLOTS, // Import new constant
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-// import { getFarmingAdvice, type FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor'; // Advisor temporarily commented
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from 'firebase/firestore';
@@ -17,12 +18,10 @@ import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from '
 export const useGameLogic = () => {
   const { userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
-  const [isInitialized, setIsInitialized] = useState(false); 
-  const [gameDataLoaded, setGameDataLoaded] = useState(false); 
-  const [itemDataLoaded, setItemDataLoaded] = useState(false); 
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [gameDataLoaded, setGameDataLoaded] = useState(false);
+  const [itemDataLoaded, setItemDataLoaded] = useState(false);
 
-  // const [advisorTip, setAdvisorTip] = useState<string | null>(null); // Advisor temporarily commented
-  // const [isAdvisorLoading, setIsAdvisorLoading] = useState(false); // Advisor temporarily commented
   const { toast } = useToast();
 
   const [cropData, setCropData] = useState<Record<CropId, CropDetails> | null>(null);
@@ -31,13 +30,12 @@ export const useGameLogic = () => {
   const [allCropIds, setAllCropIds] = useState<CropId[]>([]);
   const [playerTierInfo, setPlayerTierInfo] = useState<TierInfo>(getPlayerTierInfo(INITIAL_GAME_STATE.level));
 
-
   const prevLevelRef = useRef(gameState.level);
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
     gameStateRef.current = gameState;
-    setPlayerTierInfo(getPlayerTierInfo(gameState.level)); // Update tier info when game state (level) changes
+    setPlayerTierInfo(getPlayerTierInfo(gameState.level));
   }, [gameState]);
 
   useEffect(() => {
@@ -52,7 +50,7 @@ export const useGameLogic = () => {
 
         if (Object.keys(fetchedItems).length === 0) {
             console.warn("No items found in Firestore 'gameItems' collection. Using fallback data.");
-            setCropData(FALLBACK_CROP_DATA); 
+            setCropData(FALLBACK_CROP_DATA);
             toast({ title: "Lưu ý", description: "Không tìm thấy dữ liệu vật phẩm trên server, sử dụng dữ liệu tạm.", variant: "destructive"});
         } else {
             setCropData(fetchedItems);
@@ -61,8 +59,8 @@ export const useGameLogic = () => {
       } catch (error) {
         console.error("Failed to fetch item data from Firestore:", error);
         toast({ title: "Lỗi Tải Vật Phẩm", description: "Không thể tải dữ liệu vật phẩm từ server. Sử dụng dữ liệu tạm.", variant: "destructive" });
-        setCropData(FALLBACK_CROP_DATA); 
-        setItemDataLoaded(true); 
+        setCropData(FALLBACK_CROP_DATA);
+        setItemDataLoaded(true);
       }
     };
     fetchItemData();
@@ -71,7 +69,6 @@ export const useGameLogic = () => {
   useEffect(() => {
     if (cropData) {
       const derivedCropIds = Object.keys(cropData) as CropId[];
-      // Ensure seedName is correctly typed as SeedId
       const derivedSeedIds = derivedCropIds.map(id => cropData[id].seedName as SeedId);
       setAllCropIds(derivedCropIds);
       setAllSeedIds(derivedSeedIds);
@@ -90,7 +87,7 @@ export const useGameLogic = () => {
           name: cropData[id].name,
           price: cropData[id].cropPrice,
           type: 'crop' as 'crop',
-          unlockTier: cropData[id].unlockTier, // Crops are generally sellable regardless of tier, but good to have
+          unlockTier: cropData[id].unlockTier,
           icon: cropData[id].icon,
         })),
       ];
@@ -98,10 +95,9 @@ export const useGameLogic = () => {
     }
   }, [cropData]);
 
-
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveGameStateToFirestore = useCallback(() => {
-    if (userId && gameDataLoaded && itemDataLoaded) { 
+    if (userId && gameDataLoaded && itemDataLoaded) {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -153,19 +149,15 @@ export const useGameLogic = () => {
                 id: loadedPlotData.id !== undefined ? loadedPlotData.id : basePlot.id,
                 state: loadedPlotData.state || basePlot.state,
               };
-              if (loadedPlotData.cropId) {
-                newPlot.cropId = loadedPlotData.cropId;
-              }
-              if (loadedPlotData.plantedAt) {
-                newPlot.plantedAt = loadedPlotData.plantedAt;
-              }
+              if (loadedPlotData.cropId) newPlot.cropId = loadedPlotData.cropId;
+              if (loadedPlotData.plantedAt) newPlot.plantedAt = loadedPlotData.plantedAt;
               return newPlot;
             });
           }
           loadedState.plots = plots;
 
           const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
-          if (cropData) {
+          if (cropData) { // Ensure cropData is available before validating inventory against allSeedIds/allCropIds
             allSeedIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
             allCropIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
           }
@@ -183,19 +175,23 @@ export const useGameLogic = () => {
           loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
           loadedState.level = typeof loadedState.level === 'number' ? loadedState.level : INITIAL_GAME_STATE.level;
           loadedState.lastUpdate = typeof loadedState.lastUpdate === 'number' ? loadedState.lastUpdate : Date.now();
+          loadedState.unlockedPlotsCount = typeof loadedState.unlockedPlotsCount === 'number' && loadedState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && loadedState.unlockedPlotsCount <= TOTAL_PLOTS
+            ? loadedState.unlockedPlotsCount
+            : INITIAL_UNLOCKED_PLOTS;
+
 
           setGameState(loadedState);
           if (!gameDataLoaded) prevLevelRef.current = loadedState.level;
         } else {
-          const newInitialState = { ...INITIAL_GAME_STATE, lastUpdate: Date.now() };
-            if (cropData) { 
+          const newInitialState = { ...INITIAL_GAME_STATE, lastUpdate: Date.now(), unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS };
+            if (cropData) {
                 allSeedIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
                 allCropIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
             }
           setGameState(newInitialState);
 
           if (!gameDataLoaded) prevLevelRef.current = newInitialState.level;
-          setDoc(gameDocRef, newInitialState); 
+          setDoc(gameDocRef, newInitialState);
         }
         setGameDataLoaded(true);
       }, (error) => {
@@ -210,26 +206,24 @@ export const useGameLogic = () => {
     } else if (!authLoading && !userId) {
       setGameState(INITIAL_GAME_STATE);
       setGameDataLoaded(false);
-      setItemDataLoaded(false); 
+      setItemDataLoaded(false);
       setCropData(null);
       setMarketItems(null);
     }
     return () => {
         if (unsubscribe) unsubscribe();
     };
-  }, [userId, authLoading, toast, cropData, allSeedIds, allCropIds, gameDataLoaded]);
-
+  }, [userId, authLoading, toast, cropData, allSeedIds, allCropIds, gameDataLoaded]); // Added cropData, allSeedIds, allCropIds dependencies
 
   useEffect(() => {
     if (gameDataLoaded && itemDataLoaded && userId) {
       saveGameStateToFirestore();
     }
   }, [gameState, gameDataLoaded, itemDataLoaded, userId, saveGameStateToFirestore]);
-  
+
   useEffect(() => {
      setIsInitialized(gameDataLoaded && itemDataLoaded && !!userId && !authLoading);
   }, [gameDataLoaded, itemDataLoaded, userId, authLoading]);
-
 
   useEffect(() => {
     if (!isInitialized || !userId || !cropData) return;
@@ -239,6 +233,9 @@ export const useGameLogic = () => {
         if (!prev.plots) return prev;
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
+          // Only process plots that are within the unlocked range
+          if (plot.id >= prev.unlockedPlotsCount) return plot;
+
           if (plot.state === 'planted' && plot.plantedAt && plot.cropId && cropData[plot.cropId]) {
             const cropDetail = cropData[plot.cropId];
             if (now >= plot.plantedAt + cropDetail.timeToGrowing) {
@@ -286,6 +283,10 @@ export const useGameLogic = () => {
       return;
     }
     const currentPlot = currentGameState.plots.find(p => p.id === plotId);
+    if (plotId >= currentGameState.unlockedPlotsCount) {
+      toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất này trước.", variant: "destructive"});
+      return;
+    }
     if (!currentPlot || currentPlot.state !== 'empty') {
       toast({ title: "Đất Đã Có Cây", description: "Thửa đất này không trống.", variant: "destructive" });
       return;
@@ -311,18 +312,23 @@ export const useGameLogic = () => {
     }
     const plotToHarvest = currentGameState.plots.find(p => p.id === plotId);
 
+    if (plotId >= currentGameState.unlockedPlotsCount) {
+      toast({ title: "Lỗi", description: "Không thể thu hoạch ô đất bị khóa.", variant: "destructive"});
+      return;
+    }
+
     if (!plotToHarvest || plotToHarvest.state !== 'ready_to_harvest' || !plotToHarvest.cropId || !cropData[plotToHarvest.cropId]) {
       toast({ title: "Chưa Sẵn Sàng", description: "Thửa đất này chưa sẵn sàng để thu hoạch hoặc dữ liệu không hợp lệ.", variant: "destructive" });
       return;
     }
 
     const cropDetail = cropData[plotToHarvest.cropId];
-    const earnedXp = cropDetail.harvestYield * 5; // XP per yield unit
+    const earnedXp = cropDetail.harvestYield * 5;
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
-          const { cropId: oldCropId, plantedAt, ...restOfPlot } = p; 
+          const { cropId: oldCropId, plantedAt, ...restOfPlot } = p;
           return { ...restOfPlot, state: 'empty' as const };
         }
         return p;
@@ -333,8 +339,7 @@ export const useGameLogic = () => {
 
       let newXp = prev.xp + earnedXp;
       let newLevel = prev.level;
-      
-      // Level up logic
+
       let xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
       while (newXp >= xpThreshold) {
         newXp -= xpThreshold;
@@ -374,12 +379,12 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev; // Double check
+      if (prev.gold < totalCost) return prev;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory };
     });
-    
+
     toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${marketItemInfo.name}.`, className: "bg-accent text-accent-foreground" });
   }, [toast, marketItems, cropData]);
 
@@ -398,7 +403,7 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check
+      if ((prev.inventory[itemId] || 0) < quantity) return prev;
       const totalGain = quantity * price;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
@@ -407,43 +412,31 @@ export const useGameLogic = () => {
     toast({ title: "Đã Bán!", description: `Bán ${quantity} x ${itemName}.`, className: "bg-primary text-primary-foreground" });
   }, [toast, marketItems]);
 
-  // Advisor temporarily commented out
-  // const fetchAdvisorTip = useCallback(async () => {
-  //   setIsAdvisorLoading(true);
-  //   try {
-  //     const currentGameState = gameStateRef.current;
-  //      if (!cropData || !marketItems) {
-  //       setAdvisorTip("Dữ liệu trò chơi chưa sẵn sàng cho lời khuyên.");
-  //       setIsAdvisorLoading(false);
-  //       return;
-  //     }
+  const unlockPlot = useCallback((plotIdToUnlock: number) => {
+    const currentGameState = gameStateRef.current;
+    if (plotIdToUnlock !== currentGameState.unlockedPlotsCount) {
+      toast({ title: "Mở Khóa Sai Thứ Tự", description: "Bạn cần mở khóa các ô đất theo thứ tự.", variant: "destructive" });
+      return;
+    }
+    if (currentGameState.unlockedPlotsCount >= TOTAL_PLOTS) {
+      toast({ title: "Đã Mở Hết", description: "Tất cả các ô đất đã được mở khóa.", variant: "default" });
+      return;
+    }
 
-  //     const currentMarketPrices: Record<string, number> = {};
-  //     marketItems.forEach(item => currentMarketPrices[item.id] = item.price);
+    const cost = getPlotUnlockCost(plotIdToUnlock);
+    if (currentGameState.gold < cost) {
+      toast({ title: "Không Đủ Vàng", description: `Bạn cần ${cost} vàng để mở ô đất này.`, variant: "destructive" });
+      return;
+    }
 
-  //     const plotsForAI = currentGameState.plots.map(p => ({
-  //       state: p.state,
-  //       crop: p.cropId ? cropData[p.cropId]?.name : undefined,
-  //     }));
+    setGameState(prev => ({
+      ...prev,
+      gold: prev.gold - cost,
+      unlockedPlotsCount: prev.unlockedPlotsCount + 1,
+    }));
+    toast({ title: "Mở Khóa Thành Công!", description: `Đã mở khóa ô đất ${plotIdToUnlock + 1}.`, className: "bg-accent text-accent-foreground" });
+  }, [toast]);
 
-  //     const adviceInput: FarmingAdviceInput = {
-  //       gold: currentGameState.gold,
-  //       xp: currentGameState.xp,
-  //       level: currentGameState.level,
-  //       plots: plotsForAI,
-  //       inventory: currentGameState.inventory,
-  //       marketPrices: currentMarketPrices,
-  //     };
-  //     const tip = await getFarmingAdvice(adviceInput);
-  //     setAdvisorTip(tip.advice);
-  //   } catch (error) {
-  //     console.error("Failed to get farming advice:", error);
-  //     setAdvisorTip("Hmm, tôi đang gặp chút khó khăn trong việc suy nghĩ. Hãy thử lại sau!");
-  //     toast({ title: "Lỗi Cố Vấn", description: "Không thể lấy lời khuyên.", variant: "destructive" });
-  //   } finally {
-  //     setIsAdvisorLoading(false);
-  //   }
-  // }, [toast, cropData, marketItems]);
 
   return {
     gameState,
@@ -451,11 +444,9 @@ export const useGameLogic = () => {
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized, 
-    playerTierInfo, // Expose player tier info
-    // advisorTip, // Advisor temporarily commented
-    // fetchAdvisorTip, // Advisor temporarily commented
-    // isAdvisorLoading, // Advisor temporarily commented
+    unlockPlot, // Expose new function
+    isInitialized,
+    playerTierInfo,
     cropData,
     marketItems,
     allSeedIds,
