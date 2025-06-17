@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { FC } from 'react';
+import type { FC, useMemo } from 'react'; // Added useMemo
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare } from 'lucide-react';
@@ -56,8 +56,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   playerTier,
 }) => {
   const router = useRouter();
-  const { logOut } = useAuth();
+  const { user, logOut } = useAuth(); // Get user from useAuth
   const { toast } = useToast();
+
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    const adminUidsString = process.env.NEXT_PUBLIC_ADMIN_UIDS || '';
+    const adminUids = adminUidsString.split(',').map(uid => uid.trim()).filter(uid => uid);
+    return adminUids.includes(user.uid);
+  }, [user]);
 
   const getCropInfo = (seedId: SeedId) => {
     if (!cropData) return null;
@@ -266,11 +273,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top" className="mb-2">
-                <DropdownMenuItem onClick={handleAdminNavigation}>
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    <span>Vào trang Admin</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <>
+                    <DropdownMenuItem onClick={handleAdminNavigation}>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Vào trang Admin</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Đăng Xuất</span>
