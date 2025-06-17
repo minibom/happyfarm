@@ -40,11 +40,10 @@ const formatMilliseconds = (ms: number) => {
   if (minutes > 0) {
     formattedTime += `${minutes}m `;
   }
-  // Show seconds if minutes is 0 or if there are remaining seconds, or if it's exactly 0ms (covered by first line)
   if (seconds > 0 || minutes === 0) {
     formattedTime += `${seconds}s`;
   }
-  return formattedTime.trim() || "0s"; // Fallback for edge cases if string is empty
+  return formattedTime.trim() || "0s";
 };
 
 
@@ -73,14 +72,11 @@ const MarketModal: FC<MarketModalProps> = ({
         if (aIsLocked !== bIsLocked) {
             return aIsLocked ? 1 : -1;
         }
-
         if (a.unlockTier !== b.unlockTier) {
             return a.unlockTier - b.unlockTier;
         }
-
         const cropDetailsA = cropData[a.id.replace('Seed', '') as CropId];
         const cropDetailsB = cropData[b.id.replace('Seed', '') as CropId];
-
         if (cropDetailsA && cropDetailsB) {
             return cropDetailsA.name.localeCompare(cropDetailsB.name);
         }
@@ -165,7 +161,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
 
   const renderSeedMarketGrid = () => (
-    <ScrollArea className="max-h-96">
+    <ScrollArea className="h-full">
       <TooltipProvider>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
           {seedsToDisplay.map(item => {
@@ -247,8 +243,8 @@ const MarketModal: FC<MarketModalProps> = ({
   );
 
   const renderCropSellList = () => (
-    <ScrollArea className="max-h-96">
-      <div className="space-y-3 pr-2">
+    <ScrollArea className="h-full">
+      <div className="space-y-3">
         {cropsToSell.map(item => {
           const quantity = quantities[item.id] || 0;
           const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
@@ -309,7 +305,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl">
+      <DialogContent className="sm:max-w-lg md:max-w-xl flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
             <ShoppingCart className="w-7 h-7 text-primary" /> Chợ
@@ -318,15 +314,15 @@ const MarketModal: FC<MarketModalProps> = ({
             Mua hạt giống và bán nông sản. Vàng: {playerGold.toLocaleString()} | Bậc: {getPlayerTierInfo(playerTier * 10 - 9).tierName} (Bậc {playerTier})
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="buy" className="w-full">
+        <Tabs defaultValue="buy" className="w-full flex-grow flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="buy">Mua Hạt Giống</TabsTrigger>
             <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
           </TabsList>
-          <TabsContent value="buy" className="mt-4">
+          <TabsContent value="buy" className="mt-4 flex-grow min-h-0">
             {renderSeedMarketGrid()}
           </TabsContent>
-          <TabsContent value="sell" className="mt-4">
+          <TabsContent value="sell" className="mt-4 flex-grow min-h-0">
             {renderCropSellList()}
           </TabsContent>
         </Tabs>
@@ -339,3 +335,4 @@ const MarketModal: FC<MarketModalProps> = ({
 };
 
 export default MarketModal;
+
