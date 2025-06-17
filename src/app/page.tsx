@@ -104,7 +104,6 @@ export default function HomePage() {
       <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
       
       <main className="flex flex-col items-center w-full max-w-7xl mt-4">
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary font-headline my-4 text-center">Happy Farm</h1>
         
         <div className="flex flex-row w-full gap-6 justify-center items-start">
           <div className="flex-shrink-0"> 
