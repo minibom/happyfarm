@@ -1,0 +1,88 @@
+
+import React, { type FC } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Coins, MinusCircle, PlusCircle } from 'lucide-react';
+import type { MarketItem, InventoryItem, CropId, CropDetails } from '@/types';
+
+interface SellCropMarketProps {
+  cropsToSell: MarketItem[];
+  playerInventory: Record<InventoryItem, number>;
+  onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void;
+  cropData: Record<CropId, CropDetails>; // Keep for consistency, though not strictly used for rendering here
+  quantities: Record<InventoryItem, number>;
+  onQuantityButtonClick: (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => void;
+  onQuantityInputChange: (itemId: InventoryItem, value: string, type: 'seed' | 'crop', itemUnlockTier: number) => void;
+  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
+}
+
+const SellCropMarket: FC<SellCropMarketProps> = ({
+  cropsToSell,
+  playerInventory,
+  onSellItem,
+  quantities,
+  onQuantityButtonClick,
+  onQuantityInputChange,
+  setQuantities,
+}) => {
+  return (
+    <div className="space-y-3 p-1">
+      {cropsToSell.map(item => {
+        const quantity = quantities[item.id] || 0;
+        const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
+        return (
+          <Card key={item.id} className="overflow-hidden shadow">
+            <CardContent className="p-3">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  {typeof itemIcon === 'string' ? <span className="text-xl">{itemIcon}</span> : itemIcon}
+                  <span className="font-semibold">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-1 text-sm text-primary">
+                  <Coins className="w-4 h-4" />
+                  <span>{item.price}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => onQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-7 w-7">
+                    <MinusCircle className="w-5 h-5" />
+                  </Button>
+                  <Input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => onQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
+                    className="h-8 w-12 text-center px-1"
+                    min="0"
+                    max={playerInventory[item.id] || 0}
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => onQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-7 w-7">
+                    <PlusCircle className="w-5 h-5" />
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onSellItem(item.id, quantity, item.price);
+                    setQuantities(prev => ({ ...prev, [item.id]: 0 }));
+                  }}
+                  disabled={quantity === 0 || (playerInventory[item.id] || 0) < quantity}
+                  className='bg-blue-500 hover:bg-blue-500/90'
+                >
+                  Bán
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Bạn có: {playerInventory[item.id] || 0}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
+      {cropsToSell.length === 0 && (
+          <p className="text-center text-muted-foreground py-4">Không có nông sản nào trong kho để bán.</p>
+      )}
+    </div>
+  );
+};
+
+export default SellCropMarket;
