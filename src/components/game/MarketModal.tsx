@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea import is no longer needed if we remove it
+// import { ScrollArea } from '@/components/ui/scroll-area'; 
 import type { InventoryItem, MarketItem, CropDetails, CropId } from '@/types';
 import { ShoppingCart } from 'lucide-react';
 import { getPlayerTierInfo } from '@/lib/constants';
@@ -157,38 +158,30 @@ const MarketModal: FC<MarketModalProps> = ({
             <TabsTrigger value="buy">Mua Hạt Giống</TabsTrigger>
             <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
           </TabsList>
-          <TabsContent value="buy" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="w-full"> {/* Wrapper to define width for the grid */}
-                <BuySeedMarket
-                  seedsToDisplay={seedsToDisplay}
-                  playerGold={playerGold}
-                  onBuyItem={onBuyItem}
-                  cropData={cropData}
-                  playerTier={playerTier}
-                  quantities={quantities}
-                  onQuantityButtonClick={handleQuantityButtonClick}
-                  onQuantityInputChange={handleQuantityInputChange}
-                  setQuantities={setQuantities}
-                />
-              </div>
-            </ScrollArea>
+          <TabsContent value="buy" className="mt-4 flex-1 overflow-y-auto pr-3">
+            <BuySeedMarket
+              seedsToDisplay={seedsToDisplay}
+              playerGold={playerGold}
+              onBuyItem={onBuyItem}
+              cropData={cropData}
+              playerTier={playerTier}
+              quantities={quantities}
+              onQuantityButtonClick={handleQuantityButtonClick}
+              onQuantityInputChange={handleQuantityInputChange}
+              setQuantities={setQuantities}
+            />
           </TabsContent>
-          <TabsContent value="sell" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
-            <ScrollArea className="h-full">
-              <div className="w-full"> {/* Wrapper to define width for the list */}
-                <SellCropMarket
-                  cropsToSell={cropsToSell}
-                  playerInventory={playerInventory}
-                  onSellItem={onSellItem}
-                  cropData={cropData}
-                  quantities={quantities}
-                  onQuantityButtonClick={handleQuantityButtonClick}
-                  onQuantityInputChange={handleQuantityInputChange}
-                  setQuantities={setQuantities}
-                />
-              </div>
-            </ScrollArea>
+          <TabsContent value="sell" className="mt-4 flex-1 overflow-y-auto pr-3">
+            <SellCropMarket
+              cropsToSell={cropsToSell}
+              playerInventory={playerInventory}
+              onSellItem={onSellItem}
+              cropData={cropData}
+              quantities={quantities}
+              onQuantityButtonClick={handleQuantityButtonClick}
+              onQuantityInputChange={handleQuantityInputChange}
+              setQuantities={setQuantities}
+            />
           </TabsContent>
         </Tabs>
         <DialogFooter>
