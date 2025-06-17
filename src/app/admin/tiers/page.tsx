@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
-import { TIER_DATA, type TierDetail } from '@/lib/constants'; // Import TIER_DATA
+import { TIER_DATA, type TierDetail } from '@/lib/constants'; 
 import { cn } from '@/lib/utils';
 
 interface TierDisplayData extends TierDetail {
@@ -26,18 +26,20 @@ export default function AdminTiersPage() {
     const startLevel = tierDetail.levelStart;
     let endLevelText;
     if (tierNumber < TIER_DATA.length) {
+      // Calculate the end level for the current tier based on the start of the next tier
       endLevelText = TIER_DATA[tierNumber].levelStart - 1;
     } else {
+      // For the last tier
       endLevelText = "trở lên";
     }
     
     let levelRange = `Cấp ${startLevel}`;
-    if (endLevelText !== startLevel) {
-        if (typeof endLevelText === 'number') {
-            levelRange += ` - ${endLevelText}`;
-        } else {
-            levelRange += ` ${endLevelText}`;
+    if (typeof endLevelText === 'number') {
+        if (endLevelText >= startLevel) { // Ensure end level is not less than start level
+             levelRange += ` - ${endLevelText}`;
         }
+    } else {
+        levelRange += ` ${endLevelText}`;
     }
 
 
@@ -85,12 +87,12 @@ export default function AdminTiersPage() {
               tierData.map((tier) => (
                 <TableRow key={tier.tierNumber}>
                   <TableCell className="text-center">
-                    <Badge className={cn("text-sm px-3 py-1 font-semibold", tier.colorClass)}>
+                    <Badge variant="outline" className={cn("text-sm px-3 py-1 font-semibold", tier.colorClass)}>
                       Bậc {tier.tierNumber}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-2xl text-center">{tier.icon}</TableCell>
-                  <TableCell className="font-medium">{tier.tierName}</TableCell>
+                  <TableCell className="font-medium">{tier.name}</TableCell>
                   <TableCell>{tier.levelRange}</TableCell>
                 </TableRow>
               ))
@@ -101,3 +103,4 @@ export default function AdminTiersPage() {
     </Card>
   );
 }
+
