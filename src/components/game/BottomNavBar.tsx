@@ -2,8 +2,9 @@
 'use client';
 
 import type { FC } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -44,12 +45,18 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   availableSeeds,
   inventory,
 }) => {
+  const router = useRouter();
+
   const getCropInfo = (seedId: SeedId) => {
     const cropId = seedId.replace('Seed', '') as CropId;
     return CROP_DATA[cropId];
   };
   
   const selectedSeedName = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed)?.name : '';
+
+  const handleAdminNavigation = () => {
+    router.push('/admin/items');
+  };
 
   return (
     <TooltipProvider>
@@ -60,15 +67,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="lg" // Keep lg for consistency, but internal padding/icon size is adjusted
+                    size="icon" 
                     variant="outline"
                     className={cn(
-                      "p-3 h-12 w-12 rounded-full shadow-md", 
+                      "p-2.5 h-12 w-12 rounded-full shadow-md", 
                       currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                     )}
                     aria-label="Trồng Hạt Giống"
                   >
-                    <Sprout className="h-6 w-6" />
+                    <Sprout className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
@@ -104,15 +111,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onToggleHarvestMode}
-                size="lg"
+                size="icon"
                 variant="outline"
                 className={cn(
-                  "p-3 h-12 w-12 rounded-full shadow-md",
+                  "p-2.5 h-12 w-12 rounded-full shadow-md",
                   currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
                 )}
                 aria-label="Thu Hoạch"
               >
-                <Hand className="h-6 w-6" />
+                <Hand className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -124,11 +131,11 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onOpenInventory}
-                size="lg"
-                className="p-3 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
+                size="icon"
+                className="p-2.5 h-12 w-12 rounded-full shadow-md bg-secondary hover:bg-secondary/90"
                 aria-label="Mở Kho"
               >
-                <PackageSearch className="h-6 w-6" />
+                <PackageSearch className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -140,17 +147,35 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <TooltipTrigger asChild>
               <Button
                 onClick={onOpenMarket}
-                size="lg"
-                className="p-3 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90"
+                size="icon"
+                className="p-2.5 h-12 w-12 rounded-full shadow-md bg-accent hover:bg-accent/90 text-accent-foreground"
                 aria-label="Mở Chợ"
               >
-                <ShoppingCart className="h-6 w-6" />
+                <ShoppingCart className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p>Chợ</p>
             </TooltipContent>
           </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleAdminNavigation}
+                size="icon"
+                variant="outline"
+                className="p-2.5 h-12 w-12 rounded-full shadow-md"
+                aria-label="Cài Đặt"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Cài Đặt</p>
+            </TooltipContent>
+          </Tooltip>
+
         </div>
       </div>
     </TooltipProvider>
