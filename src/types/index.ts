@@ -58,6 +58,8 @@ export interface ChatMessage {
 export interface TierInfo {
   tier: number;
   tierName: string;
+  icon: string;
+  colorClass: string;
   nextTierLevel?: number;
 }
 
@@ -66,3 +68,4 @@ export interface AdminUserView extends GameState {
   uid: string;
   // email is already optional in GameState, so it's covered
 }
+

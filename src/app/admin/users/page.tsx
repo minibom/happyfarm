@@ -21,6 +21,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { GameState, AdminUserView } from '@/types';
 import { getPlayerTierInfo } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserView[]>([]);
@@ -167,7 +168,7 @@ export default function AdminUsersPage() {
                   <TableHead className="w-[150px]">User ID</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-[150px]">Trạng Thái</TableHead>
-                  <TableHead className="w-[130px] text-center">Cấp/Bậc</TableHead>
+                  <TableHead className="w-[180px] text-center">Cấp/Bậc</TableHead>
                   <TableHead className="w-[180px]">Đăng Nhập Lần Cuối</TableHead>
                   <TableHead className="text-center w-[150px]">Hành động</TableHead>
                 </TableRow>
@@ -193,14 +194,17 @@ export default function AdminUsersPage() {
                           <TableCell>
                           <Badge 
                               variant={user.status === 'active' ? 'default' : 'destructive'} 
-                              className={user.status === 'active' ? 'bg-green-500 hover:bg-green-600 text-primary-foreground' : 'bg-red-500 hover:bg-red-600 text-destructive-foreground'}
+                              className={cn("font-semibold", user.status === 'active' ? 'bg-green-500 hover:bg-green-600 text-primary-foreground' : 'bg-red-500 hover:bg-red-600 text-destructive-foreground')}
                           >
                               {user.status === 'active' ? 'Hoạt động' : 'Cấm Chat'}
                           </Badge>
                           </TableCell>
                           <TableCell className="text-center">
                               Cấp {user.level} <br/>
-                              <Badge variant="outline" className="text-xs mt-1">{tierInfo.tierName}</Badge>
+                              <Badge variant="outline" className={cn("text-xs mt-1 px-2 py-0.5 font-semibold", tierInfo.colorClass)}>
+                                  <span className="mr-1 text-sm">{tierInfo.icon}</span>
+                                  {tierInfo.tierName}
+                              </Badge>
                           </TableCell>
                           <TableCell>{user.lastLogin ? new Date(user.lastLogin).toLocaleString('vi-VN') : 'Chưa có'}</TableCell>
                           <TableCell className="text-center space-x-1">

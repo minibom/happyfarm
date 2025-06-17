@@ -13,8 +13,10 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { UserCircle2, Coins, Star, Award, Mail, ShieldHalf, BarChart3 } from 'lucide-react';
+import { UserCircle2, Coins, Star, Award, Mail, ShieldHalf } from 'lucide-react';
 import type { TierInfo } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface PlayerProfileModalProps {
   isOpen: boolean;
@@ -73,7 +75,10 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
                 <ShieldHalf className="w-6 h-6 text-purple-500" />
                 <span className="font-medium">Bậc Hiện Tại:</span>
               </div>
-              <span className="text-lg font-bold text-primary">{playerTierInfo.tierName} (Bậc {playerTierInfo.tier})</span>
+              <Badge className={cn("text-base px-3 py-1 font-semibold", playerTierInfo.colorClass)}>
+                <span className="mr-1.5 text-lg">{playerTierInfo.icon}</span>
+                {playerTierInfo.tierName}
+              </Badge>
             </div>
             
             <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">

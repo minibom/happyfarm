@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CropDetails, CropId } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { TIER_NAMES } from '@/lib/constants'; // Import TIER_NAMES
+import { TIER_DATA } from '@/lib/constants'; // Changed TIER_NAMES to TIER_DATA
 import {
   Select,
   SelectContent,
@@ -94,8 +94,8 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
         toast({ title: "Lỗi", description: "Tên vật phẩm không được để trống.", variant: "destructive" });
         return;
     }
-    if (formData.unlockTier < 1 || formData.unlockTier > TIER_NAMES.length) {
-        toast({ title: "Lỗi", description: `Bậc mở khóa phải từ 1 đến ${TIER_NAMES.length}.`, variant: "destructive" });
+    if (formData.unlockTier < 1 || formData.unlockTier > TIER_DATA.length) { // Changed TIER_NAMES.length to TIER_DATA.length
+        toast({ title: "Lỗi", description: `Bậc mở khóa phải từ 1 đến ${TIER_DATA.length}.`, variant: "destructive" }); // Changed TIER_NAMES.length to TIER_DATA.length
         return;
     }
 
@@ -169,7 +169,7 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="unlockTier" className="text-right">Bậc Mở Khóa*</Label>
             {isReadOnly ? (
-                 <Input value={`Bậc ${formData.unlockTier} (${TIER_NAMES[formData.unlockTier-1] || 'Không rõ'})`} readOnly className="col-span-3 bg-muted" />
+                 <Input value={`Bậc ${formData.unlockTier} (${TIER_DATA[formData.unlockTier-1]?.name || 'Không rõ'})`} readOnly className="col-span-3 bg-muted" />
             ) : (
                 <Select
                     value={String(formData.unlockTier)}
@@ -179,9 +179,9 @@ export const ItemModal: FC<ItemModalProps> = ({ isOpen, onClose, mode, itemData:
                         <SelectValue placeholder="Chọn bậc mở khóa" />
                     </SelectTrigger>
                     <SelectContent>
-                        {TIER_NAMES.map((name, index) => (
+                        {TIER_DATA.map((tier, index) => ( // Changed to map over TIER_DATA
                         <SelectItem key={index + 1} value={String(index + 1)}>
-                            Bậc {index + 1} - {name}
+                            Bậc {index + 1} - {tier.name} {/* Used tier.name */}
                         </SelectItem>
                         ))}
                     </SelectContent>

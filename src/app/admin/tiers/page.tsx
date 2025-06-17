@@ -12,26 +12,38 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
-import { TIER_NAMES } from '@/lib/constants';
+import { TIER_DATA, type TierDetail } from '@/lib/constants'; // Import TIER_DATA
+import { cn } from '@/lib/utils';
 
-interface TierDisplayData {
+interface TierDisplayData extends TierDetail {
   tierNumber: number;
-  tierName: string;
   levelRange: string;
 }
 
 export default function AdminTiersPage() {
-  const tierData: TierDisplayData[] = TIER_NAMES.map((name, index) => {
+  const tierData: TierDisplayData[] = TIER_DATA.map((tierDetail, index) => {
     const tierNumber = index + 1;
-    const startLevel = (tierNumber - 1) * 10 + 1;
-    const endLevel = tierNumber * 10;
-    let levelRange = `Cấp ${startLevel} - ${endLevel}`;
-    if (tierNumber === TIER_NAMES.length) {
-      levelRange = `Cấp ${startLevel} trở lên`;
+    const startLevel = tierDetail.levelStart;
+    let endLevelText;
+    if (tierNumber < TIER_DATA.length) {
+      endLevelText = TIER_DATA[tierNumber].levelStart - 1;
+    } else {
+      endLevelText = "trở lên";
     }
+    
+    let levelRange = `Cấp ${startLevel}`;
+    if (endLevelText !== startLevel) {
+        if (typeof endLevelText === 'number') {
+            levelRange += ` - ${endLevelText}`;
+        } else {
+            levelRange += ` ${endLevelText}`;
+        }
+    }
+
+
     return {
+      ...tierDetail,
       tierNumber,
-      tierName: name,
       levelRange,
     };
   });
@@ -56,7 +68,8 @@ export default function AdminTiersPage() {
         <Table className="relative border-separate border-spacing-0">
           <TableHeader className="sticky top-0 bg-card z-10">
             <TableRow>
-              <TableHead className="w-[100px] text-center">Bậc Số</TableHead>
+              <TableHead className="w-[120px] text-center">Bậc Số</TableHead>
+              <TableHead className="w-[80px] text-center">Biểu Tượng</TableHead>
               <TableHead>Tên Bậc</TableHead>
               <TableHead className="w-[200px]">Phạm Vi Cấp Độ</TableHead>
             </TableRow>
@@ -64,7 +77,7 @@ export default function AdminTiersPage() {
           <TableBody>
             {tierData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   Không có dữ liệu bậc nào được cấu hình.
                 </TableCell>
               </TableRow>
@@ -72,10 +85,11 @@ export default function AdminTiersPage() {
               tierData.map((tier) => (
                 <TableRow key={tier.tierNumber}>
                   <TableCell className="text-center">
-                    <Badge className="bg-purple-500 hover:bg-purple-600 text-white text-sm px-3 py-1">
+                    <Badge className={cn("text-sm px-3 py-1 font-semibold", tier.colorClass)}>
                       Bậc {tier.tierNumber}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-2xl text-center">{tier.icon}</TableCell>
                   <TableCell className="font-medium">{tier.tierName}</TableCell>
                   <TableCell>{tier.levelRange}</TableCell>
                 </TableRow>
