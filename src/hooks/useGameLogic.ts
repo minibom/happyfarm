@@ -148,7 +148,7 @@ export const useGameLogic = () => {
 
     if (!userId) { 
       setGameState(INITIAL_GAME_STATE);
-      setGameDataLoaded(false);
+      setGameDataLoaded(false); // Reset gameDataLoaded when user logs out
       return;
     }
 
@@ -197,13 +197,11 @@ export const useGameLogic = () => {
           
           loadedState.email = user?.email || firestoreData.email || INITIAL_GAME_STATE.email;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
-
-          if (!gameDataLoaded && !authLoading && userId) {
-            loadedState.lastLogin = Date.now();
-          } else {
-            loadedState.lastLogin = firestoreData.lastLogin !== undefined ? firestoreData.lastLogin : (gameStateRef.current.lastLogin || INITIAL_GAME_STATE.lastLogin);
-          }
-          loadedState.lastUpdate = firestoreData.lastUpdate !== undefined ? firestoreData.lastUpdate : (gameStateRef.current.lastUpdate || INITIAL_GAME_STATE.lastUpdate);
+          
+          // Client reads lastLogin from Firestore, doesn't update it for session timing.
+          loadedState.lastLogin = firestoreData.lastLogin || 0; 
+          // lastUpdate is read from Firestore. Game actions will update it locally, then it's saved.
+          loadedState.lastUpdate = firestoreData.lastUpdate || 0; 
           
           finalStateToSet = loadedState;
 
@@ -211,8 +209,8 @@ export const useGameLogic = () => {
           const newInitialUserState: GameState = {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
-            lastUpdate: Date.now(),
-            lastLogin: Date.now(),
+            lastLogin: Date.now(), // Set lastLogin for new user
+            lastUpdate: Date.now(), // Set lastUpdate for new user
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             email: user?.email || undefined,
             status: 'active' as const,
@@ -236,7 +234,7 @@ export const useGameLogic = () => {
         toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
         setGameState(INITIAL_GAME_STATE);
         prevLevelRef.current = INITIAL_GAME_STATE.level;
-        if (!gameDataLoaded && !authLoading && userId) { // Ensure gameDataLoaded is set even on error to prevent re-init loops
+        if (!gameDataLoaded && !authLoading && userId) { 
           setGameDataLoaded(true);
         }
       });
