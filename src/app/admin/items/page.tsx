@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,7 +19,6 @@ import { ItemModal, type ItemModalProps } from '@/components/admin/ItemActionMod
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { TIER_NAMES } from '@/lib/constants';
 
 type ItemDataForTable = CropDetails & { id: CropId };
 
@@ -33,25 +31,6 @@ export default function AdminItemsPage() {
     itemData: { name: '', seedName: '', icon: '', timeToGrowing: 0, timeToReady: 0, harvestYield: 0, seedPrice: 0, cropPrice: 0, unlockTier: 1 }
   });
   const { toast } = useToast();
-
-  const fetchItems = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const itemsCollectionRef = collection(db, 'gameItems');
-      const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
-      const querySnapshot = await getDocs(q);
-      const fetchedItems: ItemDataForTable[] = [];
-      querySnapshot.forEach((docSnap) => {
-        fetchedItems.push({ id: docSnap.id as CropId, ...(docSnap.data() as CropDetails) });
-      });
-      setItems(fetchedItems);
-    } catch (error) {
-      console.error("Error fetching items from Firestore:", error);
-      toast({ title: "Lỗi", description: "Không thể tải danh sách vật phẩm từ database.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
 
   useEffect(() => {
     const itemsCollectionRef = collection(db, 'gameItems');
@@ -94,7 +73,8 @@ export default function AdminItemsPage() {
     }
     
     const dataToSave = { ...data };
-    dataToSave.seedName = `${effectiveId}Seed`;
+    // This logic might need adjustment if you allow changing the ID
+    dataToSave.seedName = `${effectiveId} Hạt Giống`;
 
 
     try {
@@ -126,6 +106,7 @@ export default function AdminItemsPage() {
     }
   }
 
+  // --- Màn hình Loading ---
   if (isLoading && items.length === 0) {
     return (
       <Card className="shadow-xl flex-1 flex flex-col min-h-0">
@@ -144,12 +125,16 @@ export default function AdminItemsPage() {
 
   return (
     <>
+      {/* 
+        THAY ĐỔI 1: Card là flex-container DỌC, chiếm hết không gian (flex-1)
+        và `min-h-0` để ngăn nội dung đẩy nó ra ngoài.
+      */}
       <Card className="shadow-xl flex flex-col flex-1 min-h-0">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm (Database)
+                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm ({items.length})
               </CardTitle>
               <CardDescription>
                 Quản lý cấu hình vật phẩm trực tiếp từ Firestore (collection <code>gameItems</code>).
@@ -160,13 +145,17 @@ export default function AdminItemsPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden flex flex-col">
-          <ScrollArea className="h-full border rounded-md">
-            {items.length === 0 && !isLoading && (
-                 <p className="text-center text-muted-foreground py-8">
-                    Không tìm thấy vật phẩm nào. Hãy thử đẩy dữ liệu từ trang "Cấu hình Hệ thống" hoặc tạo mới.
-                 </p>
-            )}
+        
+        {/*
+          THAY ĐỔI 2: CardContent chiếm hết không gian còn lại bên trong Card.
+          `overflow-hidden` là quan trọng để chứa `ScrollArea`.
+        */}
+        <CardContent className="flex-1 overflow-hidden">
+          {/* 
+            THAY ĐỔI 3: ScrollArea sẽ có chiều cao 100% của CardContent
+            và trở thành VÙNG CUỘN DUY NHẤT cho bảng.
+          */}
+          <ScrollArea className="h-full">
             <Table>
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
@@ -174,25 +163,31 @@ export default function AdminItemsPage() {
                   <TableHead>Tên (ID)</TableHead>
                   <TableHead>Hạt Giống</TableHead>
                   <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
-                  <TableHead className="w-[100px]">TG Lớn</TableHead>
-                  <TableHead className="w-[100px]">TG Sẵn</TableHead>
-                  <TableHead className="w-[80px]">S.Lượng</TableHead>
+                  <TableHead className="w-[100px]">TG Lớn (ms)</TableHead>
+                  <TableHead className="w-[100px]">TG Sẵn (ms)</TableHead>
+                  <TableHead className="w-[80px] text-center">S.Lượng</TableHead>
                   <TableHead className="w-[100px]">Giá Hạt</TableHead>
                   <TableHead className="w-[100px]">Giá N.Sản</TableHead>
                   <TableHead className="text-center w-[120px]">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
-                  return (
+                {items.length === 0 && !isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="h-24 text-center">
+                      Không tìm thấy vật phẩm nào. Hãy tạo một vật phẩm mới.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="text-2xl text-center">{item.icon}</TableCell>
                       <TableCell>
                         <div className="font-medium">{item.name}</div>
-                        <Badge variant="outline" className="text-xs">{item.id}</Badge>
+                        <Badge variant="outline" className="text-xs mt-1">{item.id}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-xs">{item.seedName.replace('Seed', ' Hạt Giống')}</Badge>
+                        <Badge variant="secondary" className="text-xs">{item.seedName.replace(' Hạt Giống', '')}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge className="bg-purple-500 hover:bg-purple-600 text-white">Bậc {item.unlockTier}</Badge>
@@ -200,8 +195,8 @@ export default function AdminItemsPage() {
                       <TableCell>{item.timeToGrowing.toLocaleString()}</TableCell>
                       <TableCell>{item.timeToReady.toLocaleString()}</TableCell>
                       <TableCell className="text-center">{item.harvestYield}</TableCell>
-                      <TableCell className="text-primary font-semibold">{item.seedPrice}</TableCell>
-                      <TableCell className="text-accent font-semibold">{item.cropPrice}</TableCell>
+                      <TableCell className="text-primary font-semibold">{item.seedPrice.toLocaleString()}</TableCell>
+                      <TableCell className="text-accent font-semibold">{item.cropPrice.toLocaleString()}</TableCell>
                       <TableCell className="text-center space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => openModal('view', item)} className="hover:text-primary" title="Xem chi tiết">
                           <Eye className="h-5 w-5" />
@@ -209,18 +204,21 @@ export default function AdminItemsPage() {
                          <Button variant="ghost" size="icon" onClick={() => openModal('edit', item)} className="hover:text-blue-600" title="Chỉnh sửa">
                           <Edit className="h-5 w-5" />
                         </Button>
+                        {/* Consider adding a Confirmation Dialog before deleting */}
                         <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)} className="hover:text-destructive" title="Xóa">
                           <Trash2 className="h-5 w-5" />
                         </Button>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                  ))
+                )}
               </TableBody>
             </Table>
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {/* Modal không thay đổi */}
       <ItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
