@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, Plot, CropId, InventoryItem, SeedId, CropDetails, MarketItem, TierInfo } from '@/types';
+import type { GameState, Plot, CropId, InventoryItem, SeedId, CropDetails, MarketItem, TierInfo, PlotState } from '@/types';
 import {
   INITIAL_GAME_STATE,
   LEVEL_UP_XP_THRESHOLD,
@@ -16,11 +16,11 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe, collection, getDocs } from 'firebase/firestore';
 
 export const useGameLogic = () => {
-  const { user, userId, loading: authLoading } = useAuth(); // Get user from useAuth
+  const { user, userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [gameDataLoaded, setGameDataLoaded] = useState(false);
   const [itemDataLoaded, setItemDataLoaded] = useState(false);
+  const [gameDataLoaded, setGameDataLoaded] = useState(false); // True when current user's game data is loaded/initialized
 
   const { toast } = useToast();
 
@@ -97,15 +97,16 @@ export const useGameLogic = () => {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const saveGameStateToFirestore = useCallback(() => {
-    if (userId && gameDataLoaded && itemDataLoaded) {
+    if (userId && gameDataLoaded && itemDataLoaded) { // Ensure data is loaded before attempting to save
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
+          // Use gameStateRef.current to ensure the latest state is saved, especially with debouncing
           const stateToSave = JSON.parse(JSON.stringify(gameStateRef.current, (key, value) => {
-            return value === undefined ? null : value;
+            return value === undefined ? null : value; // Convert undefined to null for Firestore
           }));
           await setDoc(gameDocRef, stateToSave);
         } catch (error) {
@@ -116,6 +117,15 @@ export const useGameLogic = () => {
     }
   }, [userId, gameDataLoaded, itemDataLoaded, toast]);
 
+
+  useEffect(() => {
+    // This effect triggers saving whenever gameState changes, IF conditions are met.
+    if (gameDataLoaded && itemDataLoaded && userId) {
+      saveGameStateToFirestore();
+    }
+  }, [gameState, gameDataLoaded, itemDataLoaded, userId, saveGameStateToFirestore]);
+
+
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level) {
       const oldTierInfo = getPlayerTierInfo(prevLevelRef.current);
@@ -125,26 +135,46 @@ export const useGameLogic = () => {
         toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được Bậc ${newTierInfo.tierName}! Các vật phẩm mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
       }
     }
-    prevLevelRef.current = gameState.level;
+    // Update prevLevelRef *after* checking, but only if gameDataLoaded to avoid issues during initial load transitions
+    if (gameDataLoaded) {
+        prevLevelRef.current = gameState.level;
+    }
   }, [gameState.level, gameDataLoaded, toast]);
 
+  // Effect to handle user authentication state changes and initial data load trigger
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+      setGameDataLoaded(false); // Reset flag while auth is in progress
+      return;
+    }
 
     let unsubscribe: Unsubscribe | undefined;
 
-    if (userId) {
+    if (!userId) { // User logged out or not yet logged in
+      setGameState(INITIAL_GAME_STATE);
+      setGameDataLoaded(false); // Data for a specific user is no longer loaded
+      // itemDataLoaded, cropData, marketItems are global, so not reset here.
+      return;
+    }
+
+    // Proceed only if:
+    // 1. User is logged in (userId is present)
+    // 2. Essential item data is loaded (itemDataLoaded and cropData are ready)
+    // 3. Game data for THIS user session hasn't been loaded yet (!gameDataLoaded)
+    if (userId && itemDataLoaded && cropData && allSeedIds.length > 0 && allCropIds.length > 0 && !gameDataLoaded) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
+        let finalStateToSet: GameState;
         if (docSnap.exists()) {
           const loadedState = docSnap.data() as GameState;
 
+          // Plots validation
           let plots = loadedState.plots || [];
           if (!Array.isArray(plots) || plots.length !== TOTAL_PLOTS) {
             plots = INITIAL_GAME_STATE.plots.map((p, i) => ({ ...p, id: i }));
           } else {
             plots = plots.map((loadedPlotData, index) => {
-              const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' };
+              const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' as PlotState };
               const newPlot: Plot = {
                 id: loadedPlotData.id !== undefined ? loadedPlotData.id : basePlot.id,
                 state: loadedPlotData.state || basePlot.state,
@@ -156,81 +186,77 @@ export const useGameLogic = () => {
           }
           loadedState.plots = plots;
 
-          const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
-          if (cropData) {
-            allSeedIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
-            allCropIds.forEach(id => validatedInventory[id] = validatedInventory[id] || 0);
+          // Inventory validation (cropData is guaranteed to be available here)
+          const validatedInventory: Inventory = {};
+          allSeedIds.forEach(id => validatedInventory[id] = 0);
+          allCropIds.forEach(id => validatedInventory[id] = 0);
+           // Apply defaults from INITIAL_GAME_STATE.inventory first
+          for (const key in INITIAL_GAME_STATE.inventory) {
+            if (Object.prototype.hasOwnProperty.call(INITIAL_GAME_STATE.inventory, key)) {
+                 validatedInventory[key as InventoryItem] = INITIAL_GAME_STATE.inventory[key as InventoryItem];
+            }
           }
-
+          // Then overwrite with loaded data for known items
           if (loadedState.inventory && typeof loadedState.inventory === 'object') {
             for (const key in loadedState.inventory) {
-              if (Object.prototype.hasOwnProperty.call(validatedInventory, key)) {
-                validatedInventory[key as InventoryItem] = loadedState.inventory[key as InventoryItem] || 0;
+              const itemKey = key as InventoryItem;
+              if (Object.prototype.hasOwnProperty.call(validatedInventory, itemKey)) {
+                validatedInventory[itemKey] = loadedState.inventory[itemKey] || 0;
               }
             }
           }
           loadedState.inventory = validatedInventory;
 
+          // Other fields validation/initialization
           loadedState.gold = typeof loadedState.gold === 'number' ? loadedState.gold : INITIAL_GAME_STATE.gold;
           loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
           loadedState.level = typeof loadedState.level === 'number' ? loadedState.level : INITIAL_GAME_STATE.level;
-          loadedState.lastUpdate = Date.now(); // Always update lastUpdate on load
           loadedState.unlockedPlotsCount = typeof loadedState.unlockedPlotsCount === 'number' && loadedState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && loadedState.unlockedPlotsCount <= TOTAL_PLOTS
             ? loadedState.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
           
-          loadedState.email = user?.email || loadedState.email || 'N/A'; // Ensure email is set
-          loadedState.lastLogin = Date.now(); // Update lastLogin on data load
-          loadedState.status = loadedState.status || 'active'; // Initialize status if missing
+          loadedState.email = user?.email || loadedState.email || 'N/A';
+          loadedState.lastLogin = Date.now();
+          loadedState.status = loadedState.status || 'active';
+          loadedState.lastUpdate = Date.now();
+          
+          finalStateToSet = loadedState;
 
-
-          setGameState(loadedState);
-          if (!gameDataLoaded) prevLevelRef.current = loadedState.level;
-        } else {
-          const newInitialState = { 
-            ...INITIAL_GAME_STATE, 
-            lastUpdate: Date.now(), 
+        } else { // Document doesn't exist, initialize new user state
+          const newInitialUserState: GameState = {
+            ...INITIAL_GAME_STATE, // Spreads INITIAL_GAME_STATE which has correctly derived inventory
+            inventory: { ...INITIAL_GAME_STATE.inventory }, // Ensure deep copy for inventory
+            lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
-            email: user?.email || 'N/A', // Set email for new user
-            lastLogin: Date.now(), // Set lastLogin for new user
-            status: 'active' as const, // Set status for new user
+            email: user?.email || 'N/A',
+            lastLogin: Date.now(),
+            status: 'active' as const,
           };
-          if (cropData) {
-              allSeedIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
-              allCropIds.forEach(id => newInitialState.inventory[id] = newInitialState.inventory[id] || 0);
-          }
-          setGameState(newInitialState);
-
-          if (!gameDataLoaded) prevLevelRef.current = newInitialState.level;
-          setDoc(gameDocRef, newInitialState);
+          finalStateToSet = newInitialUserState;
+          setDoc(gameDocRef, newInitialUserState).catch(error => {
+            console.error("Failed to create initial game state for new user:", error);
+            toast({ title: "Lỗi Tạo Dữ Liệu", description: "Không thể tạo dữ liệu ban đầu cho người chơi mới.", variant: "destructive" });
+          });
         }
-        setGameDataLoaded(true);
+        
+        setGameState(finalStateToSet);
+        prevLevelRef.current = finalStateToSet.level; // Set for the first successful load/init
+        setGameDataLoaded(true); // Mark that data for this user session is now processed
+
       }, (error) => {
         console.error("Error listening to game state:", error);
         toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
-        if (!gameDataLoaded) {
-          setGameState(INITIAL_GAME_STATE);
-          prevLevelRef.current = INITIAL_GAME_STATE.level;
-          setGameDataLoaded(true);
-        }
+        // Fallback: set to initial state and mark as loaded to prevent loops/UI hangs
+        setGameState(INITIAL_GAME_STATE);
+        prevLevelRef.current = INITIAL_GAME_STATE.level;
+        setGameDataLoaded(true);
       });
-    } else if (!authLoading && !userId) {
-      setGameState(INITIAL_GAME_STATE);
-      setGameDataLoaded(false);
-      setItemDataLoaded(false);
-      setCropData(null);
-      setMarketItems(null);
-    }
-    return () => {
-        if (unsubscribe) unsubscribe();
-    };
-  }, [userId, authLoading, toast, cropData, allSeedIds, allCropIds, gameDataLoaded, user]);
 
-  useEffect(() => {
-    if (gameDataLoaded && itemDataLoaded && userId) {
-      saveGameStateToFirestore();
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
-  }, [gameState, gameDataLoaded, itemDataLoaded, userId, saveGameStateToFirestore]);
+  }, [userId, authLoading, itemDataLoaded, cropData, allSeedIds, allCropIds, user, toast, gameDataLoaded]); // gameDataLoaded is a key dependency here to control the one-time setup
 
   useEffect(() => {
      setIsInitialized(gameDataLoaded && itemDataLoaded && !!userId && !authLoading);
@@ -241,24 +267,28 @@ export const useGameLogic = () => {
 
     const gameLoop = setInterval(() => {
       setGameState(prev => {
-        if (!prev.plots) return prev;
+        // Ensure prev and its properties are defined before proceeding
+        if (!prev || !prev.plots || !cropData) return prev;
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
           if (plot.id >= prev.unlockedPlotsCount) return plot;
 
-          if (plot.state === 'planted' && plot.plantedAt && plot.cropId && cropData[plot.cropId]) {
-            const cropDetail = cropData[plot.cropId];
-            if (now >= plot.plantedAt + cropDetail.timeToGrowing) {
+          const currentCropDetail = plot.cropId ? cropData[plot.cropId] : null;
+          if (!currentCropDetail) return plot; // No crop or invalid cropId for this plot
+
+          if (plot.state === 'planted' && plot.plantedAt) {
+            if (now >= plot.plantedAt + currentCropDetail.timeToGrowing) {
               return { ...plot, state: 'growing' as const };
             }
-          } else if (plot.state === 'growing' && plot.plantedAt && plot.cropId && cropData[plot.cropId]) {
-            const cropDetail = cropData[plot.cropId];
-            if (now >= plot.plantedAt + cropDetail.timeToReady) {
+          } else if (plot.state === 'growing' && plot.plantedAt) {
+            if (now >= plot.plantedAt + currentCropDetail.timeToReady) { // timeToReady is total time from planting
               return { ...plot, state: 'ready_to_harvest' as const };
             }
           }
           return plot;
         });
+
+        // Only update state if plots actually changed to avoid unnecessary re-renders
         if (JSON.stringify(updatedPlots) !== JSON.stringify(prev.plots)) {
           return { ...prev, plots: updatedPlots, lastUpdate: now };
         }
@@ -267,7 +297,7 @@ export const useGameLogic = () => {
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [isInitialized, userId, cropData]);
+  }, [isInitialized, userId, cropData]); // cropData dependency is important for game loop logic
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
@@ -309,7 +339,7 @@ export const useGameLogic = () => {
         p.id === plotId ? { ...plotToUpdate, state: 'planted' as const, cropId, plantedAt: Date.now() } : p
       );
       const newInventory = { ...prev.inventory, [seedId]: prev.inventory[seedId] - 1 };
-      return { ...prev, plots: newPlots, inventory: newInventory };
+      return { ...prev, plots: newPlots, inventory: newInventory, lastUpdate: Date.now() };
     });
     toast({ title: "Đã Trồng!", description: `Đã trồng ${cropDetail.name} trên thửa đất ${plotId + 1}.` });
   }, [toast, cropData]);
@@ -333,13 +363,14 @@ export const useGameLogic = () => {
     }
 
     const cropDetail = cropData[plotToHarvest.cropId];
-    const earnedXp = cropDetail.harvestYield * 5;
+    const earnedXp = cropDetail.harvestYield * 5; // Example XP calculation
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
+          // Reset plot state correctly, removing crop-specific data
           const { cropId: oldCropId, plantedAt, ...restOfPlot } = p;
-          return { ...restOfPlot, state: 'empty' as const };
+          return { ...restOfPlot, state: 'empty' as const, cropId: undefined, plantedAt: undefined };
         }
         return p;
       });
@@ -356,7 +387,7 @@ export const useGameLogic = () => {
         newLevel += 1;
         xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
       }
-      return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel };
+      return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel, lastUpdate: Date.now() };
     });
 
     toast({ title: "Đã Thu Hoạch!", description: `Thu hoạch được ${cropDetail.harvestYield} ${cropDetail.name} và nhận được ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
@@ -389,10 +420,10 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev;
+      if (prev.gold < totalCost) return prev; // Double check gold before state update
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
-      return { ...prev, gold: prev.gold - totalCost, inventory: newInventory };
+      return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, lastUpdate: Date.now() };
     });
 
     toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${marketItemInfo.name}.`, className: "bg-accent text-accent-foreground" });
@@ -413,11 +444,11 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev;
+      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check inventory
       const totalGain = quantity * price;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
-      return { ...prev, gold: prev.gold + totalGain, inventory: newInventory };
+      return { ...prev, gold: prev.gold + totalGain, inventory: newInventory, lastUpdate: Date.now() };
     });
     toast({ title: "Đã Bán!", description: `Bán ${quantity} x ${itemName}.`, className: "bg-primary text-primary-foreground" });
   }, [toast, marketItems]);
@@ -443,6 +474,7 @@ export const useGameLogic = () => {
       ...prev,
       gold: prev.gold - cost,
       unlockedPlotsCount: prev.unlockedPlotsCount + 1,
+      lastUpdate: Date.now(),
     }));
     toast({ title: "Mở Khóa Thành Công!", description: `Đã mở khóa ô đất ${plotIdToUnlock + 1}.`, className: "bg-accent text-accent-foreground" });
   }, [toast]);
@@ -463,3 +495,5 @@ export const useGameLogic = () => {
     allCropIds,
   };
 };
+
+    
