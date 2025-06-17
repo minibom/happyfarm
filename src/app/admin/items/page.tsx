@@ -22,6 +22,16 @@ import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, orderBy
 
 type ItemDataForTable = CropDetails & { id: CropId };
 
+const formatMillisecondsToTime = (ms: number): string => {
+  if (isNaN(ms) || ms < 0) {
+    return '00:00';
+  }
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
 export default function AdminItemsPage() {
   const [items, setItems] = useState<ItemDataForTable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,7 +83,7 @@ export default function AdminItemsPage() {
     }
     
     const dataToSave = { ...data };
-    dataToSave.seedName = `${effectiveId} Hạt Giống`;
+    dataToSave.seedName = `${effectiveId}Seed`;
 
 
     try {
@@ -148,8 +158,8 @@ export default function AdminItemsPage() {
                   <TableHead>Tên (ID)</TableHead>
                   <TableHead>Hạt Giống</TableHead>
                   <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
-                  <TableHead className="w-[100px]">TG Lớn (ms)</TableHead>
-                  <TableHead className="w-[100px]">TG Sẵn (ms)</TableHead>
+                  <TableHead className="w-[120px]">TG Lớn (mm:ss)</TableHead>
+                  <TableHead className="w-[120px]">TG Sẵn (mm:ss)</TableHead>
                   <TableHead className="w-[80px] text-center">S.Lượng</TableHead>
                   <TableHead className="w-[100px]">Giá Hạt</TableHead>
                   <TableHead className="w-[100px]">Giá N.Sản</TableHead>
@@ -177,8 +187,8 @@ export default function AdminItemsPage() {
                       <TableCell className="text-center">
                         <Badge className="bg-purple-500 hover:bg-purple-600 text-white">Bậc {item.unlockTier}</Badge>
                       </TableCell>
-                      <TableCell>{item.timeToGrowing.toLocaleString()}</TableCell>
-                      <TableCell>{item.timeToReady.toLocaleString()}</TableCell>
+                      <TableCell>{formatMillisecondsToTime(item.timeToGrowing)}</TableCell>
+                      <TableCell>{formatMillisecondsToTime(item.timeToReady)}</TableCell>
                       <TableCell className="text-center">{item.harvestYield}</TableCell>
                       <TableCell className="text-primary font-semibold">{item.seedPrice.toLocaleString()}</TableCell>
                       <TableCell className="text-accent font-semibold">{item.cropPrice.toLocaleString()}</TableCell>
