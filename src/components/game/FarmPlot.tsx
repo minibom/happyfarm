@@ -231,7 +231,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
                 )}
               </div>
             </PopoverTrigger>
-            {!isLocked && plot.state === 'empty' && !isGloballyPlanting && cropData && (
+            {!isLocked && plot.state === 'empty' && !isGloballyPlanting && !isGloballyHarvesting && cropData && (
               <PopoverContent className="w-auto p-2" side="bottom" align="center">
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
