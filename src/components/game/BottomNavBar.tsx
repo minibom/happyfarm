@@ -4,7 +4,7 @@
 import type { FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +21,8 @@ import {
 import type { SeedId, Inventory, CropId } from '@/types';
 import { CROP_DATA } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface BottomNavBarProps {
   onOpenInventory: () => void;
@@ -46,6 +48,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   inventory,
 }) => {
   const router = useRouter();
+  const { logOut } = useAuth();
+  const { toast } = useToast();
 
   const getCropInfo = (seedId: SeedId) => {
     const cropId = seedId.replace('Seed', '') as CropId;
@@ -56,6 +60,17 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
   const handleAdminNavigation = () => {
     router.push('/admin/items');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      toast({ title: "Đã Đăng Xuất", description: "Bạn đã đăng xuất thành công." });
+      router.push('/login'); // Ensure redirection after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({ title: "Đăng Xuất Thất Bại", description: "Không thể đăng xuất. Vui lòng thử lại.", variant: "destructive" });
+    }
   };
 
   return (
@@ -159,22 +174,36 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleAdminNavigation}
-                size="icon"
-                variant="outline"
-                className="p-2.5 h-12 w-12 rounded-full shadow-md"
-                aria-label="Cài Đặt"
-              >
-                <Settings className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Cài Đặt</p>
-            </TooltipContent>
-          </Tooltip>
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                 <DropdownMenuTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="p-2.5 h-12 w-12 rounded-full shadow-md"
+                        aria-label="Cài Đặt & Quản trị"
+                    >
+                        <Settings className="h-5 w-5" />
+                    </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Cài Đặt & Quản trị</p>
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="mb-2">
+                <DropdownMenuItem onClick={handleAdminNavigation}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    <span>Vào trang Admin</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Đăng Xuất</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
         </div>
       </div>
