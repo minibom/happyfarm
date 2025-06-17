@@ -1,14 +1,13 @@
 
 import type { FC } from 'react';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Sprout, Hand, Brain } from 'lucide-react';
+import { Sprout, Hand, Brain } from 'lucide-react';
 import type { CropId, SeedId } from '@/types';
 import { CROP_DATA } from '@/lib/constants';
 
 interface ActionButtonsProps {
   onTogglePlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
-  onOpenMarket: () => void;
   onOpenAdvisor: () => void;
   availableSeeds: SeedId[];
   isPlanting: boolean;
@@ -19,7 +18,6 @@ interface ActionButtonsProps {
 const ActionButtons: FC<ActionButtonsProps> = ({
   onTogglePlantMode,
   onToggleHarvestMode,
-  onOpenMarket,
   onOpenAdvisor,
   availableSeeds,
   isPlanting,
@@ -54,9 +52,6 @@ const ActionButtons: FC<ActionButtonsProps> = ({
         className="w-full"
       >
         <Hand className="mr-2 h-5 w-5" /> Harvest
-      </Button>
-      <Button onClick={onOpenMarket} variant="outline" className="w-full">
-        <ShoppingCart className="mr-2 h-5 w-5" /> Market
       </Button>
       <Button onClick={onOpenAdvisor} variant="outline" className="w-full">
         <Brain className="mr-2 h-5 w-5" /> Advisor

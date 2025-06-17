@@ -5,15 +5,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
 import FarmGrid from '@/components/game/FarmGrid';
-import InventoryDisplay from '@/components/game/InventoryDisplay';
 import ActionButtons from '@/components/game/ActionButtons';
 import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
 import ItemDescriptionDialog from '@/components/game/ItemDescriptionDialog';
+import BottomNavBar from '@/components/game/BottomNavBar';
+import InventoryModal from '@/components/game/InventoryModal';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { ALL_SEED_IDS } from '@/lib/constants';
+import { ALL_SEED_IDS, MARKET_ITEMS } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 
@@ -26,7 +27,7 @@ export default function HomePage() {
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized, // This now also considers userId and authLoading from useGameLogic
+    isInitialized,
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
@@ -38,6 +39,7 @@ export default function HomePage() {
   const [showMarket, setShowMarket] = useState(false);
   const [showAdvisor, setShowAdvisor] = useState(false);
   const [showItemDescriptionModal, setShowItemDescriptionModal] = useState(false);
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -109,17 +111,19 @@ export default function HomePage() {
           <ActionButtons
             onTogglePlantMode={togglePlantMode}
             onToggleHarvestMode={toggleHarvestMode}
-            onOpenMarket={() => setShowMarket(true)}
             onOpenAdvisor={() => { fetchAdvisorTip(); setShowAdvisor(true); }}
             availableSeeds={availableSeedsForPlanting}
             isPlanting={currentAction === 'planting'}
             isHarvesting={currentAction === 'harvesting'}
             selectedSeed={selectedSeedToPlant}
           />
-          <InventoryDisplay inventory={gameState.inventory} />
-          {/* Reset Game button removed */}
         </aside>
       </main>
+
+      <BottomNavBar 
+        onOpenInventory={() => setShowInventoryModal(true)}
+        onOpenMarket={() => setShowMarket(true)}
+      />
 
       <MarketModal
         isOpen={showMarket}
@@ -144,6 +148,11 @@ export default function HomePage() {
           clearNewItemDescription();
         }}
         item={newItemDescription}
+      />
+      <InventoryModal
+        isOpen={showInventoryModal}
+        onClose={() => setShowInventoryModal(false)}
+        inventory={gameState.inventory}
       />
     </div>
   );
