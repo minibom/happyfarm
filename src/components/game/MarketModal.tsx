@@ -63,7 +63,7 @@ const MarketModal: FC<MarketModalProps> = ({
   const seedsToDisplay = useMemo(() => {
     if (!marketItems || !cropData) return [];
     const filteredSeeds = marketItems.filter(item =>
-      item.type === 'seed' && (item.unlockTier <= playerTier || item.unlockTier === playerTier + 1)
+      item.type === 'seed' // && (item.unlockTier <= playerTier || item.unlockTier === playerTier + 1) // Removed tier filtering here to show all, lock status handles interaction
     );
     return filteredSeeds.sort((a, b) => {
         const aIsLocked = a.unlockTier > playerTier;
@@ -162,140 +162,143 @@ const MarketModal: FC<MarketModalProps> = ({
 
   const renderSeedMarketGrid = () => (
       <TooltipProvider>
-        {/* Wrapper div for the grid */}
-        <div className="grid w-full grid-cols-2 sm:grid-cols-3 gap-3 p-1">
-          {seedsToDisplay.map(item => {
-            const quantity = quantities[item.id] || 0;
-            const isLockedForPurchase = playerTier < item.unlockTier;
-            const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
+        <div className="w-full"> {/* Wrapper to define width for the grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-1">
+            {seedsToDisplay.map(item => {
+              const quantity = quantities[item.id] || 0;
+              const isLockedForPurchase = playerTier < item.unlockTier;
+              const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
 
-            const itemIcon = item.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
-            const cropDetail = cropData[item.id.replace('Seed', '') as CropId];
-            const totalHarvestTime = cropDetail ? cropDetail.timeToGrowing + cropDetail.timeToReady : 0;
-            const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
+              const itemIcon = item.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
+              const cropDetail = cropData[item.id.replace('Seed', '') as CropId];
+              const totalHarvestTime = cropDetail ? cropDetail.timeToGrowing + cropDetail.timeToReady : 0;
+              const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
 
-            return (
-              <Card key={item.id} className={cn("overflow-hidden shadow-md flex flex-col", isLockedForPurchase && "bg-muted/60 opacity-70")}>
-                <CardContent className="p-2 flex flex-col items-center flex-grow">
-                  <div className="relative w-full flex justify-center">
-                    {typeof itemIcon === 'string' ? <span className="text-3xl my-1">{itemIcon}</span> : <div className="my-1">{itemIcon}</div>}
-                    {isLockedForPurchase && (
-                      <div className="absolute top-0 right-0 p-1 bg-black/50 rounded-bl-md">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Lock className="w-3 h-3 text-white cursor-help" />
-                            </TooltipTrigger>
-                             {requiredTierInfo && (
-                                <TooltipContent>
-                                    <p>Mở khóa ở {requiredTierInfo.tierName} (Bậc {item.unlockTier})</p>
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={item.name}>{item.name}</span>
-                  <div className="flex items-center gap-1 text-sm text-primary my-0.5">
-                    <Coins className="w-4 h-4" />
-                    <span>{item.price}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{formattedHarvestTime}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-auto">
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
-                      <MinusCircle className="w-4 h-4" />
-                    </Button>
-                    <Input
-                      type="number"
-                      value={isLockedForPurchase ? 0 : quantity}
-                      onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
-                      className="h-7 w-10 text-center px-1 text-sm"
-                      readOnly={isLockedForPurchase}
-                      min="0"
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
-                      <PlusCircle className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onBuyItem(item.id, quantity, item.price);
-                    setQuantities(prev => ({ ...prev, [item.id]: 0 }));
-                  }}
-                  disabled={isLockedForPurchase || quantity === 0 || playerGold < item.price * quantity}
-                  className="w-full rounded-t-none bg-accent hover:bg-accent/90 text-xs py-1 h-auto"
-                >
-                  Mua
-                </Button>
-              </Card>
-            );
-          })}
-           {seedsToDisplay.length === 0 && (
-                <p className="text-center text-muted-foreground py-4 col-span-full">Không có hạt giống nào để mua.</p>
-            )}
+              return (
+                <Card key={item.id} className={cn("overflow-hidden shadow-md flex flex-col", isLockedForPurchase && "bg-muted/60 opacity-70")}>
+                  <CardContent className="p-2 flex flex-col items-center flex-grow">
+                    <div className="relative w-full flex justify-center">
+                      {typeof itemIcon === 'string' ? <span className="text-3xl my-1">{itemIcon}</span> : <div className="my-1">{itemIcon}</div>}
+                      {isLockedForPurchase && (
+                        <div className="absolute top-0 right-0 p-1 bg-black/50 rounded-bl-md">
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Lock className="w-3 h-3 text-white cursor-help" />
+                              </TooltipTrigger>
+                              {requiredTierInfo && (
+                                  <TooltipContent>
+                                      <p>Mở khóa ở {requiredTierInfo.tierName} (Bậc {item.unlockTier})</p>
+                                  </TooltipContent>
+                              )}
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={item.name}>{item.name}</span>
+                    <div className="flex items-center gap-1 text-sm text-primary my-0.5">
+                      <Coins className="w-4 h-4" />
+                      <span>{item.price}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{formattedHarvestTime}</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-auto">
+                      <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
+                        <MinusCircle className="w-4 h-4" />
+                      </Button>
+                      <Input
+                        type="number"
+                        value={isLockedForPurchase ? 0 : quantity}
+                        onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
+                        className="h-7 w-10 text-center px-1 text-sm"
+                        readOnly={isLockedForPurchase}
+                        min="0"
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-6 w-6" disabled={isLockedForPurchase}>
+                        <PlusCircle className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onBuyItem(item.id, quantity, item.price);
+                      setQuantities(prev => ({ ...prev, [item.id]: 0 }));
+                    }}
+                    disabled={isLockedForPurchase || quantity === 0 || playerGold < item.price * quantity}
+                    className="w-full rounded-t-none bg-accent hover:bg-accent/90 text-xs py-1 h-auto"
+                  >
+                    Mua
+                  </Button>
+                </Card>
+              );
+            })}
+            {seedsToDisplay.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4 col-span-full">Không có hạt giống nào để mua.</p>
+              )}
+          </div>
         </div>
       </TooltipProvider>
   );
 
   const renderCropSellList = () => (
-      <div className="w-full space-y-3 p-1">
-        {cropsToSell.map(item => {
-          const quantity = quantities[item.id] || 0;
-          const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
-          return (
-            <Card key={item.id} className="overflow-hidden shadow">
-              <CardContent className="p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="flex items-center gap-2">
-                    {typeof itemIcon === 'string' ? <span className="text-xl">{itemIcon}</span> : itemIcon}
-                    <span className="font-semibold">{item.name}</span>
+      <div className="w-full"> {/* Wrapper to define width for the list */}
+        <div className="space-y-3 p-1">
+          {cropsToSell.map(item => {
+            const quantity = quantities[item.id] || 0;
+            const itemIcon = item.icon || <Coins className="w-5 h-5 text-green-600"/>;
+            return (
+              <Card key={item.id} className="overflow-hidden shadow">
+                <CardContent className="p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      {typeof itemIcon === 'string' ? <span className="text-xl">{itemIcon}</span> : itemIcon}
+                      <span className="font-semibold">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-primary">
+                      <Coins className="w-4 h-4" />
+                      <span>{item.price}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-primary">
-                    <Coins className="w-4 h-4" />
-                    <span>{item.price}</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-7 w-7">
-                      <MinusCircle className="w-5 h-5" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, -1, item.type, item.unlockTier)} className="h-7 w-7">
+                        <MinusCircle className="w-5 h-5" />
+                      </Button>
+                      <Input
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
+                        className="h-8 w-12 text-center px-1"
+                        min="0"
+                        max={playerInventory[item.id] || 0}
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-7 w-7">
+                        <PlusCircle className="w-5 h-5" />
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        onSellItem(item.id, quantity, item.price);
+                        setQuantities(prev => ({ ...prev, [item.id]: 0 }));
+                      }}
+                      disabled={quantity === 0 || (playerInventory[item.id] || 0) < quantity}
+                      className='bg-blue-500 hover:bg-blue-500/90'
+                    >
+                      Bán
                     </Button>
-                    <Input
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => handleQuantityInputChange(item.id, e.target.value, item.type, item.unlockTier)}
-                      className="h-8 w-12 text-center px-1"
-                      min="0"
-                      max={playerInventory[item.id] || 0}
-                    />
-                    <Button variant="ghost" size="icon" onClick={() => handleQuantityButtonClick(item.id, 1, item.type, item.unlockTier)} className="h-7 w-7">
-                      <PlusCircle className="w-5 h-5" />
-                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      onSellItem(item.id, quantity, item.price);
-                      setQuantities(prev => ({ ...prev, [item.id]: 0 }));
-                    }}
-                    disabled={quantity === 0 || (playerInventory[item.id] || 0) < quantity}
-                    className='bg-blue-500 hover:bg-blue-500/90'
-                  >
-                    Bán
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Bạn có: {playerInventory[item.id] || 0}</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {cropsToSell.length === 0 && (
-            <p className="text-center text-muted-foreground py-4">Không có nông sản nào trong kho để bán.</p>
-        )}
+                  <p className="text-xs text-muted-foreground mt-1">Bạn có: {playerInventory[item.id] || 0}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {cropsToSell.length === 0 && (
+              <p className="text-center text-muted-foreground py-4">Không có nông sản nào trong kho để bán.</p>
+          )}
+        </div>
       </div>
   );
 
@@ -317,19 +320,12 @@ const MarketModal: FC<MarketModalProps> = ({
             <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
           </TabsList>
           <TabsContent value="buy" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-grow">
-             {/* The grid is now the direct child of ScrollArea.
-                 If Radix ScrollArea styles its direct child with `display: table`,
-                 this change might not be enough.
-                 However, the issue is likely that the grid itself overflows its container.
-                 The `w-full` on the grid div should ideally prevent it from
-                 being wider than the ScrollArea's viewport.
-              */}
+            <ScrollArea className="h-full">
               {renderSeedMarketGrid()}
             </ScrollArea>
           </TabsContent>
           <TabsContent value="sell" className="mt-4 flex-grow min-h-0 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-grow">
+            <ScrollArea className="h-full">
               {renderCropSellList()}
             </ScrollArea>
           </TabsContent>
@@ -343,3 +339,4 @@ const MarketModal: FC<MarketModalProps> = ({
 };
 
 export default MarketModal;
+
