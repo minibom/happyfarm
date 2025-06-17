@@ -5,17 +5,18 @@ import {
   INITIAL_GAME_STATE,
   CROP_DATA,
   LEVEL_UP_XP_THRESHOLD,
-  LOCAL_STORAGE_GAME_KEY,
   TOTAL_PLOTS,
-  ALL_CROP_IDS,
-  ALL_SEED_IDS,
   MARKET_ITEMS,
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { getFarmingAdvice, type FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor';
 import { generateItemDescription, type ItemDescriptionInput } from '@/ai/flows/ai-generated-item-descriptions';
+import { useAuth } from './useAuth';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 
 export const useGameLogic = () => {
+  const { userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [isInitialized, setIsInitialized] = useState(false);
   const [advisorTip, setAdvisorTip] = useState<string | null>(null);
@@ -25,6 +26,31 @@ export const useGameLogic = () => {
   const { toast } = useToast();
 
   const prevLevelRef = useRef(gameState.level);
+  const gameStateRef = useRef(gameState); // Ref to hold current gameState for debounced save
+
+  // Update gameStateRef whenever gameState changes
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  // Debounced save to Firestore
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveGameStateToFirestore = useCallback(() => {
+    if (userId && isInitialized) {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(async () => {
+        try {
+          const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
+          await setDoc(gameDocRef, { ...gameStateRef.current, lastUpdate: Date.now() });
+        } catch (error) {
+          console.error("Failed to save game state:", error);
+          toast({ title: "Save Error", description: "Could not save your game progress to the cloud.", variant: "destructive" });
+        }
+      }, 1000); // Debounce save by 1 second
+    }
+  }, [userId, isInitialized, toast]);
 
   // Effect for Level Up Toast
   useEffect(() => {
@@ -34,56 +60,88 @@ export const useGameLogic = () => {
     prevLevelRef.current = gameState.level;
   }, [gameState.level, isInitialized, toast]);
 
-  // Load game state from local storage
+  // Load game state from Firestore and set up real-time listener
   useEffect(() => {
-    const savedGame = localStorage.getItem(LOCAL_STORAGE_GAME_KEY);
-    if (savedGame) {
-      try {
-        const parsedState: GameState = JSON.parse(savedGame);
-        if (parsedState.plots.length !== TOTAL_PLOTS) {
-          parsedState.plots = INITIAL_GAME_STATE.plots;
-        } else {
-          parsedState.plots = parsedState.plots.map((plot, index) => ({
-            ...plot,
-            id: plot.id !== undefined ? plot.id : index,
-          }));
-        }
+    if (authLoading) return; // Wait for auth to finish loading
 
-        const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
-        for (const key in parsedState.inventory) {
-          if (Object.prototype.hasOwnProperty.call(validatedInventory, key)) {
-            validatedInventory[key as InventoryItem] = parsedState.inventory[key as InventoryItem] || 0;
+    if (userId) {
+      const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
+      const unsubscribe: Unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const loadedState = docSnap.data() as GameState;
+          
+          // Validate and merge plots
+          let plots = loadedState.plots || [];
+          if (!Array.isArray(plots) || plots.length !== TOTAL_PLOTS) {
+            plots = INITIAL_GAME_STATE.plots.map((p, i) => ({ ...p, id: plots[i]?.id ?? i }));
+          } else {
+            plots = plots.map((plot, index) => ({
+              ...INITIAL_GAME_STATE.plots[index], // Start with default structure
+              ...plot, // Override with loaded data
+              id: plot.id !== undefined ? plot.id : index,
+            }));
           }
-        }
-        parsedState.inventory = validatedInventory;
-        
-        setGameState(parsedState);
-        prevLevelRef.current = parsedState.level; // Initialize prevLevelRef with loaded level
-      } catch (error) {
-        console.error("Failed to parse saved game state:", error);
-        setGameState(INITIAL_GAME_STATE);
-        prevLevelRef.current = INITIAL_GAME_STATE.level;
-      }
-    } else {
-      setGameState(INITIAL_GAME_STATE);
-      prevLevelRef.current = INITIAL_GAME_STATE.level;
-    }
-    setIsInitialized(true);
-  }, []);
+          loadedState.plots = plots;
+          
+          // Validate and merge inventory
+          const validatedInventory = { ...INITIAL_GAME_STATE.inventory };
+          if (loadedState.inventory && typeof loadedState.inventory === 'object') {
+            for (const key in loadedState.inventory) {
+              if (Object.prototype.hasOwnProperty.call(validatedInventory, key)) {
+                validatedInventory[key as InventoryItem] = loadedState.inventory[key as InventoryItem] || 0;
+              }
+            }
+          }
+          loadedState.inventory = validatedInventory;
 
-  // Save game state to local storage
-  useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem(LOCAL_STORAGE_GAME_KEY, JSON.stringify({ ...gameState, lastUpdate: Date.now() }));
+          // Ensure essential fields have defaults
+          loadedState.gold = typeof loadedState.gold === 'number' ? loadedState.gold : INITIAL_GAME_STATE.gold;
+          loadedState.xp = typeof loadedState.xp === 'number' ? loadedState.xp : INITIAL_GAME_STATE.xp;
+          loadedState.level = typeof loadedState.level === 'number' ? loadedState.level : INITIAL_GAME_STATE.level;
+          loadedState.lastUpdate = typeof loadedState.lastUpdate === 'number' ? loadedState.lastUpdate : Date.now();
+
+          setGameState(loadedState);
+          prevLevelRef.current = loadedState.level;
+        } else {
+          // No existing game state, use initial and save it
+          setGameState(INITIAL_GAME_STATE);
+          prevLevelRef.current = INITIAL_GAME_STATE.level;
+          setDoc(gameDocRef, { ...INITIAL_GAME_STATE, lastUpdate: Date.now() });
+        }
+        setIsInitialized(true);
+      }, (error) => {
+        console.error("Error listening to game state:", error);
+        toast({ title: "Connection Error", description: "Could not sync game data.", variant: "destructive" });
+        // Fallback to initial state if listener fails critically on load
+        if (!isInitialized) {
+            setGameState(INITIAL_GAME_STATE);
+            prevLevelRef.current = INITIAL_GAME_STATE.level;
+            setIsInitialized(true);
+        }
+      });
+      return () => unsubscribe();
+    } else if (!authLoading && !userId) {
+      // User is logged out, reset to initial state (or handle as needed)
+      setGameState(INITIAL_GAME_STATE);
+      setIsInitialized(false); // Or true, depending on desired behavior for logged-out state
     }
-  }, [gameState, isInitialized]);
+  }, [userId, authLoading, toast, isInitialized]);
+
+
+  // Save game state to Firestore (debounced)
+  useEffect(() => {
+    if (isInitialized && userId) {
+      saveGameStateToFirestore();
+    }
+  }, [gameState, isInitialized, userId, saveGameStateToFirestore]);
 
   // Game loop for plot updates
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || !userId) return;
 
     const gameLoop = setInterval(() => {
       setGameState(prev => {
+        if (!prev.plots) return prev; // Guard against undefined plots
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
           if (plot.state === 'planted' && plot.plantedAt && plot.cropId) {
@@ -99,12 +157,16 @@ export const useGameLogic = () => {
           }
           return plot;
         });
-        return { ...prev, plots: updatedPlots, lastUpdate: now };
+        // Only update if plots actually changed to avoid unnecessary re-renders/saves
+        if (JSON.stringify(updatedPlots) !== JSON.stringify(prev.plots)) {
+          return { ...prev, plots: updatedPlots, lastUpdate: now };
+        }
+        return prev;
       });
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [isInitialized]);
+  }, [isInitialized, userId]);
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const cropId = seedId.replace('Seed', '') as CropId;
@@ -113,19 +175,21 @@ export const useGameLogic = () => {
       return;
     }
 
-    if (gameState.inventory[seedId] <= 0) {
+    const currentGameState = gameStateRef.current; // Use ref for up-to-date check
+
+    if (currentGameState.inventory[seedId] <= 0) {
       toast({ title: "No Seeds", description: `You don't have any ${CROP_DATA[cropId].name} seeds. Buy some from the market.`, variant: "destructive" });
       return;
     }
     
-    const currentPlot = gameState.plots[plotId];
+    const currentPlot = currentGameState.plots[plotId];
     if (currentPlot.state !== 'empty') {
       toast({ title: "Plot Occupied", description: "This plot is not empty.", variant: "destructive" });
       return;
     }
 
     setGameState(prev => {
-      const plotToUpdate = prev.plots[plotId]; // Use plot from prev state for update
+      const plotToUpdate = prev.plots[plotId];
       const newPlots = [...prev.plots];
       newPlots[plotId] = { ...plotToUpdate, state: 'planted', cropId, plantedAt: Date.now() };
       const newInventory = { ...prev.inventory, [seedId]: prev.inventory[seedId] - 1 };
@@ -133,10 +197,12 @@ export const useGameLogic = () => {
     });
     
     toast({ title: "Planted!", description: `${CROP_DATA[cropId].name} planted on plot ${plotId + 1}.` });
-  }, [gameState.inventory, gameState.plots, toast]);
+  }, [toast]);
 
   const harvestCrop = useCallback(async (plotId: number) => {
-    const currentPlot = gameState.plots[plotId];
+    const currentGameState = gameStateRef.current;
+    const currentPlot = currentGameState.plots[plotId];
+
     if (currentPlot.state !== 'ready_to_harvest' || !currentPlot.cropId) {
       toast({ title: "Not Ready", description: "This plot is not ready for harvest.", variant: "destructive" });
       return;
@@ -148,7 +214,7 @@ export const useGameLogic = () => {
     setGameState(prev => {
       const plotToUpdate = prev.plots[plotId];
       const newPlots = [...prev.plots];
-      newPlots[plotId] = { ...plotToUpdate, state: 'empty', cropId: undefined, plantedAt: undefined };
+      newPlots[plotId] = { ...plotToUpdate, id: plotToUpdate.id, state: 'empty', cropId: undefined, plantedAt: undefined };
       
       const newInventory = { ...prev.inventory };
       newInventory[plotToUpdate.cropId!] = (newInventory[plotToUpdate.cropId!] || 0) + cropDetail.harvestYield;
@@ -158,6 +224,7 @@ export const useGameLogic = () => {
       if (newXp >= LEVEL_UP_XP_THRESHOLD(newLevel)) {
         newXp -= LEVEL_UP_XP_THRESHOLD(newLevel);
         newLevel += 1;
+        // Level up toast is handled by useEffect
       }
       return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel };
     });
@@ -174,37 +241,39 @@ export const useGameLogic = () => {
     } finally {
       setIsDescriptionLoading(false);
     }
-  }, [gameState.plots, toast]);
+  }, [toast]);
 
   const buyItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
     const totalCost = quantity * price;
+    const currentGameState = gameStateRef.current;
 
-    if (gameState.gold < totalCost) {
+    if (currentGameState.gold < totalCost) {
       toast({ title: "Not Enough Gold", description: "You don't have enough gold to buy this.", variant: "destructive" });
       return;
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev; // Double check with prev state for atomicity
+      if (prev.gold < totalCost) return prev; 
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory };
     });
 
     toast({ title: "Purchased!", description: `Bought ${quantity} x ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId}.`, className: "bg-accent text-accent-foreground" });
-  }, [gameState.gold, toast]);
+  }, [toast]);
 
   const sellItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
+    const currentGameState = gameStateRef.current;
 
-    if ((gameState.inventory[itemId] || 0) < quantity) {
+    if ((currentGameState.inventory[itemId] || 0) < quantity) {
       toast({ title: "Not Enough Items", description: `You don't have ${quantity} ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId} to sell.`, variant: "destructive" });
       return;
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check
+      if ((prev.inventory[itemId] || 0) < quantity) return prev;
       const totalGain = quantity * price;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
@@ -212,25 +281,26 @@ export const useGameLogic = () => {
     });
 
     toast({ title: "Sold!", description: `Sold ${quantity} x ${MARKET_ITEMS.find(i => i.id === itemId)?.name || itemId}.`, className: "bg-primary text-primary-foreground" });
-  }, [gameState.inventory, toast]);
+  }, [toast]);
 
   const fetchAdvisorTip = useCallback(async () => {
     setIsAdvisorLoading(true);
     try {
+      const currentGameState = gameStateRef.current;
       const marketPrices: Record<string, number> = {};
       MARKET_ITEMS.forEach(item => marketPrices[item.id] = item.price);
 
-      const plotsForAI = gameState.plots.map(p => ({
+      const plotsForAI = currentGameState.plots.map(p => ({
         state: p.state,
         crop: p.cropId ? CROP_DATA[p.cropId].name : undefined,
       }));
 
       const adviceInput: FarmingAdviceInput = {
-        gold: gameState.gold,
-        xp: gameState.xp,
-        level: gameState.level,
+        gold: currentGameState.gold,
+        xp: currentGameState.xp,
+        level: currentGameState.level,
         plots: plotsForAI,
-        inventory: gameState.inventory,
+        inventory: currentGameState.inventory,
         marketPrices,
       };
       const tip = await getFarmingAdvice(adviceInput);
@@ -242,35 +312,20 @@ export const useGameLogic = () => {
     } finally {
       setIsAdvisorLoading(false);
     }
-  }, [gameState, toast]);
-  
-  const resetGame = useCallback(() => {
-    if (window.confirm("Are you sure you want to reset the game? All progress will be lost.")) {
-      localStorage.removeItem(LOCAL_STORAGE_GAME_KEY);
-      setGameState(INITIAL_GAME_STATE);
-      prevLevelRef.current = INITIAL_GAME_STATE.level; // Reset ref
-      setIsInitialized(false);
-      setTimeout(() => setIsInitialized(true),0);
-      toast({ title: "Game Reset", description: "Your farm has been reset to its initial state."});
-    }
   }, [toast]);
-
-
+  
   return {
     gameState,
     plantCrop,
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized,
+    isInitialized: isInitialized && !!userId && !authLoading, // Game is ready when initialized, user exists, and auth is not loading
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
     newItemDescription,
     isDescriptionLoading,
     clearNewItemDescription: () => setNewItemDescription(null),
-    resetGame,
   };
 };
-
-    

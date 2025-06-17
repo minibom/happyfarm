@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
 import FarmGrid from '@/components/game/FarmGrid';
 import InventoryDisplay from '@/components/game/InventoryDisplay';
@@ -9,27 +11,28 @@ import MarketModal from '@/components/game/MarketModal';
 import AdvisorDialog from '@/components/game/AdvisorDialog';
 import ItemDescriptionDialog from '@/components/game/ItemDescriptionDialog';
 import { useGameLogic } from '@/hooks/useGameLogic';
-import { Button } from '@/components/ui/button';
-import { CROP_DATA, MARKET_ITEMS, ALL_SEED_IDS } from '@/lib/constants';
+import { useAuth } from '@/hooks/useAuth';
 import type { SeedId } from '@/types';
-import { RefreshCcw } from 'lucide-react';
+import { ALL_SEED_IDS } from '@/lib/constants';
+import { Loader2 } from 'lucide-react';
 
 
 export default function HomePage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const {
     gameState,
     plantCrop,
     harvestCrop,
     buyItem,
     sellItem,
-    isInitialized,
+    isInitialized, // This now also considers userId and authLoading from useGameLogic
     advisorTip,
     fetchAdvisorTip,
     isAdvisorLoading,
     newItemDescription,
     isDescriptionLoading,
     clearNewItemDescription,
-    resetGame,
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
@@ -40,6 +43,12 @@ export default function HomePage() {
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
     if (newItemDescription && !isDescriptionLoading) {
       setShowItemDescriptionModal(true);
     }
@@ -48,11 +57,9 @@ export default function HomePage() {
   const handlePlotClick = (plotId: number) => {
     if (currentAction === 'planting' && selectedSeedToPlant) {
       plantCrop(plotId, selectedSeedToPlant);
-      // Optional: setCurrentAction('none'); to require re-selecting plant action
     } else if (currentAction === 'harvesting') {
       harvestCrop(plotId);
     } else {
-      // Default action: view plot info or select plot (not implemented here)
       console.log(`Plot ${plotId} clicked. No action selected.`);
     }
   };
@@ -74,8 +81,13 @@ export default function HomePage() {
 
   const availableSeedsForPlanting = ALL_SEED_IDS.filter(seedId => gameState.inventory[seedId] > 0);
 
-  if (!isInitialized) {
-    return <div className="flex items-center justify-center min-h-screen text-xl font-semibold">Loading Happy Farm...</div>;
+  if (authLoading || !isInitialized || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
+        <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
+        Loading Happy Farm...
+      </div>
+    );
   }
 
   return (
@@ -105,9 +117,7 @@ export default function HomePage() {
             selectedSeed={selectedSeedToPlant}
           />
           <InventoryDisplay inventory={gameState.inventory} />
-          <Button variant="destructive" onClick={resetGame} className="w-full mt-4">
-            <RefreshCcw className="mr-2 h-4 w-4" /> Reset Game
-          </Button>
+          {/* Reset Game button removed */}
         </aside>
       </main>
 

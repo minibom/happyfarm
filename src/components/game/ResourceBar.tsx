@@ -1,8 +1,12 @@
+
 import type { FC } from 'react';
-import { Coins, Star, Award } from 'lucide-react';
+import { Coins, Star, Award, LogOut } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { LEVEL_UP_XP_THRESHOLD } from '@/lib/constants';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface ResourceBarProps {
   gold: number;
@@ -11,12 +15,25 @@ interface ResourceBarProps {
 }
 
 const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level }) => {
+  const { logOut, user } = useAuth();
+  const { toast } = useToast();
   const nextLevelXp = LEVEL_UP_XP_THRESHOLD(level);
   const xpProgress = Math.min((xp / nextLevelXp) * 100, 100);
 
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      // Navigation to /login is handled by AuthProvider
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
+    }
+  };
+
   return (
     <Card className="w-full sticky top-0 z-50 shadow-md">
-      <CardContent className="p-4 flex flex-col sm:flex-row justify-around items-center space-y-4 sm:space-y-0 sm:space-x-4">
+      <CardContent className="p-3 flex flex-col sm:flex-row justify-around items-center space-y-3 sm:space-y-0 sm:space-x-4">
         <div className="flex items-center space-x-2 text-lg">
           <Coins className="w-7 h-7 text-primary" />
           <span className="font-semibold">{gold}</span>
@@ -32,6 +49,11 @@ const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level }) => {
           <Award className="w-7 h-7 text-blue-500" />
           <span className="font-semibold">Level: {level}</span>
         </div>
+        {user && (
+          <Button onClick={handleLogout} variant="outline" size="sm" className="sm:ml-auto">
+            <LogOut className="mr-2 h-4 w-4" /> Logout
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
