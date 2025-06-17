@@ -1,3 +1,4 @@
+
 // src/ai/flows/ai-farming-advisor.ts
 'use server';
 
@@ -49,12 +50,12 @@ const prompt = ai.definePrompt({
   prompt: `You are a helpful AI farming advisor. Provide helpful tips to the player based on the current game state, market prices, and resource levels.
 
 Current Game State:
-Gold: {{{gold}}}
-XP: {{{xp}}}
-Level: {{{level}}}
-Plots: {{#each plots}}{{{this.state}}} {{this.crop}}}{{/each}}
-Inventory: {{#each inventory}}{{{@key}}}: {{{this}}}{{/each}}
-Market Prices: {{#each marketPrices}}{{{@key}}}: {{{this}}}{{/each}}`,
+Gold: {{gold}}
+XP: {{xp}}
+Level: {{level}}
+Plots: {{#each plots}}State: {{this.state}}{{#if this.crop}} (Crop: {{this.crop}}){{/if}}; {{/each}}
+Inventory: {{#each inventory}}{{@key}}: {{this}}; {{/each}}
+Market Prices: {{#each marketPrices}}{{@key}}: {{this}}; {{/each}}`,
 });
 
 const farmingAdviceFlow = ai.defineFlow(
