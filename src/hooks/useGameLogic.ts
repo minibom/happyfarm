@@ -20,7 +20,7 @@ export const useGameLogic = () => {
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [isInitialized, setIsInitialized] = useState(false);
   const [itemDataLoaded, setItemDataLoaded] = useState(false);
-  const [gameDataLoaded, setGameDataLoaded] = useState(false); // True when current user's game data is loaded/initialized
+  const [gameDataLoaded, setGameDataLoaded] = useState(false); 
 
   const { toast } = useToast();
 
@@ -152,13 +152,13 @@ export const useGameLogic = () => {
       return;
     }
 
-    if (userId && itemDataLoaded && cropData && allSeedIds.length > 0 && allCropIds.length > 0 && !gameDataLoaded) {
+    if (userId && itemDataLoaded && cropData && allSeedIds.length > 0 && allCropIds.length > 0) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
         if (docSnap.exists()) {
           const firestoreData = docSnap.data() as GameState;
-          let loadedState = { ...INITIAL_GAME_STATE, ...firestoreData }; // Merge, Firestore data takes precedence
+          let loadedState = { ...INITIAL_GAME_STATE, ...firestoreData };
 
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
             ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
@@ -195,14 +195,15 @@ export const useGameLogic = () => {
             ? firestoreData.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
           
-          loadedState.email = user?.email || firestoreData.email || 'N/A';
-          loadedState.status = firestoreData.status || 'active';
+          loadedState.email = user?.email || firestoreData.email || INITIAL_GAME_STATE.email;
+          loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
 
-          // If gameDataLoaded is false, it means this is the first load for this user session.
-          // So, update lastLogin to now. Otherwise, use the value from Firestore.
-          loadedState.lastLogin = (!gameDataLoaded) ? Date.now() : (firestoreData.lastLogin || Date.now());
-          // lastUpdate should reflect the value from Firestore. Game actions will update it locally.
-          loadedState.lastUpdate = firestoreData.lastUpdate || Date.now();
+          if (!gameDataLoaded && !authLoading && userId) {
+            loadedState.lastLogin = Date.now();
+          } else {
+            loadedState.lastLogin = firestoreData.lastLogin !== undefined ? firestoreData.lastLogin : (gameStateRef.current.lastLogin || INITIAL_GAME_STATE.lastLogin);
+          }
+          loadedState.lastUpdate = firestoreData.lastUpdate !== undefined ? firestoreData.lastUpdate : (gameStateRef.current.lastUpdate || INITIAL_GAME_STATE.lastUpdate);
           
           finalStateToSet = loadedState;
 
@@ -211,9 +212,9 @@ export const useGameLogic = () => {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
             lastUpdate: Date.now(),
+            lastLogin: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
-            email: user?.email || 'N/A',
-            lastLogin: Date.now(), // Set for new user
+            email: user?.email || undefined,
             status: 'active' as const,
           };
           finalStateToSet = newInitialUserState;
@@ -225,9 +226,8 @@ export const useGameLogic = () => {
         
         setGameState(finalStateToSet);
         prevLevelRef.current = finalStateToSet.level;
-        // Set gameDataLoaded to true *after* the first successful state set from onSnapshot
-        // This check ensures it's only set once per user session initialization.
-        if (!gameDataLoaded) {
+
+        if (!gameDataLoaded && !authLoading && userId) {
             setGameDataLoaded(true);
         }
 
@@ -236,7 +236,9 @@ export const useGameLogic = () => {
         toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
         setGameState(INITIAL_GAME_STATE);
         prevLevelRef.current = INITIAL_GAME_STATE.level;
-        setGameDataLoaded(true);
+        if (!gameDataLoaded && !authLoading && userId) { // Ensure gameDataLoaded is set even on error to prevent re-init loops
+          setGameDataLoaded(true);
+        }
       });
 
       return () => {
@@ -479,3 +481,4 @@ export const useGameLogic = () => {
     allCropIds,
   };
 };
+

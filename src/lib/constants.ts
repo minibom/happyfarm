@@ -120,8 +120,8 @@ export const INITIAL_INVENTORY: GameState['inventory'] = {};
 ALL_SEED_IDS.forEach(seedId => {
   INITIAL_INVENTORY[seedId] = seedId === 'tomatoSeed' ? 5 :
                               seedId === 'carrotSeed' ? 3 :
-                              seedId === 'strawberrySeed' ? 2 : // Gave some strawberry seeds
-                              0; // Default others to 0
+                              seedId === 'strawberrySeed' ? 2 : 
+                              0; 
 });
 ALL_CROP_IDS.forEach(cropId => {
   INITIAL_INVENTORY[cropId] = 0;
@@ -134,10 +134,10 @@ export const INITIAL_GAME_STATE: GameState = {
   level: INITIAL_LEVEL,
   plots: INITIAL_PLOTS,
   inventory: INITIAL_INVENTORY,
-  lastUpdate: Date.now(),
+  lastUpdate: 0,
   unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
   status: 'active',
-  lastLogin: Date.now(),
+  lastLogin: 0,
   email: undefined,
 };
 
