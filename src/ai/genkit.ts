@@ -1,5 +1,5 @@
 
-import { genkit, type ModelReference } from 'genkit';
+import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
 export const ai = genkit({
@@ -8,8 +8,24 @@ export const ai = genkit({
   ],
 });
 
-// Set the default model for operations using this 'ai' instance,
-// if no model is specified at the prompt/flow definition or generate call.
-// The model 'googleai/gemini-2.0-flash' is used as the default.
-const defaultModel = 'googleai/gemini-2.0-flash' as ModelReference;
-ai.registry.setDefaultModel(defaultModel);
+// Genkit will use the first configured compatible model from the plugins as a default
+// for operations like ai.generate() or ai.definePrompt() if no model is
+// explicitly specified in those calls.
+// For instance, 'googleai/gemini-2.0-flash' is a common default with the googleAI plugin.
+
+// If you need to ensure a specific model for a prompt, define it like this:
+// const myPrompt = ai.definePrompt({
+//   name: 'mySpecificPrompt',
+//   model: 'googleai/gemini-2.0-flash', // or another specific model
+//   prompt: 'Your prompt text here...',
+//   // ... other options
+// });
+
+// Or for a direct generation call:
+// async function someFunction() {
+//   const { text } = await ai.generate({
+//     model: 'googleai/gemini-2.0-flash',
+//     prompt: 'Generate something useful.',
+//   });
+//   return text();
+// }
