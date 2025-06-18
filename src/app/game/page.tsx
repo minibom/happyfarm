@@ -208,6 +208,7 @@ export default function GamePage() {
         xp={gameState.xp} 
         level={gameState.level} 
         playerTierInfo={playerTierInfo}
+        playerDisplayName={gameState.displayName}
       />
 
       <GameArea
