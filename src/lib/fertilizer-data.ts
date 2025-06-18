@@ -1,6 +1,9 @@
 
 import type { FertilizerDetails, FertilizerId } from '@/types';
 
+// Base stats for Tier 10 fertilizer for scaling
+const T10_HYPERHARVEST_STATS = { reduction: 0.60, price: 2200 };
+
 export const FERTILIZER_DATA: Record<FertilizerId, FertilizerDetails> = {
   // Tier 1
   t1_basicGrow: { id: 't1_basicGrow', name: 'Phân Bón Thường', icon: '🧪', description: 'Giảm 5% thời gian sinh trưởng còn lại.', unlockTier: 1, timeReductionPercent: 0.05, price: 10 },
@@ -41,7 +44,19 @@ export const FERTILIZER_DATA: Record<FertilizerId, FertilizerDetails> = {
   // Tier 10
   t10_omnipotentOoze: { id: 't10_omnipotentOoze', name: 'Dịch Dưỡng Toàn Năng', icon: '💧', description: 'Giảm 50% thời gian sinh trưởng còn lại.', unlockTier: 10, timeReductionPercent: 0.50, price: 1500 },
   t10_celestialClay: { id: 't10_celestialClay', name: 'Đất Sét Thiên Giới', icon: '☁️', description: 'Giảm 55% thời gian sinh trưởng còn lại.', unlockTier: 10, timeReductionPercent: 0.55, price: 1800 },
-  t10_hyperHarvest: { id: 't10_hyperHarvest', name: 'Siêu Thu Hoạch', icon: '🚀', description: 'Giảm 60% thời gian sinh trưởng còn lại.', unlockTier: 10, timeReductionPercent: 0.60, price: 2200 },
+  t10_hyperHarvest: { id: 't10_hyperHarvest', name: 'Siêu Thu Hoạch', icon: '🚀', description: 'Giảm 60% thời gian sinh trưởng còn lại.', unlockTier: 10, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction, price: T10_HYPERHARVEST_STATS.price },
+
+  // --- New Fertilizers for Tiers 11-15 ---
+  // Tier 11
+  t11_starDust: { id: 't11_starDust', name: 'Bụi Sao', icon: '✨', description: 'Giảm thời gian đáng kể.', unlockTier: 11, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction + 0.02, price: Math.floor(T10_HYPERHARVEST_STATS.price * 1.2) },
+  // Tier 12
+  t12_moonEssence: { id: 't12_moonEssence', name: 'Tinh Chất Nguyệt Ảnh', icon: '🌙', description: 'Giảm thời gian mạnh mẽ.', unlockTier: 12, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction + 0.04, price: Math.floor(T10_HYPERHARVEST_STATS.price * 1.4) },
+  // Tier 13
+  t13_galaxyBloom: { id: 't13_galaxyBloom', name: 'Phấn Ngân Hà', icon: '🌌', description: 'Thúc đẩy cây trồng vượt trội.', unlockTier: 13, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction + 0.06, price: Math.floor(T10_HYPERHARVEST_STATS.price * 1.6) },
+  // Tier 14
+  t14_nebulaRich: { id: 't14_nebulaRich', name: 'Dưỡng Chất Tinh Vân', icon: '🌠', description: 'Cho cây phát triển thần kỳ.', unlockTier: 14, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction + 0.08, price: Math.floor(T10_HYPERHARVEST_STATS.price * 1.8) },
+  // Tier 15
+  t15_quantumGrow: { id: 't15_quantumGrow', name: 'Tăng Trưởng Lượng Tử', icon: '⚛️', description: 'Bứt phá giới hạn thời gian.', unlockTier: 15, timeReductionPercent: T10_HYPERHARVEST_STATS.reduction + 0.10, price: Math.floor(T10_HYPERHARVEST_STATS.price * 2.0) },
 };
 
 export const ALL_FERTILIZER_IDS = Object.keys(FERTILIZER_DATA) as FertilizerId[];
