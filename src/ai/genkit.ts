@@ -1,11 +1,14 @@
 
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
+// import type { ModelReference } from 'genkit/models'; // Not used
 
 export const ai = genkit({
   plugins: [
     googleAI(), // API key should be set in environment variables like GEMINI_API_KEY or GOOGLE_API_KEY
   ],
+  // Removed logLevel: 'debug' as it's not a standard v1.x top-level option here.
+  // For detailed logging, you might configure it per plugin or use Genkit's CLI tools.
 });
 
 // Genkit will use the first configured compatible model from the plugins as a default
@@ -27,5 +30,5 @@ export const ai = genkit({
 //     model: 'googleai/gemini-2.0-flash',
 //     prompt: 'Generate something useful.',
 //   });
-//   return text();
+//   return text; // Correct 1.x syntax is response.text, not response.text()
 // }

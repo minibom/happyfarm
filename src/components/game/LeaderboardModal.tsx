@@ -12,7 +12,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -21,11 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card'; // Kept for current user rank display
 import { Loader2, UserCircle2, TrendingUp, ListOrdered } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import type { GameState } from '@/types'; // TierInfo is no longer needed
+import type { GameState } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -57,12 +56,12 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchUsers = async () => {
+    const fetchAndRankUsers = async () => {
       setIsLoading(true);
       try {
         const usersCollectionRef = collection(db, 'users');
         const usersSnapshot = await getDocs(usersCollectionRef);
-        const fetchedUsers: LeaderboardUser[] = [];
+        const fetchedUsers: Omit<LeaderboardUser, 'rank'>[] = [];
 
         for (const userDoc of usersSnapshot.docs) {
           const uid = userDoc.id;
@@ -73,75 +72,78 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
             const gameState = gameStateSnap.data() as GameState;
             fetchedUsers.push({
               uid,
-              email: gameState.email, // Keep email for masking
-              displayName: gameState.displayName, // Add displayName
+              email: gameState.email,
+              displayName: gameState.displayName,
               ...gameState,
             });
           }
         }
-        setAllUsers(fetchedUsers);
+        
+        const sortedAndRankedUsers = fetchedUsers
+          .sort((a, b) => {
+            if (b.level !== a.level) return b.level - a.level;
+            return b.xp - a.xp;
+          })
+          .map((user, index) => ({ ...user, rank: index + 1 }));
+        
+        setAllUsers(sortedAndRankedUsers);
       } catch (error) {
         console.error("Error fetching users for leaderboard modal:", error);
+        setAllUsers([]); // Clear users on error
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUsers();
+    fetchAndRankUsers();
   }, [isOpen]);
 
-  const levelLeaderboard = useMemo(() => {
-    if (isLoading) return [];
-    const sortedUsers = [...allUsers]
-      .sort((a, b) => {
-        if (b.level !== a.level) return b.level - a.level;
-        return b.xp - a.xp;
-      })
-      .map((user, index) => ({ ...user, rank: index + 1 }));
-    
-    const displayUsers = sortedUsers.slice(0, LEADERBOARD_DISPLAY_ROWS);
-    
-    while (displayUsers.length < LEADERBOARD_DISPLAY_ROWS) {
-      displayUsers.push({
-        uid: `placeholder-${displayUsers.length}`,
-        rank: undefined, // No rank for placeholder
-        displayName: "Chưa có người chơi",
+  const leaderboardForTable = useMemo(() => {
+    if (isLoading || allUsers.length === 0) {
+      // Return 10 placeholder rows while loading or if no users
+      return Array(LEADERBOARD_DISPLAY_ROWS).fill(null).map((_, index) => ({
+        uid: `placeholder-loading-${index}`,
+        rank: undefined,
+        displayName: isLoading ? "Đang tải..." : "Chưa có người chơi",
         email: undefined,
-        level: 0, // Or a suitable placeholder value like '-'
-        xp: 0,    // Or a suitable placeholder value like '-'
-        // Add other GameState defaults if needed for type consistency
-        gold: 0,
-        plots: [],
-        inventory: {},
-        lastUpdate: 0,
-        unlockedPlotsCount: 0,
-        status: 'active',
-        lastLogin: 0,
-      });
+        level: 0,
+        xp: 0,
+        gold: 0, plots: [], inventory: {}, lastUpdate: 0, unlockedPlotsCount: 0, status: 'active', lastLogin: 0,
+      }));
     }
-    return displayUsers;
+
+    const topUsers = allUsers.slice(0, LEADERBOARD_DISPLAY_ROWS);
+    const placeholdersNeeded = LEADERBOARD_DISPLAY_ROWS - topUsers.length;
+    
+    const placeholderRows = Array(placeholdersNeeded).fill(null).map((_, index) => ({
+      uid: `placeholder-${index}`,
+      rank: undefined,
+      displayName: "Chưa có người chơi",
+      email: undefined,
+      level: 0, 
+      xp: 0,    
+      gold: 0, plots: [], inventory: {}, lastUpdate: 0, unlockedPlotsCount: 0, status: 'active', lastLogin: 0,
+    }));
+
+    return [...topUsers, ...placeholderRows];
   }, [allUsers, isLoading]);
 
-
-  const currentUserLevelData = useMemo(() => {
+  const currentUserRankInfo = useMemo(() => {
     if (!currentUserId || isLoading || allUsers.length === 0) return null;
-    // Find rank from the original sorted list before padding
-    const originalSorted = [...allUsers]
-      .sort((a, b) => {
-        if (b.level !== a.level) return b.level - a.level;
-        return b.xp - a.xp;
-      })
-      .map((user, index) => ({ ...user, rank: index + 1 }));
-    return originalSorted.find(u => u.uid === currentUserId);
+    return allUsers.find(u => u.uid === currentUserId);
   }, [allUsers, currentUserId, isLoading]);
 
+  const isCurrentUserInTop10 = useMemo(() => {
+    if (!currentUserRankInfo || !currentUserRankInfo.rank) return false;
+    return currentUserRankInfo.rank <= LEADERBOARD_DISPLAY_ROWS;
+  }, [currentUserRankInfo]);
 
   const renderRank = (rank?: number) => {
     if (!rank) return '-';
     if (rank === 1) return '🏆';
     if (rank === 2) return '🥈';
     if (rank === 3) return '🥉';
-    return rank;
+    return rank.toString();
   };
 
   const renderLoading = () => (
@@ -151,15 +153,16 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
     </div>
   );
   
-  const renderCurrentUserRank = (userData: LeaderboardUser | null | undefined) => {
-    if (!userData || !userData.rank) return null; // Don't show if no rank (e.g., user not found)
+  const renderCurrentUserRankCard = () => {
+    if (isLoading || !currentUserRankInfo || isCurrentUserInTop10 || !currentUserRankInfo.rank) return null; 
+    
     return (
-        <Card className="mt-4 border-primary shadow-md">
+        <Card className="mt-auto border-primary shadow-md mx-1 mb-1">
             <CardContent className="p-3 text-sm">
                 <p className="font-semibold text-center">
                     Vị Trí Của Bạn: 
-                    <span className="text-primary ml-1">Hạng {renderRank(userData.rank)}</span>
-                    <span className="ml-2"> - Cấp {userData.level} - {userData.xp.toLocaleString()} XP</span>
+                    <span className="text-primary ml-1">Hạng {renderRank(currentUserRankInfo.rank)}</span>
+                    <span className="ml-2"> - Cấp {currentUserRankInfo.level} - {currentUserRankInfo.xp.toLocaleString()} XP</span>
                 </p>
             </CardContent>
         </Card>
@@ -174,14 +177,14 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
             <ListOrdered className="w-7 h-7 text-primary" /> Bảng Xếp Hạng Theo Cấp Độ
           </DialogTitle>
           <DialogDescription>
-            Xem thứ hạng của bạn và 10 người chơi hàng đầu trong Happy Farm.
+            Top 10 người chơi hàng đầu trong Happy Farm.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="mt-4 flex-1 overflow-y-auto flex flex-col">
-            {isLoading ? renderLoading() : (
+        <div className="mt-4 flex-1 flex flex-col min-h-0">
+            {isLoading && allUsers.length === 0 ? renderLoading() : (
               <>
-                <ScrollArea className="flex-grow h-0 pr-3">
+                <div className="flex-1 overflow-y-auto pr-3">
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -192,9 +195,9 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {levelLeaderboard.map((user, index) => (
-                        <TableRow key={user.uid || `placeholder-${index}`} className={cn(user.uid === currentUserId && user.rank && "bg-primary/10")}>
-                          <TableCell className="text-center font-bold">{user.rank ? renderRank(user.rank) : '-'}</TableCell>
+                      {leaderboardForTable.map((user) => (
+                        <TableRow key={user.uid} className={cn(user.uid === currentUserId && user.rank && "bg-primary/10")}>
+                          <TableCell className="text-center font-bold">{renderRank(user.rank)}</TableCell>
                           <TableCell className="font-medium">
                             {user.rank ? (user.displayName || maskEmail(user.email)) : <span className="text-muted-foreground italic">{user.displayName}</span>}
                           </TableCell>
@@ -210,12 +213,12 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
                       ))}
                     </TableBody>
                   </Table>
-                </ScrollArea>
-                {currentUserLevelData && renderCurrentUserRank(currentUserLevelData)}
+                </div>
+                {renderCurrentUserRankCard()}
               </>
             )}
         </div>
-        <DialogFooter className="mt-4">
+        <DialogFooter className="mt-auto pt-4"> {/* Added pt-4 for spacing */}
           <Button variant="outline" onClick={onClose}>Đóng</Button>
         </DialogFooter>
       </DialogContent>
@@ -224,6 +227,5 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
 };
 
 export default LeaderboardModal;
-
 
     
