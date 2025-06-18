@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, PlusCircle, Trash2, Edit, Loader2, Sprout, Zap as FertilizerIcon, Package } from 'lucide-react';
@@ -26,6 +25,7 @@ import { cn } from '@/lib/utils';
 
 type ItemDataForTable = CropDetails & { id: CropId };
 type FertilizerDataForTable = FertilizerDetails;
+type ActiveView = 'crops' | 'fertilizers';
 
 const formatMillisecondsToTime = (ms: number): string => {
   if (isNaN(ms) || ms <= 0) {
@@ -44,6 +44,8 @@ const formatMillisecondsToTime = (ms: number): string => {
 };
 
 export default function AdminItemsManagementPage() {
+  const [activeView, setActiveView] = useState<ActiveView>('crops');
+
   // State for Crops
   const [cropItems, setCropItems] = useState<ItemDataForTable[]>([]);
   const [isCropLoading, setIsCropLoading] = useState(true);
@@ -215,17 +217,33 @@ export default function AdminItemsManagementPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
-          <Tabs defaultValue="crops" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mb-4 grid w-full grid-cols-2">
-              <TabsTrigger value="crops" className="py-2.5">
-                <Sprout className="mr-2 h-5 w-5"/> Cây Trồng ({cropItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="fertilizers" className="py-2.5">
-                <FertilizerIcon className="mr-2 h-5 w-5"/> Phân Bón ({fertilizers.length})
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="crops" className="flex-1 flex flex-col min-h-0 mt-0">
+          {/* Custom Tab-like Buttons */}
+          <div className="flex border-b mb-4">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveView('crops')}
+              className={cn(
+                "py-3 px-4 rounded-none text-base",
+                activeView === 'crops' ? 'border-b-2 border-primary text-primary font-semibold' : 'text-muted-foreground hover:bg-muted/50'
+              )}
+            >
+              <Sprout className="mr-2 h-5 w-5"/> Cây Trồng ({cropItems.length})
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveView('fertilizers')}
+              className={cn(
+                "py-3 px-4 rounded-none text-base",
+                activeView === 'fertilizers' ? 'border-b-2 border-primary text-primary font-semibold' : 'text-muted-foreground hover:bg-muted/50'
+              )}
+            >
+              <FertilizerIcon className="mr-2 h-5 w-5"/> Phân Bón ({fertilizers.length})
+            </Button>
+          </div>
+          
+          {/* Conditional Rendering for Crops View */}
+          {activeView === 'crops' && (
+            <div className="flex-1 flex flex-col min-h-0">
               <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openCropModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Cây Trồng Mới
@@ -297,9 +315,12 @@ export default function AdminItemsManagementPage() {
                   </Table>
                 </div>
               )}
-            </TabsContent>
-            
-            <TabsContent value="fertilizers" className="flex-1 flex flex-col min-h-0 mt-0">
+            </div>
+          )}
+          
+          {/* Conditional Rendering for Fertilizers View */}
+          {activeView === 'fertilizers' && (
+            <div className="flex-1 flex flex-col min-h-0">
               <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openFertilizerModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Phân Bón Mới
@@ -363,11 +384,12 @@ export default function AdminItemsManagementPage() {
                   </Table>
                 </div>
               )}
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Modals */}
       <ItemModal
         isOpen={isCropModalOpen}
         onClose={() => setIsCropModalOpen(false)}
@@ -383,4 +405,4 @@ export default function AdminItemsManagementPage() {
     </>
   );
 }
-
+    
