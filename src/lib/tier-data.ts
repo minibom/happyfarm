@@ -25,17 +25,17 @@ export const TIER_DATA: TierDetail[] = [
   { name: "Thần Nông Tái Thế",      icon: "✨", colorClass: "bg-pink-500 hover:bg-pink-600 text-pink-50", levelStart: 81, xpBoostPercent: 0.18, sellPriceBoostPercent: 0.08, growthTimeReductionPercent: 0.08 },
   { name: "Huyền Thoại Đất Đai",    icon: "🌟", colorClass: "bg-indigo-500 hover:bg-indigo-600 text-indigo-50", levelStart: 91, xpBoostPercent: 0.20, sellPriceBoostPercent: 0.10, growthTimeReductionPercent: 0.10 },
 
-  // New Tiers 11-20
-  { name: "Bậc Thầy Nông Trại I",   icon: "💠", colorClass: "bg-sky-500 hover:bg-sky-600 text-sky-50",     levelStart: 101, xpBoostPercent: 0.22, sellPriceBoostPercent: 0.11, growthTimeReductionPercent: 0.11 },
-  { name: "Bậc Thầy Nông Trại II",  icon: "⚜️", colorClass: "bg-cyan-500 hover:bg-cyan-600 text-cyan-50",    levelStart: 111, xpBoostPercent: 0.24, sellPriceBoostPercent: 0.12, growthTimeReductionPercent: 0.12 },
-  { name: "Bậc Thầy Nông Trại III", icon: "🔱", colorClass: "bg-emerald-500 hover:bg-emerald-600 text-emerald-50", levelStart: 121, xpBoostPercent: 0.26, sellPriceBoostPercent: 0.13, growthTimeReductionPercent: 0.13 },
-  { name: "Bậc Thầy Nông Trại IV",  icon: "💎", colorClass: "bg-fuchsia-500 hover:bg-fuchsia-600 text-fuchsia-50", levelStart: 131, xpBoostPercent: 0.28, sellPriceBoostPercent: 0.14, growthTimeReductionPercent: 0.14 },
-  { name: "Bậc Thầy Nông Trại V",   icon: "🌠", colorClass: "bg-rose-500 hover:bg-rose-600 text-rose-50",     levelStart: 141, xpBoostPercent: 0.30, sellPriceBoostPercent: 0.15, growthTimeReductionPercent: 0.15 },
-  { name: "Bậc Thầy Nông Trại VI",  icon: "🌌", colorClass: "bg-green-600 hover:bg-green-700 text-green-50",  levelStart: 151, xpBoostPercent: 0.32, sellPriceBoostPercent: 0.16, growthTimeReductionPercent: 0.16 },
-  { name: "Bậc Thầy Nông Trại VII", icon: "🪐", colorClass: "bg-lime-600 hover:bg-lime-700 text-lime-900",   levelStart: 161, xpBoostPercent: 0.34, sellPriceBoostPercent: 0.17, growthTimeReductionPercent: 0.17 },
-  { name: "Bậc Thầy Nông Trại VIII",icon: "🌍", colorClass: "bg-teal-600 hover:bg-teal-700 text-teal-50",    levelStart: 171, xpBoostPercent: 0.36, sellPriceBoostPercent: 0.18, growthTimeReductionPercent: 0.18 },
-  { name: "Bậc Thầy Nông Trại IX",  icon: "🌑", colorClass: "bg-yellow-500 hover:bg-yellow-600 text-yellow-900", levelStart: 181, xpBoostPercent: 0.38, sellPriceBoostPercent: 0.19, growthTimeReductionPercent: 0.19 },
-  { name: "Bậc Thầy Nông Trại X",   icon: "🌕", colorClass: "bg-amber-500 hover:bg-amber-600 text-amber-900",  levelStart: 191, xpBoostPercent: 0.40, sellPriceBoostPercent: 0.20, growthTimeReductionPercent: 0.20 },
+  // New Tiers 11-20 with updated names
+  { name: "Nông Trại Tinh Tú",       icon: "💠", colorClass: "bg-sky-500 hover:bg-sky-600 text-sky-50",     levelStart: 101, xpBoostPercent: 0.22, sellPriceBoostPercent: 0.11, growthTimeReductionPercent: 0.11 },
+  { name: "Vườn Địa Đàng",          icon: "⚜️", colorClass: "bg-cyan-500 hover:bg-cyan-600 text-cyan-50",    levelStart: 111, xpBoostPercent: 0.24, sellPriceBoostPercent: 0.12, growthTimeReductionPercent: 0.12 },
+  { name: "Canh Tác Vũ Trụ",        icon: "🔱", colorClass: "bg-emerald-500 hover:bg-emerald-600 text-emerald-50", levelStart: 121, xpBoostPercent: 0.26, sellPriceBoostPercent: 0.13, growthTimeReductionPercent: 0.13 },
+  { name: "Thần Nông Giáng Thế",    icon: "💎", colorClass: "bg-fuchsia-500 hover:bg-fuchsia-600 text-fuchsia-50", levelStart: 131, xpBoostPercent: 0.28, sellPriceBoostPercent: 0.14, growthTimeReductionPercent: 0.14 },
+  { name: "Chúa Tể Đất Đai",       icon: "🌠", colorClass: "bg-rose-500 hover:bg-rose-600 text-rose-50",     levelStart: 141, xpBoostPercent: 0.30, sellPriceBoostPercent: 0.15, growthTimeReductionPercent: 0.15 },
+  { name: "Nông Nghiệp Tinh Hà",    icon: "🌌", colorClass: "bg-green-600 hover:bg-green-700 text-green-50",  levelStart: 151, xpBoostPercent: 0.32, sellPriceBoostPercent: 0.16, growthTimeReductionPercent: 0.16 },
+  { name: "Người Gieo Mầm Vũ Trụ",  icon: "🪐", colorClass: "bg-lime-600 hover:bg-lime-700 text-lime-900",   levelStart: 161, xpBoostPercent: 0.34, sellPriceBoostPercent: 0.17, growthTimeReductionPercent: 0.17 },
+  { name: "Huyền Thoại Nông Trang", icon: "🌍", colorClass: "bg-teal-600 hover:bg-teal-700 text-teal-50",    levelStart: 171, xpBoostPercent: 0.36, sellPriceBoostPercent: 0.18, growthTimeReductionPercent: 0.18 },
+  { name: "Đỉnh Cao Canh Tác",      icon: "🌑", colorClass: "bg-yellow-500 hover:bg-yellow-600 text-yellow-900", levelStart: 181, xpBoostPercent: 0.38, sellPriceBoostPercent: 0.19, growthTimeReductionPercent: 0.19 },
+  { name: "Đế Vương Nông Nghiệp",   icon: "🌕", colorClass: "bg-amber-500 hover:bg-amber-600 text-amber-900",  levelStart: 191, xpBoostPercent: 0.40, sellPriceBoostPercent: 0.20, growthTimeReductionPercent: 0.20 },
   // Pattern continues for Tiers 21-100. For example:
   // { name: "Đại Nông Sư I", icon: "💡", colorClass: "bg-orange-600 text-orange-50", levelStart: 201, xpBoostPercent: 0.42, sellPriceBoostPercent: 0.21, growthTimeReductionPercent: 0.21 },
   // ... up to Tier 100 / level 1000
@@ -65,3 +65,4 @@ export const getPlayerTierInfo = (level: number): TierInfo => {
     growthTimeReductionPercent: currentTierData.growthTimeReductionPercent,
   };
 };
+
