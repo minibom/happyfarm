@@ -14,12 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Send, Users, User, Gift, PlusCircle, Trash2, Package, Coins, Star } from 'lucide-react';
+import { Mail as MailIconLucide, Send, Users, User, Gift, PlusCircle, Trash2, Package, Coins, Star, History, Edit } from 'lucide-react';
 import type { RewardItem, RewardItemType, InventoryItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants'; // For item name display
+import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+
+type ActiveMailView = 'compose' | 'history';
 
 export default function AdminMailPage() {
+  const [activeView, setActiveView] = useState<ActiveMailView>('compose');
   const [recipientType, setRecipientType] = useState<'all' | 'specific'>('all');
   const [recipientUid, setRecipientUid] = useState('');
   const [mailSubject, setMailSubject] = useState('');
@@ -81,7 +85,6 @@ export default function AdminMailPage() {
 
     if (newReward) {
       setRewards(prev => [...prev, newReward!]);
-      // Reset reward input form
       setCurrentRewardItemId('');
       setCurrentRewardQuantity(1);
       setCurrentRewardAmount(currentRewardType === 'gold' ? 100 : currentRewardType === 'xp' ? 50 : 1);
@@ -118,10 +121,9 @@ export default function AdminMailPage() {
       senderName: 'Quản Trị Viên HappyFarm',
       isRead: false,
       isClaimed: false,
-      createdAt: Date.now(), // Simulate timestamp
+      createdAt: Date.now(),
     };
 
-    // TODO: Implement actual mail sending logic (e.g., call a Firebase Function)
     console.log("Simulating sending mail:", mailData);
     toast({
       title: "Gửi Thư (Mô Phỏng)",
@@ -129,7 +131,6 @@ export default function AdminMailPage() {
       duration: 7000,
     });
     
-    // Clear form after "sending"
     setRecipientUid('');
     setMailSubject('');
     setMailBody('');
@@ -140,184 +141,212 @@ export default function AdminMailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-            <Mail className="h-7 w-7"/> Quản Lý Hệ Thống Thư
-          </CardTitle>
-          <CardDescription>
-            Soạn và gửi thư thông báo hoặc quà tặng cho người chơi. (Chức năng gửi thư hiện đang mô phỏng)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Card className="border-blue-500/50">
-            <CardHeader>
-              <CardTitle className="text-xl">Soạn Thư Mới</CardTitle>
-              <CardDescription>
-                Gửi thư cho tất cả người chơi hoặc một người chơi cụ thể.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label>Người Nhận</Label>
-                <div className="flex gap-4 mt-1">
-                  <Button 
-                    variant={recipientType === 'all' ? 'default' : 'outline'} 
-                    onClick={() => setRecipientType('all')}
-                    className={recipientType === 'all' ? 'bg-primary hover:bg-primary/90' : ''}
-                  >
-                    <Users className="mr-2 h-4 w-4"/> Gửi Tất Cả
-                  </Button>
-                  <Button 
-                    variant={recipientType === 'specific' ? 'default' : 'outline'} 
-                    onClick={() => setRecipientType('specific')}
-                    className={recipientType === 'specific' ? 'bg-primary hover:bg-primary/90' : ''}
-                  >
-                    <User className="mr-2 h-4 w-4"/> Gửi Cụ Thể
-                  </Button>
-                </div>
-              </div>
-
-              {recipientType === 'specific' && (
-                <div className="space-y-1">
-                  <Label htmlFor="recipientUid">UID Người Nhận</Label>
-                  <Input 
-                    id="recipientUid" 
-                    value={recipientUid} 
-                    onChange={(e) => setRecipientUid(e.target.value)}
-                    placeholder="Nhập Firebase User ID"
-                  />
-                </div>
+    <Card className="shadow-xl flex flex-col flex-1 min-h-0">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+          <MailIconLucide className="h-7 w-7"/> Quản Lý Hệ Thống Thư
+        </CardTitle>
+        <CardDescription>
+          Soạn và gửi thư thông báo hoặc quà tặng cho người chơi. (Chức năng gửi thư hiện đang mô phỏng)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
+        <div className="flex border-b mb-4 shrink-0">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveView('compose')}
+              className={cn(
+                "py-3 px-4 rounded-none text-base",
+                activeView === 'compose' ? 'border-b-2 border-primary text-primary font-semibold' : 'text-muted-foreground hover:bg-muted/50'
               )}
+            >
+              <Edit className="mr-2 h-5 w-5"/> Soạn Thư Mới
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setActiveView('history')}
+              className={cn(
+                "py-3 px-4 rounded-none text-base",
+                activeView === 'history' ? 'border-b-2 border-primary text-primary font-semibold' : 'text-muted-foreground hover:bg-muted/50'
+              )}
+            >
+              <History className="mr-2 h-5 w-5"/> Lịch Sử Thư
+            </Button>
+        </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="mailSubject">Chủ Đề Thư*</Label>
-                <Input 
-                  id="mailSubject" 
-                  value={mailSubject}
-                  onChange={(e) => setMailSubject(e.target.value)}
-                  placeholder="Ví dụ: Thông báo bảo trì, Chúc mừng sự kiện..."
-                />
-              </div>
+        {activeView === 'compose' && (
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-2">
+                <Card className="border-blue-500/50">
+                    <CardHeader>
+                    <CardTitle className="text-xl">Soạn Thư Mới</CardTitle>
+                    <CardDescription>
+                        Gửi thư cho tất cả người chơi hoặc một người chơi cụ thể.
+                    </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                    <div>
+                        <Label>Người Nhận</Label>
+                        <div className="flex gap-4 mt-1">
+                        <Button 
+                            variant={recipientType === 'all' ? 'default' : 'outline'} 
+                            onClick={() => setRecipientType('all')}
+                            className={recipientType === 'all' ? 'bg-primary hover:bg-primary/90' : ''}
+                        >
+                            <Users className="mr-2 h-4 w-4"/> Gửi Tất Cả
+                        </Button>
+                        <Button 
+                            variant={recipientType === 'specific' ? 'default' : 'outline'} 
+                            onClick={() => setRecipientType('specific')}
+                            className={recipientType === 'specific' ? 'bg-primary hover:bg-primary/90' : ''}
+                        >
+                            <User className="mr-2 h-4 w-4"/> Gửi Cụ Thể
+                        </Button>
+                        </div>
+                    </div>
 
-              <div className="space-y-1">
-                <Label htmlFor="mailBody">Nội Dung Thư*</Label>
-                <Textarea 
-                  id="mailBody" 
-                  value={mailBody}
-                  onChange={(e) => setMailBody(e.target.value)}
-                  placeholder="Nhập nội dung chi tiết của thư..."
-                  rows={5}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                    {recipientType === 'specific' && (
+                        <div className="space-y-1">
+                        <Label htmlFor="recipientUid">UID Người Nhận</Label>
+                        <Input 
+                            id="recipientUid" 
+                            value={recipientUid} 
+                            onChange={(e) => setRecipientUid(e.target.value)}
+                            placeholder="Nhập Firebase User ID"
+                        />
+                        </div>
+                    )}
 
-          <Card className="border-green-500/50">
-            <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2">
-                    <Gift className="h-5 w-5"/>Vật Phẩm Đính Kèm
-                </CardTitle>
-                <CardDescription>Thêm phần thưởng vàng, XP, hoặc vật phẩm vào thư.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div className="space-y-1">
-                        <Label htmlFor="rewardType">Loại Phần Thưởng</Label>
-                        <Select value={currentRewardType} onValueChange={(value) => setCurrentRewardType(value as RewardItemType)}>
-                            <SelectTrigger id="rewardType">
-                                <SelectValue placeholder="Chọn loại phần thưởng" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="gold">Vàng</SelectItem>
-                                <SelectItem value="xp">Kinh Nghiệm (XP)</SelectItem>
-                                <SelectItem value="item">Vật Phẩm</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="mailSubject">Chủ Đề Thư*</Label>
+                        <Input 
+                        id="mailSubject" 
+                        value={mailSubject}
+                        onChange={(e) => setMailSubject(e.target.value)}
+                        placeholder="Ví dụ: Thông báo bảo trì, Chúc mừng sự kiện..."
+                        />
                     </div>
 
-                    {currentRewardType === 'item' && (
-                        <>
+                    <div className="space-y-1">
+                        <Label htmlFor="mailBody">Nội Dung Thư*</Label>
+                        <Textarea 
+                        id="mailBody" 
+                        value={mailBody}
+                        onChange={(e) => setMailBody(e.target.value)}
+                        placeholder="Nhập nội dung chi tiết của thư..."
+                        rows={5}
+                        />
+                    </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-green-500/50">
+                    <CardHeader>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                            <Gift className="h-5 w-5"/>Vật Phẩm Đính Kèm
+                        </CardTitle>
+                        <CardDescription>Thêm phần thưởng vàng, XP, hoặc vật phẩm vào thư.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-1">
-                                <Label htmlFor="rewardItemId">ID Vật Phẩm*</Label>
-                                <Input 
-                                    id="rewardItemId" 
-                                    value={currentRewardItemId}
-                                    onChange={(e) => setCurrentRewardItemId(e.target.value as InventoryItem)}
-                                    placeholder="vd: tomatoSeed, carrot, t1_basicGrow"
-                                />
+                                <Label htmlFor="rewardType">Loại Phần Thưởng</Label>
+                                <Select value={currentRewardType} onValueChange={(value) => setCurrentRewardType(value as RewardItemType)}>
+                                    <SelectTrigger id="rewardType">
+                                        <SelectValue placeholder="Chọn loại phần thưởng" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="gold">Vàng</SelectItem>
+                                        <SelectItem value="xp">Kinh Nghiệm (XP)</SelectItem>
+                                        <SelectItem value="item">Vật Phẩm</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="rewardQuantity">Số Lượng*</Label>
-                                <Input 
-                                    id="rewardQuantity" 
-                                    type="number" 
-                                    value={currentRewardQuantity}
-                                    onChange={(e) => setCurrentRewardQuantity(Math.max(1, parseInt(e.target.value,10) || 1))}
-                                    min="1"
-                                />
-                            </div>
-                        </>
-                    )}
-                    {(currentRewardType === 'gold' || currentRewardType === 'xp') && (
-                        <div className="space-y-1 md:col-span-2">
-                            <Label htmlFor="rewardAmount">{currentRewardType === 'gold' ? 'Số Lượng Vàng*' : 'Số Lượng XP*'}</Label>
-                            <Input 
-                                id="rewardAmount" 
-                                type="number" 
-                                value={currentRewardAmount}
-                                onChange={(e) => setCurrentRewardAmount(Math.max(1, parseInt(e.target.value,10) || 1))}
-                                min="1"
-                            />
+
+                            {currentRewardType === 'item' && (
+                                <>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="rewardItemId">ID Vật Phẩm*</Label>
+                                        <Input 
+                                            id="rewardItemId" 
+                                            value={currentRewardItemId}
+                                            onChange={(e) => setCurrentRewardItemId(e.target.value as InventoryItem)}
+                                            placeholder="vd: tomatoSeed, carrot, t1_basicGrow"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="rewardQuantity">Số Lượng*</Label>
+                                        <Input 
+                                            id="rewardQuantity" 
+                                            type="number" 
+                                            value={currentRewardQuantity}
+                                            onChange={(e) => setCurrentRewardQuantity(Math.max(1, parseInt(e.target.value,10) || 1))}
+                                            min="1"
+                                        />
+                                    </div>
+                                </>
+                            )}
+                            {(currentRewardType === 'gold' || currentRewardType === 'xp') && (
+                                <div className="space-y-1 md:col-span-2">
+                                    <Label htmlFor="rewardAmount">{currentRewardType === 'gold' ? 'Số Lượng Vàng*' : 'Số Lượng XP*'}</Label>
+                                    <Input 
+                                        id="rewardAmount" 
+                                        type="number" 
+                                        value={currentRewardAmount}
+                                        onChange={(e) => setCurrentRewardAmount(Math.max(1, parseInt(e.target.value,10) || 1))}
+                                        min="1"
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-                 <Button onClick={handleAddReward} variant="outline" size="sm">
-                    <PlusCircle className="mr-2 h-4 w-4"/> Thêm Phần Thưởng
+                        <Button onClick={handleAddReward} variant="outline" size="sm">
+                            <PlusCircle className="mr-2 h-4 w-4"/> Thêm Phần Thưởng
+                        </Button>
+
+                        {rewards.length > 0 && (
+                            <div className="space-y-2 pt-3 border-t">
+                                <Label>Danh sách phần thưởng đã thêm:</Label>
+                                <div className="max-h-40 overflow-y-auto space-y-1 pr-2">
+                                {rewards.map((reward, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
+                                        <span className="flex items-center">
+                                            {getRewardItemIcon(reward.type)}
+                                            {getRewardItemName(reward)}
+                                        </span>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveReward(index)} className="h-6 w-6 text-destructive hover:bg-destructive/10">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Button onClick={handleSendMail} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-lg py-3">
+                    <Send className="mr-2 h-5 w-5" />
+                    Gửi Thư (Mô Phỏng)
                 </Button>
+            </div>
+        )}
 
-                {rewards.length > 0 && (
-                    <div className="space-y-2 pt-3 border-t">
-                        <Label>Danh sách phần thưởng đã thêm:</Label>
-                        <div className="max-h-40 overflow-y-auto space-y-1 pr-2">
-                        {rewards.map((reward, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
-                                <span className="flex items-center">
-                                    {getRewardItemIcon(reward.type)}
-                                    {getRewardItemName(reward)}
-                                </span>
-                                <Button variant="ghost" size="icon" onClick={() => handleRemoveReward(index)} className="h-6 w-6 text-destructive hover:bg-destructive/10">
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-          </Card>
-
-          <Button onClick={handleSendMail} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-lg py-3">
-            <Send className="mr-2 h-5 w-5" />
-            Gửi Thư (Mô Phỏng)
-          </Button>
-
-           <Card className="border-gray-400/50 mt-8">
-            <CardHeader>
-                <CardTitle className="text-xl">Lịch Sử Thư Đã Gửi</CardTitle>
-                <CardDescription>
-                Xem lại các thư đã được gửi từ hệ thống. (Chức năng này sẽ được phát triển)
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">Tính năng xem lịch sử thư sẽ được cập nhật trong tương lai...</p>
-            </CardContent>
-          </Card>
-
-        </CardContent>
-      </Card>
-    </div>
+        {activeView === 'history' && (
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-2">
+                 <Card className="border-gray-400/50">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Lịch Sử Thư Đã Gửi</CardTitle>
+                        <CardDescription>
+                        Xem lại các thư đã được gửi từ hệ thống. (Chức năng này sẽ được phát triển)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-center min-h-[200px]">
+                        <p className="text-muted-foreground text-lg">Tính năng xem lịch sử thư sẽ được cập nhật trong tương lai...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
