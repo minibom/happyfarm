@@ -18,9 +18,10 @@ import {
   MessageSquare,
   Library,
   ListOrdered,
-  ClipboardList, // For default action button
-  Zap, // For fertilizer action
-  ChevronDown, // For main action button dropdown indicator
+  ClipboardList,
+  Zap, 
+  ChevronDown,
+  Menu, // Added Menu icon for mobile "More"
 } from 'lucide-react';
 import {
   Tooltip,
@@ -53,16 +54,16 @@ interface BottomNavBarProps {
   onOpenLeaderboard: () => void;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
-  onSetFertilizeMode: (fertilizerId: FertilizerId) => void; // New prop
+  onSetFertilizeMode: (fertilizerId: FertilizerId) => void;
   onClearAction: () => void;
-  currentAction: 'planting' | 'harvesting' | 'fertilizing' | 'none'; // Updated prop
+  currentAction: 'planting' | 'harvesting' | 'fertilizing' | 'none';
   selectedSeed?: SeedId;
-  selectedFertilizerId?: FertilizerId; // New prop
+  selectedFertilizerId?: FertilizerId;
   availableSeeds: SeedId[];
-  availableFertilizers: FertilizerDetails[]; // New prop: Fertilizers player owns & can use (tier met)
+  availableFertilizers: FertilizerDetails[];
   inventory: Inventory;
   cropData: Record<CropId, CropDetails> | null;
-  fertilizerData: Record<FertilizerId, FertilizerDetails> | null; // New prop
+  fertilizerData: Record<FertilizerId, FertilizerDetails> | null;
   playerTier: number;
 }
 
@@ -127,7 +128,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   };
 
   if (!cropData || !fertilizerData) {
-    return null; // Or a loading state
+    return null; 
   }
 
   const buttonBaseClass = "p-2 h-auto w-[72px] rounded-lg shadow-md flex flex-col items-center justify-center gap-1";
@@ -165,6 +166,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
 
+          {/* Chat Button - Mobile Only */}
           <div className="block md:hidden">
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -184,6 +186,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </Tooltip>
            </div>
 
+          {/* Main Actions Dropdown - Always Visible */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -204,7 +207,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top" className="mb-2 max-h-80 overflow-y-auto">
-              {/* Plant Seed Sub-Menu */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Sprout className="mr-2 h-4 w-4" />
@@ -216,7 +218,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       availableSeeds.map(seedId => {
                         const crop = getSeedCropInfo(seedId);
                         if (!crop) return null;
-                        // Tier check is already done in GamePage for availableSeeds
                         return (
                           <DropdownMenuItem
                               key={seedId}
@@ -233,14 +234,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
-
-              {/* Harvest Action */}
               <DropdownMenuItem onSelect={onToggleHarvestMode}>
                 <Hand className="mr-2 h-4 w-4" />
                 Thu Hoạch
               </DropdownMenuItem>
-
-              {/* Fertilize Sub-Menu */}
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Zap className="mr-2 h-4 w-4" />
@@ -250,7 +247,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
                     {ownedAvailableFertilizers.length > 0 ? (
                       ownedAvailableFertilizers.map(fertilizer => {
-                        // Tier check for availableFertilizers is done in GamePage
                         return (
                           <DropdownMenuItem
                               key={fertilizer.id}
@@ -267,8 +263,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
-
-              {/* Cancel Action */}
               {currentAction !== 'none' && (
                 <>
                   <DropdownMenuSeparator />
@@ -280,7 +274,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-
+          {/* Inventory Button - Always Visible */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -298,6 +292,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
+          {/* Market Button - Always Visible */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -315,47 +310,102 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                  onClick={onOpenProfile}
-                  variant="outline"
-                  className={cn(buttonBaseClass)}
-                  aria-label="Thông tin Người chơi"
-              >
-                  <UserCircle2 className={iconClass} />
-                  <span className={labelClass}>Hồ Sơ</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-                <p>Thông tin Người chơi</p>
-            </TooltipContent>
-          </Tooltip>
-
-          <DropdownMenu>
+          {/* Desktop: Profile Button & Settings Dropdown */}
+          <div className="hidden md:flex items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
-                 <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="outline"
-                        className={cn(buttonBaseClass)}
-                        aria-label="Cài Đặt & Khác"
-                    >
-                        <Settings className={iconClass} />
-                        <span className={labelClass}>Khác</span>
-                    </Button>
-                </DropdownMenuTrigger>
+                <Button
+                    onClick={onOpenProfile}
+                    variant="outline"
+                    className={cn(buttonBaseClass)}
+                    aria-label="Thông tin Người chơi"
+                >
+                    <UserCircle2 className={iconClass} />
+                    <span className={labelClass}>Hồ Sơ</span>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p>Cài Đặt & Khác</p>
+                  <p>Thông tin Người chơi</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                 <DropdownMenuItem onSelect={onOpenLeaderboard}>
+
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                      <Button
+                          variant="outline"
+                          className={cn(buttonBaseClass)}
+                          aria-label="Cài Đặt & Khác"
+                      >
+                          <Settings className={iconClass} />
+                          <span className={labelClass}>Khác</span>
+                      </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Cài Đặt & Khác</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                  <DropdownMenuItem onSelect={onOpenLeaderboard}>
+                      <ListOrdered className="mr-2 h-4 w-4" />
+                      <span>Bảng Xếp Hạng</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                      <Link href="/library" className="w-full">
+                          <Library className="mr-2 h-4 w-4" />
+                          <span>Thư Viện Game</span>
+                      </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuItem onSelect={handleAdminNavigation}>
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          <span>Vào trang Admin</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onSelect={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Đăng Xuất</span>
+                  </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Mobile: "More" Dropdown Menu */}
+          <div className="block md:hidden">
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                      <Button
+                          variant="outline"
+                          className={cn(buttonBaseClass)}
+                          aria-label="Thêm tùy chọn"
+                      >
+                          <Menu className={iconClass} />
+                          <span className={labelClass}>Thêm</span>
+                      </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Thêm tùy chọn</p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                <DropdownMenuItem onSelect={onOpenProfile}>
+                    <UserCircle2 className="mr-2 h-4 w-4" />
+                    <span>Hồ Sơ</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onOpenLeaderboard}>
                     <ListOrdered className="mr-2 h-4 w-4" />
                     <span>Bảng Xếp Hạng</span>
                 </DropdownMenuItem>
-                 <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild>
                     <Link href="/library" className="w-full">
                         <Library className="mr-2 h-4 w-4" />
                         <span>Thư Viện Game</span>
@@ -375,8 +425,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Đăng Xuất</span>
                 </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
         </div>
       </div>
