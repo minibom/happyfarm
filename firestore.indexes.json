@@ -16,6 +16,20 @@
       ]
     },
     {
+      "collectionGroup": "gameFertilizers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "unlockTier",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "name",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "missions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -92,4 +106,3 @@
   ],
   "fieldOverrides": []
 }
-

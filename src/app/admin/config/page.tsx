@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA } from '@/lib/constants';
+import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
-import type { CropId, CropDetails } from '@/types';
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails } from '@/types';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
@@ -16,24 +16,37 @@ export default function AdminConfigPage() {
   const handlePushData = async () => {
     toast({
       title: "Đang Xử Lý...",
-      description: "Bắt đầu đẩy dữ liệu vật phẩm cục bộ lên Firestore. Vui lòng đợi...",
+      description: "Bắt đầu đẩy dữ liệu cục bộ lên Firestore. Vui lòng đợi...",
       duration: 5000,
     });
 
     try {
       const batch = writeBatch(db);
-      let itemCount = 0;
+      let cropItemCount = 0;
+      let fertilizerItemCount = 0;
 
+      // Push Crop Data
       for (const cropId in CROP_DATA) {
         if (Object.prototype.hasOwnProperty.call(CROP_DATA, cropId)) {
-          // Ensure unlockTier is included, defaulting to 1 if not present in constants
           const itemData: CropDetails = {
             ...CROP_DATA[cropId as CropId],
             unlockTier: CROP_DATA[cropId as CropId].unlockTier || 1, 
           };
           const itemRef = doc(db, 'gameItems', cropId);
           batch.set(itemRef, itemData);
-          itemCount++;
+          cropItemCount++;
+        }
+      }
+
+      // Push Fertilizer Data
+      for (const fertilizerId in FERTILIZER_DATA) {
+        if (Object.prototype.hasOwnProperty.call(FERTILIZER_DATA, fertilizerId)) {
+          const fertilizerDetails: FertilizerDetails = FERTILIZER_DATA[fertilizerId as FertilizerId];
+          // Ensure the ID from the key is also stored in the document if your structure requires it
+          // (FERTILIZER_DATA structure already has 'id' field matching the key)
+          const fertRef = doc(db, 'gameFertilizers', fertilizerId); // New collection name
+          batch.set(fertRef, fertilizerDetails);
+          fertilizerItemCount++;
         }
       }
 
@@ -41,11 +54,12 @@ export default function AdminConfigPage() {
 
       toast({
         title: "Thành Công!",
-        description: `Đã đẩy ${itemCount} vật phẩm từ 'src/lib/constants.ts' (bao gồm unlockTier) lên collection 'gameItems' trong Firestore.`,
+        description: `Đã đẩy ${cropItemCount} cây trồng (gameItems) và ${fertilizerItemCount} phân bón (gameFertilizers) từ 'src/lib/constants.ts' lên Firestore.`,
         duration: 10000,
         className: "bg-green-500 text-white"
       });
-      console.log("Data pushed to Firestore (including unlockTier):", CROP_DATA);
+      console.log("Crop data pushed to Firestore:", CROP_DATA);
+      console.log("Fertilizer data pushed to Firestore:", FERTILIZER_DATA);
 
     } catch (error) {
       console.error("Error pushing data to Firestore:", error);
@@ -75,21 +89,22 @@ export default function AdminConfigPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                   <DatabaseZap className="h-6 w-6 text-primary" />
-                  <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Vật Phẩm (Local {'>'} Database)</CardTitle>
+                  <CardTitle className="text-xl">Đồng Bộ Dữ Liệu (Local {'>'} Database)</CardTitle>
               </div>
               <CardDescription>
-                Chức năng này sẽ đẩy TOÀN BỘ cấu hình vật phẩm (bao gồm Bậc Mở Khóa) từ file 
-                <code>src/lib/constants.ts</code> lên collection <code>gameItems</code> trong Firestore.
-                Sử dụng để khởi tạo hoặc ghi đè dữ liệu vật phẩm trên database bằng dữ liệu từ file constants cục bộ.
+                Chức năng này sẽ đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>src/lib/crop-data.ts</code> 
+                lên collection <code>gameItems</code> VÀ Phân Bón từ <code>src/lib/fertilizer-data.ts</code> 
+                lên collection <code>gameFertilizers</code> trong Firestore.
+                Sử dụng để khởi tạo hoặc ghi đè dữ liệu trên database bằng dữ liệu từ file constants cục bộ.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={handlePushData} className="bg-accent hover:bg-accent/90">
                 <UploadCloud className="mr-2 h-5 w-5" />
-                Đẩy Dữ Liệu Vật Phẩm Lên Database
+                Đẩy Dữ Liệu Cây Trồng & Phân Bón Lên Database
               </Button>
               <p className="mt-2 text-sm text-muted-foreground">
-                Thao tác này sẽ <strong>GHI ĐÈ</strong> toàn bộ dữ liệu vật phẩm hiện có trên collection <code>gameItems</code>.
+                Thao tác này sẽ <strong>GHI ĐÈ</strong> toàn bộ dữ liệu hiện có trên collections <code>gameItems</code> và <code>gameFertilizers</code>.
               </p>
             </CardContent>
           </Card>

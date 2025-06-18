@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, PlusCircle, Trash2, Edit, Loader2, ShoppingBasket } from 'lucide-react';
+import { Eye, PlusCircle, Trash2, Edit, Loader2, Sprout } from 'lucide-react'; // Changed icon
 import { ItemModal, type ItemModalProps } from '@/components/admin/ItemActionModals';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -38,7 +38,7 @@ const formatMillisecondsToTime = (ms: number): string => {
   }
 };
 
-export default function AdminItemsPage() {
+export default function AdminCropsPage() { // Renamed component
   const [items, setItems] = useState<ItemDataForTable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,8 +60,8 @@ export default function AdminItemsPage() {
         setItems(updatedItems);
         setIsLoading(false); 
     }, (error) => {
-        console.error("Error with real-time item updates:", error);
-        toast({ title: "Lỗi Đồng Bộ", description: "Mất kết nối với dữ liệu vật phẩm.", variant: "destructive" });
+        console.error("Error with real-time crop item updates:", error);
+        toast({ title: "Lỗi Đồng Bộ Cây Trồng", description: "Mất kết nối với dữ liệu cây trồng.", variant: "destructive" });
         setIsLoading(false);
     });
 
@@ -84,7 +84,7 @@ export default function AdminItemsPage() {
   const handleSaveChanges = async (data: CropDetails, id?: CropId, originalId?: CropId) => {
     const effectiveId = id || originalId;
     if (!effectiveId) {
-        toast({ title: "Lỗi", description: "Không có ID vật phẩm để lưu.", variant: "destructive" });
+        toast({ title: "Lỗi", description: "Không có ID cây trồng để lưu.", variant: "destructive" });
         return;
     }
     
@@ -97,12 +97,12 @@ export default function AdminItemsPage() {
       await setDoc(itemRef, dataToSave, { merge: modalProps.mode === 'edit' }); 
       toast({
         title: `Thành Công (${modalProps.mode === 'create' ? 'Tạo Mới' : 'Chỉnh Sửa'})`,
-        description: `Đã ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm "${data.name}" trên database.`,
+        description: `Đã ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} cây trồng "${data.name}" trên database.`,
         className: "bg-green-500 text-white"
       });
     } catch (error) {
-      console.error(`Error ${modalProps.mode === 'create' ? 'creating' : 'updating'} item:`, error);
-      toast({ title: "Lỗi Lưu Trữ", description: `Không thể ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} vật phẩm.`, variant: "destructive"});
+      console.error(`Error ${modalProps.mode === 'create' ? 'creating' : 'updating'} crop item:`, error);
+      toast({ title: "Lỗi Lưu Trữ", description: `Không thể ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} cây trồng.`, variant: "destructive"});
     }
     setIsModalOpen(false);
   };
@@ -112,12 +112,12 @@ export default function AdminItemsPage() {
       await deleteDoc(doc(db, 'gameItems', itemToDelete.id));
       toast({
         title: "Đã Xóa",
-        description: `Đã xóa vật phẩm "${itemToDelete.name}" khỏi database.`,
+        description: `Đã xóa cây trồng "${itemToDelete.name}" khỏi database.`,
         className: "bg-orange-500 text-white"
       });
     } catch (error) {
-      console.error("Error deleting item:", error);
-      toast({ title: "Lỗi Xóa", description: `Không thể xóa vật phẩm "${itemToDelete.name}".`, variant: "destructive"});
+      console.error("Error deleting crop item:", error);
+      toast({ title: "Lỗi Xóa", description: `Không thể xóa cây trồng "${itemToDelete.name}".`, variant: "destructive"});
     }
   }
 
@@ -126,12 +126,12 @@ export default function AdminItemsPage() {
       <Card className="shadow-xl flex-1 flex flex-col min-h-0">
         <CardHeader>
             <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-                <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm
+                <Sprout className="h-7 w-7"/> Quản Lý Cây Trồng
             </CardTitle>
         </CardHeader>
         <CardContent className="flex-1 flex items-center justify-center p-6 pt-0">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-4 text-xl">Đang tải dữ liệu vật phẩm từ Firestore...</p>
+            <p className="ml-4 text-xl">Đang tải dữ liệu cây trồng...</p>
         </CardContent>
       </Card>
     );
@@ -144,14 +144,14 @@ export default function AdminItemsPage() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-                 <ShoppingBasket className="h-7 w-7"/> Quản Lý Vật Phẩm ({items.length})
+                 <Sprout className="h-7 w-7"/> Quản Lý Cây Trồng ({items.length})
               </CardTitle>
               <CardDescription>
-                Quản lý cấu hình vật phẩm trực tiếp từ Firestore (collection <code>gameItems</code>).
+                Quản lý cấu hình cây trồng trực tiếp từ Firestore (collection <code>gameItems</code>).
               </CardDescription>
             </div>
             <Button onClick={() => openModal('create')} className="bg-accent hover:bg-accent/90">
-              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Vật Phẩm Mới
+              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Cây Trồng Mới
             </Button>
           </div>
         </CardHeader>
@@ -176,7 +176,7 @@ export default function AdminItemsPage() {
                 {items.length === 0 && !isLoading ? (
                   <TableRow>
                     <TableCell colSpan={10} className="h-24 text-center">
-                      Không tìm thấy vật phẩm nào. Hãy tạo một vật phẩm mới.
+                      Không tìm thấy cây trồng nào. Hãy tạo một cây trồng mới.
                     </TableCell>
                   </TableRow>
                 ) : (

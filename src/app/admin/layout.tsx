@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react'; // Added Mail, Gift
+import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift, Zap as FertilizerIcon } from 'lucide-react'; // Added FertilizerIcon
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,11 +31,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   const menuItems = [
-    { href: '/admin/items', label: 'Quản lý Vật phẩm', icon: ShoppingBasket },
+    { href: '/admin/items', label: 'QL Cây Trồng', icon: ShoppingBasket },
+    { href: '/admin/fertilizers', label: 'QL Phân Bón', icon: FertilizerIcon },
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { href: '/admin/tiers', label: 'Quản lý Bậc', icon: BarChart3 },
-    { href: '/admin/mail', label: 'Quản lý Thư', icon: Mail }, // New Mail Management
-    { href: '/admin/bonuses', label: 'Quản lý Bonus', icon: Gift }, // New Bonus Management
+    { href: '/admin/mail', label: 'Quản lý Thư', icon: Mail },
+    { href: '/admin/bonuses', label: 'Quản lý Bonus', icon: Gift },
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
