@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card'; // Added import
 import { Loader2, UserCircle2, Coins, TrendingUp, ShieldHalf, ListOrdered } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
@@ -259,5 +260,3 @@ const LeaderboardModal: FC<LeaderboardModalProps> = ({ isOpen, onClose, currentU
 };
 
 export default LeaderboardModal;
-
-    
