@@ -203,7 +203,7 @@ export default function AdminItemsManagementPage() {
     <>
       <Card className="shadow-xl flex flex-col flex-1 min-h-0">
         <CardContent className="flex-1 flex flex-col min-h-0 p-6">
-          <div className="flex border-b mb-4">
+          <div className="flex border-b mb-4 shrink-0">
             <Button
               variant="ghost"
               onClick={() => setActiveView('crops')}
@@ -234,12 +234,12 @@ export default function AdminItemsManagementPage() {
                 </Button>
               </div>
               {isCropLoading && cropItems.length === 0 ? (
-                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]">
+                <div className="flex-1 flex items-center justify-center p-6 pt-0 min-h-[200px]">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <p className="ml-4 text-xl">Đang tải dữ liệu cây trồng...</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto min-w-0"> {/* Added min-w-0 */}
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -310,12 +310,12 @@ export default function AdminItemsManagementPage() {
                 </Button>
               </div>
               {isFertilizerLoading && fertilizers.length === 0 ? (
-                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]">
+                <div className="flex-1 flex items-center justify-center p-6 pt-0 min-h-[200px]">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <p className="ml-4 text-xl">Đang tải dữ liệu phân bón...</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto min-w-0"> {/* Added min-w-0 */}
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
