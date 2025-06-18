@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { MailMessage, RewardItem, RewardItemType, InventoryItem, AdminUserView, BonusConfiguration, BonusTriggerType, AdminMailLogEntry } from '@/types';
-import { Eye, Edit, Trash2, Loader2, PlusCircle, Mail, Gift, Send, History, Package, Coins, Star, XCircle } from 'lucide-react';
+import { Eye, Edit, Trash2, Loader2, PlusCircle, Mail, Gift, Send, History, Package, Coins, Star, XCircle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -25,12 +25,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
+import { CROP_DATA, FERTILIZER_DATA, MAIL_TEMPLATES_DATA } from '@/lib/constants';
 import { BonusActionModal } from '@/components/admin/BonusActionModal';
 import { useAuth } from '@/hooks/useAuth';
+import type { MailTemplate } from '@/lib/mail-templates';
+
 
 type ActiveView = 'mail' | 'bonuses';
-type ActiveMailSubView = 'compose' | 'history';
+type ActiveMailSubView = 'compose' | 'templates' | 'history';
 
 const MailManagementView = () => {
   const { user } = useAuth();
@@ -47,14 +49,51 @@ const MailManagementView = () => {
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
+  const [mailTemplates, setMailTemplates] = useState<MailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | ''>('');
+  const [selectedTemplatePlaceholders, setSelectedTemplatePlaceholders] = useState<string[]>([]);
+
   const [sentMailsLog, setSentMailsLog] = useState<AdminMailLogEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    // For simplicity, load templates directly from constants. 
+    // In a more dynamic system, these could be fetched from Firestore.
+    setMailTemplates(MAIL_TEMPLATES_DATA);
+  }, []);
 
   useEffect(() => {
     if (activeMailSubView === 'history') {
       fetchSentMailsHistory();
     }
+    // When switching away from templates tab, clear selection
+    if (activeMailSubView !== 'templates') {
+      setSelectedTemplateId('');
+      setSelectedTemplatePlaceholders([]);
+    }
+     if (activeMailSubView === 'compose') {
+      // Optionally clear form when switching to 'compose', or let user decide
+      // setMailSubject(''); setMailBody(''); setRewards([]);
+    }
   }, [activeMailSubView]);
+
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = mailTemplates.find(t => t.id === templateId);
+    if (template) {
+      setMailSubject(template.defaultSubject);
+      setMailBody(template.defaultBody);
+      setRewards([...template.defaultRewards]); // Clone rewards array
+      setSelectedTemplatePlaceholders(template.placeholders || []);
+      toast({ title: "Đã Áp Dụng Thư Mẫu", description: `Thư mẫu "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white" });
+    } else {
+      // Clear form if "No Template" or invalid template selected
+      setMailSubject('');
+      setMailBody('');
+      setRewards([]);
+      setSelectedTemplatePlaceholders([]);
+    }
+  };
 
   const fetchSentMailsHistory = async () => {
     setIsLoadingHistory(true);
@@ -198,7 +237,7 @@ const MailManagementView = () => {
         description: `Đã gửi thư đến ${uidsToSend.length} người dùng.`,
         className: "bg-green-500 text-white"
       });
-      setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids('');
+      setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids(''); setSelectedTemplateId(''); setSelectedTemplatePlaceholders([]);
     } catch (error) {
       console.error("Error sending mail:", error);
       toast({ title: "Lỗi Gửi Thư", description: `Không thể gửi thư. Lỗi: ${(error as Error).message}`, variant: "destructive" });
@@ -238,6 +277,13 @@ const MailManagementView = () => {
             </Button>
             <Button
                 variant="ghost"
+                onClick={() => setActiveMailSubView('templates')}
+                className={cn("py-2.5 px-3.5 rounded-none text-sm", activeMailSubView === 'templates' ? 'border-b-2 border-accent text-accent font-medium' : 'text-muted-foreground hover:bg-muted/40')}
+            >
+                <FileText className="mr-1.5 h-4 w-4"/> Dùng Thư Mẫu
+            </Button>
+            <Button
+                variant="ghost"
                 onClick={() => setActiveMailSubView('history')}
                 className={cn("py-2.5 px-3.5 rounded-none text-sm", activeMailSubView === 'history' ? 'border-b-2 border-accent text-accent font-medium' : 'text-muted-foreground hover:bg-muted/40')}
             >
@@ -245,9 +291,28 @@ const MailManagementView = () => {
             </Button>
         </div>
 
-        {activeMailSubView === 'compose' && (
+        {(activeMailSubView === 'compose' || activeMailSubView === 'templates') && (
             <ScrollArea className="flex-1 pr-2">
                 <div className="space-y-6">
+                    {activeMailSubView === 'templates' && (
+                        <div className="space-y-2 border-b pb-4">
+                            <Label htmlFor="mailTemplateSelect" className="text-base">Chọn Thư Mẫu</Label>
+                            <Select value={selectedTemplateId || ''} onValueChange={handleTemplateSelect}>
+                                <SelectTrigger id="mailTemplateSelect">
+                                    <SelectValue placeholder="-- Chọn một thư mẫu --" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">-- Không dùng thư mẫu --</SelectItem>
+                                    {mailTemplates.map(template => (
+                                        <SelectItem key={template.id} value={template.id}>
+                                            {template.templateName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <Label htmlFor="targetAudience" className="text-base">Đối tượng nhận thư</Label>
                         <Select value={targetAudience} onValueChange={(value) => setTargetAudience(value as 'all' | 'specific')}>
@@ -280,6 +345,14 @@ const MailManagementView = () => {
                     <div className="space-y-2">
                         <Label htmlFor="mailBody" className="text-base">Nội dung thư*</Label>
                         <Textarea id="mailBody" value={mailBody} onChange={(e) => setMailBody(e.target.value)} rows={5} placeholder="Nội dung chi tiết của thư..." />
+                         {selectedTemplatePlaceholders.length > 0 && activeMailSubView === 'templates' && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                                <p className="font-medium">Các placeholder cần thay thế trong mẫu này:</p>
+                                <ul className="list-disc list-inside">
+                                    {selectedTemplatePlaceholders.map(ph => <li key={ph}>{ph}</li>)}
+                                </ul>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-4 border-t pt-4">
@@ -589,3 +662,4 @@ export default function AdminMailBonusesPage() {
     </Card>
   );
 }
+

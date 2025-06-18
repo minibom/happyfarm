@@ -3,13 +3,14 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail } from 'lucide-react'; // Added Mail icon
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA } from '@/lib/constants';
+import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA, MAIL_TEMPLATES_DATA } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore } from '@/types';
 import type { TierDetail } from '@/lib/tier-data';
+import type { MailTemplate } from '@/lib/mail-templates';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
@@ -132,6 +133,40 @@ export default function AdminConfigPage() {
     }
   };
 
+  const handlePushMailTemplates = async () => {
+    toast({
+      title: "Đang Xử Lý...",
+      description: "Bắt đầu đẩy dữ liệu Thư Mẫu lên Firestore...",
+      duration: 3000,
+    });
+    try {
+      const batch = writeBatch(db);
+      let templateCount = 0;
+
+      for (const template of MAIL_TEMPLATES_DATA) {
+        const templateRef = doc(db, 'gameMailTemplates', template.id);
+        batch.set(templateRef, template);
+        templateCount++;
+      }
+      
+      await batch.commit();
+      toast({
+        title: "Thành Công!",
+        description: `Đã đẩy ${templateCount} thư mẫu từ 'mail-templates.ts' lên Firestore collection 'gameMailTemplates'.`,
+        duration: 7000,
+        className: "bg-green-500 text-white"
+      });
+
+    } catch (error) {
+      console.error("Error pushing mail templates to Firestore:", error);
+       toast({
+        title: "Lỗi Đẩy Thư Mẫu",
+        description: `Không thể đẩy dữ liệu thư mẫu. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -213,14 +248,21 @@ export default function AdminConfigPage() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                     <Mail className="h-6 w-6 text-teal-500" />
-                    <CardTitle className="text-xl">Đồng Bộ Temp Thư (Placeholder)</CardTitle>
+                    <CardTitle className="text-xl">Đồng Bộ Thư Mẫu</CardTitle>
                 </div>
                 <CardDescription>
-                  Khu vực này có thể chứa các tiện ích đồng bộ dữ liệu thư mẫu. (Sắp có)
+                  Đẩy TOÀN BỘ Thư Mẫu từ <code>mail-templates.ts</code> (thông qua <code>constants.ts</code>)
+                  lên collection <code>gameMailTemplates</code> trong Firestore.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" disabled className="mt-2">Đồng Bộ Thư Mẫu</Button>
+                <Button onClick={handlePushMailTemplates} className="bg-teal-500 hover:bg-teal-600 text-white">
+                    <UploadCloud className="mr-2 h-5 w-5" />
+                    Đồng Bộ Thư Mẫu
+                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên <code>gameMailTemplates</code>.
+                </p>
               </CardContent>
             </Card>
           </div>
