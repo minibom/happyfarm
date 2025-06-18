@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react'; // Added useCallback
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot, DocumentData } from 'firebase/firestore';
+import { doc, onSnapshot, type DocumentData } from 'firebase/firestore';
 import type { MarketState, MarketPriceData, MarketPriceChange, MarketEventData, MarketItemId, CropDetails, CropId } from '@/types';
 import { INITIAL_MARKET_STATE, CROP_DATA } from '@/lib/constants'; // Assuming CROP_DATA holds base item details
 
@@ -86,3 +86,4 @@ export const useMarket = (): MarketData => {
     getItemDetails,
   };
 };
+
