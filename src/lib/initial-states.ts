@@ -36,7 +36,7 @@ export const INITIAL_GAME_STATE: GameState = {
   lastLogin: 0,
   email: undefined,
   displayName: undefined,
-  mail: [], // Initialize empty mailbox
+  // mail: [], // Mail is now a subcollection, removed from GameState document
   claimedBonuses: {}, // Initialize empty claimed bonuses
 };
 

@@ -12,12 +12,12 @@ import {
   ALL_SEED_IDS,
   ALL_CROP_IDS,
   ALL_FERTILIZER_IDS,
-  TIER_DATA, // Import TIER_DATA for bonus check
+  TIER_DATA, 
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp } from 'firebase/firestore';
 import type { CropDetails } from '@/types';
 
 interface UseGameStateCoreProps {
@@ -25,14 +25,6 @@ interface UseGameStateCoreProps {
   itemDataLoaded: boolean;
   fertilizerDataLoaded: boolean;
 }
-
-// Dummy bonus configurations for tier-up (replace with Firestore later)
-const TIER_UP_BONUSES: Record<number, { subject: string; body: string; rewards: RewardItem[] }> = {
-  2: { subject: "Chúc Mừng Lên Bậc 2!", body: "Bạn đã đạt Bậc Chủ Vườn Chăm Chỉ! Nhận một chút vàng để khởi đầu nhé.", rewards: [{ type: 'gold', amount: 200 }] },
-  3: { subject: "Chúc Mừng Lên Bậc 3!", body: "Tuyệt vời! Bậc Nhà Trồng Trọt Khéo Léo mở ra nhiều cơ hội. Thưởng cho bạn!", rewards: [{ type: 'gold', amount: 500 }, { type: 'item', itemId: 't1_quickSoil', quantity: 3 }] },
-  // Add more tier bonuses as needed
-};
-
 
 export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoaded }: UseGameStateCoreProps) => {
   const { user, userId, loading: authLoading } = useAuth();
@@ -58,10 +50,19 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          const stateToSave = JSON.parse(JSON.stringify(gameStateRef.current, (key, value) => {
-            return value === undefined ? null : value;
-          }));
-          await setDoc(gameDocRef, stateToSave);
+          // Ensure only properties defined in GameState type are saved
+          const { ...stateToSaveRest } = gameStateRef.current;
+          const finalStateToSave: GameState = {
+            ...stateToSaveRest
+          };
+
+          // Ensure fields that might be undefined are handled or omitted if necessary
+          if (finalStateToSave.email === undefined) delete (finalStateToSave as any).email;
+          if (finalStateToSave.displayName === undefined) delete (finalStateToSave as any).displayName;
+          
+          await setDoc(gameDocRef, JSON.parse(JSON.stringify(finalStateToSave, (key, value) => {
+             return value === undefined ? null : value; // Convert undefined to null for Firestore
+          })));
         } catch (error) {
           console.error("Failed to save game state:", error);
           toast({ title: "Lỗi Lưu Trữ", description: "Không thể lưu tiến trình trò chơi của bạn.", variant: "destructive" });
@@ -94,8 +95,11 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
         if (docSnap.exists()) {
-          const firestoreData = docSnap.data() as GameState;
-          let loadedState = { ...INITIAL_GAME_STATE, ...firestoreData };
+          const firestoreData = docSnap.data() as Partial<GameState>; // Use Partial to handle potentially missing fields
+          let loadedState: GameState = { 
+            ...INITIAL_GAME_STATE, // Start with defaults
+            ...firestoreData, // Override with Firestore data
+          };
 
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
             ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
@@ -119,7 +123,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
             for (const key in firestoreData.inventory) {
               const itemKey = key as InventoryItem;
               if (ALL_SEED_IDS.includes(itemKey as SeedId) || ALL_CROP_IDS.includes(itemKey as CropId) || ALL_FERTILIZER_IDS.includes(itemKey as FertilizerId)) {
-                 validatedInventory[itemKey] = firestoreData.inventory[itemKey] || 0;
+                 validatedInventory[itemKey] = (firestoreData.inventory as any)[itemKey] || 0;
               }
             }
           }
@@ -139,10 +143,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastLogin = firestoreData.lastLogin || Date.now();
           loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
           
-          // Ensure mail and claimedBonuses are arrays/objects
-          loadedState.mail = Array.isArray(firestoreData.mail) ? firestoreData.mail : [];
           loadedState.claimedBonuses = typeof firestoreData.claimedBonuses === 'object' && firestoreData.claimedBonuses !== null ? firestoreData.claimedBonuses : {};
-
 
           finalStateToSet = loadedState;
 
@@ -157,8 +158,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
             lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             status: 'active' as const,
-            mail: [], // Ensure mail is initialized
-            claimedBonuses: {}, // Ensure claimedBonuses is initialized
+            claimedBonuses: {}, 
           };
           finalStateToSet = newInitialUserState;
         }
@@ -186,7 +186,6 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }
   }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast]);
 
-  // Level Up and Tier Up Bonus Effect
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
       const oldTierInfo = getPlayerTierInfo(prevLevelRef.current);
@@ -197,30 +196,18 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       if (newTierInfo.tier > oldTierInfo.tier) {
         toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
         
-        // Simulate Tier Up Bonus Mail (Client-side for now)
-        const bonusKey = `tierUp_${newTierInfo.tier}`;
-        if (TIER_UP_BONUSES[newTierInfo.tier] && !gameStateRef.current.claimedBonuses[bonusKey]) {
-          const bonusData = TIER_UP_BONUSES[newTierInfo.tier];
-          const newMail: MailMessage = {
-            id: `mail_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            senderType: 'system',
-            senderName: 'Ban Quản Trị Happy Farm',
-            recipientUid: userId,
-            subject: bonusData.subject,
-            body: bonusData.body,
-            rewards: bonusData.rewards,
-            isRead: false,
-            isClaimed: false,
-            createdAt: Date.now(),
-          };
-          setGameState(prev => ({
-            ...prev,
-            mail: [...prev.mail, newMail],
-            claimedBonuses: { ...prev.claimedBonuses, [bonusKey]: true },
-            lastUpdate: Date.now(),
-          }));
-          toast({ title: "Thư Mới!", description: `Bạn có thư chúc mừng thăng hạng và quà tặng!`, duration: 5000 });
-        }
+        // Client-side mail generation for tier-up is REMOVED.
+        // This will be handled by a Cloud Function listening to GameState changes
+        // and checking `bonusConfigurations` in Firestore.
+        // The Cloud Function will then write to the user's mail subcollection.
+        // The `claimedBonuses` field in GameState will be checked by the Cloud Function.
+        // Example:
+        // const bonusKey = `tierUp_${newTierInfo.tier}`;
+        // if (!gameStateRef.current.claimedBonuses[bonusKey]) {
+        //    // Cloud Function would trigger, find 'tierUp_2' in bonusConfigurations,
+        //    // create mail in users/{userId}/mail/{newMailId}
+        //    // and potentially update claimedBonuses via a transaction or another function.
+        // }
       }
     }
     if (gameDataLoaded) {

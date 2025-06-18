@@ -1,20 +1,23 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase'; // Firestore instance
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, writeBatch } from 'firebase/firestore';
+
 import ResourceBar from '@/components/game/ResourceBar';
 import MarketModal from '@/components/game/MarketModal';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import LeaderboardModal from '@/components/game/LeaderboardModal';
-import MailModal from '@/components/game/MailModal'; // New MailModal import
+import MailModal from '@/components/game/MailModal';
 import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage } from '@/types';
+import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +29,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const {
     gameState,
-    setGameState, // Added setGameState for mail operations
+    setGameState, // Still needed for applying rewards from mail
     plantCrop,
     harvestCrop,
     buyItem,
@@ -39,12 +42,13 @@ export default function GamePage() {
     cropData,
   } = useGameLogic();
 
+  const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
   const [showMarket, setShowMarket] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
-  const [isMailModalOpen, setIsMailModalOpen] = useState(false); // State for MailModal
+  const [isMailModalOpen, setIsMailModalOpen] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -55,6 +59,35 @@ export default function GamePage() {
       router.push('/login');
     }
   }, [user, authLoading, router, isInitialized]);
+
+  // Listen to Mail Subcollection
+  useEffect(() => {
+    if (!userId) {
+      setMailMessages([]);
+      return;
+    }
+    const mailCollectionRef = collection(db, 'users', userId, 'mail');
+    const q = query(mailCollectionRef, orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const mails: MailMessage[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        mails.push({ 
+            id: docSnap.id, 
+            ...data,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : data.createdAt,
+            expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toMillis() : data.expiresAt,
+        } as MailMessage);
+      });
+      setMailMessages(mails);
+    }, (error) => {
+      console.error("Error fetching mail:", error);
+      toast({ title: "Lỗi Hộp Thư", description: "Không thể tải thư của bạn.", variant: "destructive" });
+    });
+
+    return () => unsubscribe();
+  }, [userId, toast]);
+
 
   const handlePlotClick = (plotId: number) => {
     const plot = gameState.plots.find(p => p.id === plotId);
@@ -197,31 +230,42 @@ export default function GamePage() {
   }, [gameState.inventory, playerTierInfo.tier]);
 
 
-  // Mail Logic
-  const unreadMailCount = useMemo(() => gameState.mail.filter(m => !m.isRead).length, [gameState.mail]);
+  const unreadMailCount = useMemo(() => mailMessages.filter(m => !m.isRead).length, [mailMessages]);
 
-  const handleMarkMailAsRead = (mailId: string) => {
-    setGameState(prev => ({
-      ...prev,
-      mail: prev.mail.map(m => m.id === mailId ? { ...m, isRead: true } : m),
-      lastUpdate: Date.now(),
-    }));
+  const handleMarkMailAsRead = async (mailId: string) => {
+    if (!userId) return;
+    const mailRef = doc(db, 'users', userId, 'mail', mailId);
+    try {
+      await updateDoc(mailRef, { isRead: true });
+      // Local state update is handled by onSnapshot
+    } catch (error) {
+      console.error("Error marking mail as read:", error);
+      toast({ title: "Lỗi", description: "Không thể đánh dấu thư đã đọc.", variant: "destructive"});
+    }
   };
 
-  const handleClaimMailRewards = (mailId: string) => {
-    // Placeholder for actual reward claiming logic
-    // For now, just marks as claimed and shows a toast.
-    // In a real implementation, this would add items/gold/xp to gameState.
-    const mailToClaim = gameState.mail.find(m => m.id === mailId);
+  const handleClaimMailRewards = async (mailId: string) => {
+    if (!userId) return;
+    const mailToClaim = mailMessages.find(m => m.id === mailId);
     if (!mailToClaim || mailToClaim.isClaimed || mailToClaim.rewards.length === 0) {
       toast({ title: "Không thể nhận", description: "Thư không có quà hoặc đã nhận.", variant: "default" });
       return;
     }
 
-    // Simulate applying rewards
     let goldReward = 0;
     let xpReward = 0;
     const itemRewards: {itemId: string, quantity: number}[] = [];
+    let bonusKeyToClaim: string | undefined = undefined;
+
+    // Check if this mail corresponds to a unique bonus (e.g. tierUp bonuses)
+    // This is a simplified check; a more robust system might involve a 'bonusId' field in the mail document.
+    if (mailToClaim.subject.includes("Chúc Mừng Lên Bậc")) {
+        const tierMatch = mailToClaim.subject.match(/Bậc (\d+)/);
+        if (tierMatch && tierMatch[1]) {
+            bonusKeyToClaim = `tierUp_${tierMatch[1]}`;
+        }
+    }
+    // Add more checks for other unique bonus mail types here if needed
 
     mailToClaim.rewards.forEach(reward => {
       if (reward.type === 'gold' && reward.amount) goldReward += reward.amount;
@@ -229,8 +273,8 @@ export default function GamePage() {
       if (reward.type === 'item' && reward.itemId && reward.quantity) itemRewards.push({itemId: reward.itemId, quantity: reward.quantity});
     });
     
+    // Optimistically update client GameState
     setGameState(prev => {
-      const updatedMail = prev.mail.map(m => m.id === mailId ? { ...m, isClaimed: true, isRead: true } : m);
       const newInventory = { ...prev.inventory };
       itemRewards.forEach(item => {
         newInventory[item.itemId] = (newInventory[item.itemId] || 0) + item.quantity;
@@ -245,22 +289,46 @@ export default function GamePage() {
         xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
       }
 
+      const updatedClaimedBonuses = { ...prev.claimedBonuses };
+      if (bonusKeyToClaim) {
+        updatedClaimedBonuses[bonusKeyToClaim] = true;
+      }
+
       return {
         ...prev,
         gold: prev.gold + goldReward,
         xp: newXp,
         level: newLevel,
         inventory: newInventory,
-        mail: updatedMail,
+        claimedBonuses: updatedClaimedBonuses,
         lastUpdate: Date.now(),
       };
     });
-    toast({ title: "Đã Nhận Quà!", description: `Bạn đã nhận quà từ thư: ${mailToClaim.subject}`, className: "bg-accent text-accent-foreground" });
+
+    // Update Firestore
+    const mailRef = doc(db, 'users', userId, 'mail', mailId);
+    try {
+      await updateDoc(mailRef, { isClaimed: true, isRead: true });
+      // Note: GameState (gold, xp, inventory, claimedBonuses) is saved via its own useEffect in useGameStateCore
+      toast({ title: "Đã Nhận Quà!", description: `Bạn đã nhận quà từ thư: ${mailToClaim.subject}`, className: "bg-accent text-accent-foreground" });
+    } catch (error) {
+      console.error("Error claiming rewards:", error);
+      toast({ title: "Lỗi Nhận Quà", description: "Không thể cập nhật trạng thái thư.", variant: "destructive"});
+      // Revert client-side GameState changes if Firestore update fails (more complex, consider for production)
+    }
   };
 
-  const handleDeleteMail = (mailId: string) => {
-    // Placeholder - for now, mail isn't actually deleted
-    toast({ title: "Sắp có", description: "Chức năng xóa thư sẽ được cập nhật sau.", variant: "default" });
+  const handleDeleteMail = async (mailId: string) => {
+    if (!userId) return;
+    const mailRef = doc(db, 'users', userId, 'mail', mailId);
+    try {
+      await deleteDoc(mailRef);
+      toast({ title: "Đã Xóa Thư", description: "Thư đã được xóa." });
+      // Local state update is handled by onSnapshot
+    } catch (error) {
+      console.error("Error deleting mail:", error);
+      toast({ title: "Lỗi", description: "Không thể xóa thư.", variant: "destructive"});
+    }
   };
 
 
@@ -294,7 +362,7 @@ export default function GamePage() {
         availableFertilizersForPopover={availableFertilizersForSelection}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
-        fertilizeFromPlotPopover={fertilizeFromPlotPopover}
+        fertilizeFromPlotPopover={fertilizeFromPlotPopover} // Pass down
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
@@ -305,8 +373,8 @@ export default function GamePage() {
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenChatModal={() => setIsChatModalOpen(true)}
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
-        onOpenMailModal={() => setIsMailModalOpen(true)} // Connect to MailModal
-        unreadMailCount={unreadMailCount} // Pass unread count
+        onOpenMailModal={() => setIsMailModalOpen(true)}
+        unreadMailCount={unreadMailCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onSetFertilizeMode={handleSetFertilizeMode} 
@@ -358,7 +426,7 @@ export default function GamePage() {
       <MailModal
         isOpen={isMailModalOpen}
         onClose={() => setIsMailModalOpen(false)}
-        mailMessages={gameState.mail}
+        mailMessages={mailMessages}
         onMarkAsRead={handleMarkMailAsRead}
         onClaimRewards={handleClaimMailRewards}
         onDeleteMail={handleDeleteMail}

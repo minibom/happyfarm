@@ -49,7 +49,7 @@ export interface RewardItem {
 export type MailSenderType = 'system' | 'admin' | 'event';
 
 export interface MailMessage {
-  id: string; // Unique ID for the mail
+  id: string; // Firestore Document ID
   senderType: MailSenderType;
   senderName: string; // e.g., "System", "Game Master", "Tomato Festival"
   recipientUid: string; // Player's Firebase UID
@@ -58,8 +58,8 @@ export interface MailMessage {
   rewards: RewardItem[];
   isRead: boolean;
   isClaimed: boolean; // If rewards have been claimed
-  createdAt: number; // Timestamp
-  expiresAt?: number; // Optional expiry for event mails
+  createdAt: any; // Firestore Timestamp or number for client-side
+  expiresAt?: any; // Optional expiry for event mails, Firestore Timestamp or number
 }
 
 export type BonusTriggerType =
@@ -71,7 +71,7 @@ export type BonusTriggerType =
   | 'specialEvent';
 
 export interface BonusConfiguration {
-  id: string; // e.g., 'tierUp_2', 'event_springFestival'
+  id: string; // Firestore Document ID, e.g., 'tierUp_2', 'event_springFestival'
   triggerType: BonusTriggerType;
   triggerValue?: string | number; // e.g., tier number '2', event ID 'springFestival'
   description: string; // For admin reference
@@ -94,7 +94,7 @@ export interface GameState {
   lastLogin: number;
   email?: string;
   displayName?: string;
-  mail: MailMessage[]; // Player's mailbox
+  // mail: MailMessage[]; // Mail will now be fetched from a subcollection
   claimedBonuses: Record<string, boolean>; // Tracks which one-time bonuses have been claimed e.g. {'tierUp_2': true}
 }
 
@@ -119,6 +119,7 @@ export interface TierInfo {
 
 export interface AdminUserView extends GameState {
   uid: string;
+  // mail property removed as it's now a subcollection
 }
 
 export type MarketItemId = CropId | SeedId;

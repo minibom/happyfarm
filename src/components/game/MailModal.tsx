@@ -14,18 +14,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { MailMessage, RewardItem } from '@/types';
-import { Mail, Inbox, Package, Coins, Star, CheckCircle2, Circle } from 'lucide-react';
+import { Mail, Inbox, Package, Coins, Star, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants'; // For reward item display
+import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants'; 
+import { Timestamp } from 'firebase/firestore';
 
 interface MailModalProps {
   isOpen: boolean;
   onClose: () => void;
   mailMessages: MailMessage[];
   onMarkAsRead: (mailId: string) => void;
-  onClaimRewards: (mailId: string) => void; // Placeholder for now
-  onDeleteMail: (mailId: string) => void; // Placeholder
+  onClaimRewards: (mailId: string) => void; 
+  onDeleteMail: (mailId: string) => void; 
 }
 
 const MailModal: FC<MailModalProps> = ({
@@ -71,7 +72,18 @@ const MailModal: FC<MailModalProps> = ({
     return <Package className="w-4 h-4 text-muted-foreground" />;
   }
 
-  const sortedMailMessages = [...mailMessages].sort((a, b) => b.createdAt - a.createdAt);
+  // Mail messages are already sorted by createdAt desc in GamePage.tsx
+  const sortedMailMessages = mailMessages; 
+
+  const formatTimestamp = (timestamp: any): string => {
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate().toLocaleString('vi-VN');
+    }
+    if (typeof timestamp === 'number') {
+      return new Date(timestamp).toLocaleString('vi-VN');
+    }
+    return 'Không rõ ngày';
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={() => { onClose(); setSelectedMail(null); }}>
@@ -130,7 +142,7 @@ const MailModal: FC<MailModalProps> = ({
                 <div className="flex justify-between items-center mb-3">
                     <p className="text-xs text-muted-foreground">Từ: {selectedMail.senderName}</p>
                     <p className="text-xs text-muted-foreground">
-                        {new Date(selectedMail.createdAt).toLocaleString('vi-VN')}
+                        {formatTimestamp(selectedMail.createdAt)}
                     </p>
                 </div>
                 <ScrollArea className="flex-grow h-0 bg-muted/30 p-3 rounded-md mb-3">
@@ -158,8 +170,8 @@ const MailModal: FC<MailModalProps> = ({
                     {selectedMail.isClaimed ? <CheckCircle2 className="mr-2 h-4 w-4"/> : <Package className="mr-2 h-4 w-4"/>}
                     {selectedMail.isClaimed ? 'Đã Nhận' : 'Nhận Quà'}
                   </Button>
-                   <Button variant="outline" onClick={() => onDeleteMail(selectedMail.id)} disabled>
-                    Xóa Thư (Sắp có)
+                   <Button variant="outline" onClick={() => onDeleteMail(selectedMail.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/50">
+                    <Trash2 className="mr-2 h-4 w-4"/> Xóa Thư
                   </Button>
                 </div>
               </>
