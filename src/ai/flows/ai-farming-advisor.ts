@@ -66,6 +66,14 @@ const farmingAdviceFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      console.error('AI failed to generate farming advice matching the schema. Output was null or undefined.');
+      // Fallback or throw a more specific error
+      // For example, return default advice:
+      // return { advice: "Make sure to plant seeds regularly and check market prices!" };
+      // Or throw a specific error:
+      throw new Error('AI failed to generate valid farming advice structure.');
+    }
+    return output;
   }
 );

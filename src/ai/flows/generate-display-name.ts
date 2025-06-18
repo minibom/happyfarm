@@ -46,6 +46,14 @@ const generateDisplayNameFlow = ai.defineFlow(
   },
   async (input) => { // Input type matches inputSchema if used
     const {output} = await prompt(input); // Pass input to prompt
-    return output!;
+    if (!output) {
+      console.error('AI failed to generate a display name matching the schema. Output was null or undefined.');
+      // Fallback or throw a more specific error
+      // For example, you could return a default name:
+      // return { displayName: `Farmer${Math.floor(Math.random() * 10000)}` };
+      // Or throw a specific error to be caught upstream:
+      throw new Error('AI failed to generate a valid display name structure.');
+    }
+    return output;
   }
 );
