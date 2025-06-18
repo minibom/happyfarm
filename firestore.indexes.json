@@ -30,6 +30,30 @@
       ]
     },
     {
+      "collectionGroup": "gameBonusConfigurations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "triggerType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "description",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mail",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "missions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -106,3 +130,5 @@
   ],
   "fieldOverrides": []
 }
+
+    

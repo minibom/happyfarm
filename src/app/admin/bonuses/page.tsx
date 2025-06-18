@@ -1,146 +1,234 @@
 
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
+import type { BonusConfiguration, RewardItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Gift, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import type { BonusTriggerType, RewardItem } from '@/types';
-import { BONUS_CONFIGURATIONS_DATA } from '@/lib/constants'; // Import the new data
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Eye, PlusCircle, Trash2, Edit, Loader2, Gift } from 'lucide-react';
+import { BonusActionModal, type BonusModalProps } from '@/components/admin/BonusActionModal';
+import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 export default function AdminBonusesPage() {
-  // TODO: Fetch and manage bonus configurations from Firestore in the future
-  // For now, we use the static data from constants.
-  const bonusConfigurations = BONUS_CONFIGURATIONS_DATA;
+  const [bonusConfigs, setBonusConfigs] = useState<BonusConfiguration[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalProps, setModalProps] = useState<Omit<BonusModalProps, 'isOpen' | 'onClose'>>({ 
+    mode: 'view', 
+    bonusData: { 
+      id: '', 
+      triggerType: 'firstLogin', 
+      description: '', 
+      rewards: [], 
+      mailSubject: '', 
+      mailBody: '', 
+      isEnabled: true 
+    }
+  });
+  const { toast } = useToast();
 
-  return (
-    <div className="space-y-6">
-      <Card className="shadow-xl">
+  useEffect(() => {
+    const bonusCollectionRef = collection(db, 'gameBonusConfigurations');
+    const q = query(bonusCollectionRef, orderBy("triggerType"), orderBy("description"));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const updatedBonuses: BonusConfiguration[] = [];
+        snapshot.forEach((docSnap) => {
+            updatedBonuses.push(docSnap.data() as BonusConfiguration);
+        });
+        setBonusConfigs(updatedBonuses);
+        setIsLoading(false); 
+    }, (error) => {
+        console.error("Error with real-time bonus config updates:", error);
+        toast({ title: "Lỗi Đồng Bộ Bonus", description: "Mất kết nối với dữ liệu cấu hình bonus.", variant: "destructive" });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
+  const openModal = (mode: 'view' | 'edit' | 'create', bonus?: BonusConfiguration) => {
+    if (mode === 'create') {
+      setModalProps({
+        mode: 'create',
+        bonusData: { 
+          id: '', 
+          triggerType: 'firstLogin', 
+          description: 'Bonus mới', 
+          rewards: [], 
+          mailSubject: 'Quà tặng từ Happy Farm!', 
+          mailBody: 'Bạn nhận được một phần quà đặc biệt!', 
+          isEnabled: true 
+        },
+      });
+    } else if (bonus) {
+       setModalProps({ mode, bonusData: bonus, bonusId: bonus.id });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSaveChanges = async (data: BonusConfiguration, idToSave: string, originalId?: string) => {
+    const finalData = { ...data, id: idToSave }; 
+
+    try {
+      if (modalProps.mode === 'edit' && originalId && originalId !== idToSave) {
+        // ID changed, so delete old and create new
+        const oldDocRef = doc(db, 'gameBonusConfigurations', originalId);
+        await deleteDoc(oldDocRef);
+      }
+      
+      const bonusRef = doc(db, 'gameBonusConfigurations', idToSave);
+      await setDoc(bonusRef, finalData); 
+      
+      toast({
+        title: `Thành Công (${modalProps.mode === 'create' ? 'Tạo Mới' : 'Chỉnh Sửa'})`,
+        description: `Đã ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} cấu hình bonus "${finalData.description}" trên database.`,
+        className: "bg-green-500 text-white"
+      });
+    } catch (error) {
+      console.error(`Error ${modalProps.mode === 'create' ? 'creating' : 'updating'} bonus config:`, error);
+      toast({ title: "Lỗi Lưu Trữ", description: `Không thể ${modalProps.mode === 'create' ? 'tạo' : 'cập nhật'} cấu hình bonus.`, variant: "destructive"});
+    }
+    setIsModalOpen(false);
+  };
+
+  const handleDeleteBonus = async (bonusToDelete: BonusConfiguration) => {
+     try {
+      await deleteDoc(doc(db, 'gameBonusConfigurations', bonusToDelete.id));
+      toast({
+        title: "Đã Xóa",
+        description: `Đã xóa cấu hình bonus "${bonusToDelete.description}" khỏi database.`,
+        className: "bg-orange-500 text-white"
+      });
+    } catch (error) {
+      console.error("Error deleting bonus config:", error);
+      toast({ title: "Lỗi Xóa", description: `Không thể xóa cấu hình bonus "${bonusToDelete.description}".`, variant: "destructive"});
+    }
+  }
+
+  const getRewardItemName = (reward: RewardItem): string => {
+    if (reward.type === 'gold') return `${reward.amount} Vàng`;
+    if (reward.type === 'xp') return `${reward.amount} XP`;
+    if (reward.type === 'item' && reward.itemId) {
+      // In a real app, you'd look up item names here from CROP_DATA or FERTILIZER_DATA
+      return `${reward.quantity}x ${reward.itemId}`;
+    }
+    return 'Phần thưởng không xác định';
+  };
+
+
+  if (isLoading && bonusConfigs.length === 0) {
+    return (
+      <Card className="shadow-xl flex-1 flex flex-col min-h-0">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-            <Gift className="h-7 w-7"/> Quản Lý Bonus & Phần Thưởng
-          </CardTitle>
-          <CardDescription>
-            Cấu hình các loại bonus tự động (ví dụ: quà lên bậc, quà đăng nhập) và phần thưởng cho sự kiện.
-            Hệ thống sẽ tự động gửi thư kèm phần thưởng khi người chơi đạt điều kiện (cần Cloud Functions).
-          </CardDescription>
+            <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+                <Gift className="h-7 w-7"/> Quản Lý Cấu Hình Bonus
+            </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex justify-end">
-            <Button className="bg-accent hover:bg-accent/90" disabled>
-              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Bonus Mới (Sắp có)
-            </Button>
-          </div>
-
-          <Card className="border-green-500/50">
-            <CardHeader>
-              <CardTitle className="text-xl">Danh Sách Bonus Hiện Tại ({bonusConfigurations.length})</CardTitle>
-              <CardDescription>
-                Quản lý các cấu hình bonus đang hoạt động. (Dữ liệu từ constants.ts, sắp tới sẽ từ Firestore).
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {bonusConfigurations.length > 0 ? (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                  {bonusConfigurations.map((bonus) => (
-                    <Card key={bonus.id} className="p-4 flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold">{bonus.description} (ID: <span className="text-primary">{bonus.id}</span>)</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Loại Kích Hoạt: {bonus.triggerType}
-                          {bonus.triggerValue && ` (Giá trị: ${bonus.triggerValue})`}
-                        </p>
-                        <p className="text-sm">Thư: "{bonus.mailSubject}"</p>
-                        <p className="text-sm">Phần thưởng: {bonus.rewards.map(r => 
-                            r.type === 'gold' ? `${r.amount} vàng` : 
-                            r.type === 'xp' ? `${r.amount} XP` : 
-                            r.type === 'item' && r.itemId ? `${r.quantity}x ${r.itemId}` : ''
-                          ).join(', ')}
-                        </p>
-                         <p className="text-sm">Trạng thái: <span className={bonus.isEnabled ? "text-green-600 font-medium" : "text-red-600 font-medium"}>{bonus.isEnabled ? "Đang Bật" : "Đang Tắt"}</span></p>
-                      </div>
-                      <div className="flex gap-2 mt-1 flex-shrink-0">
-                        <Button variant="outline" size="icon" disabled title="Chỉnh sửa (Sắp có)">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="icon" disabled title="Xóa (Sắp có)">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">Chưa có cấu hình bonus nào.</p>
-              )}
-            </CardContent>
-          </Card>
-          
-          <Card className="border-orange-500/50">
-             <CardHeader>
-                <CardTitle className="text-xl">Cấu Hình Bonus (Mẫu - Sắp có)</CardTitle>
-                <CardDescription>
-                Giao diện để tạo/chỉnh sửa một cấu hình bonus.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="bonusId">ID Bonus (duy nhất)</Label>
-                        <Input id="bonusId" placeholder="vd: tierUp_3, event_xmas2024" disabled />
-                    </div>
-                    <div>
-                        <Label htmlFor="bonusDescription">Mô tả Bonus (cho Admin)</Label>
-                        <Input id="bonusDescription" placeholder="vd: Thưởng khi lên Bậc 3" disabled />
-                    </div>
-                </div>
-                <div>
-                    <Label htmlFor="triggerType">Loại Kích Hoạt</Label>
-                    <Select disabled>
-                        <SelectTrigger id="triggerType">
-                            <SelectValue placeholder="Chọn loại kích hoạt" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="firstLogin">Lần Đầu Đăng Nhập</SelectItem>
-                            <SelectItem value="tierUp">Lên Bậc</SelectItem>
-                            <SelectItem value="event">Sự Kiện Đặc Biệt</SelectItem>
-                            <SelectItem value="leaderboardWeekly">BXH Tuần</SelectItem>
-                            <SelectItem value="leaderboardMonthly">BXH Tháng</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div>
-                    <Label htmlFor="triggerValue">Giá Trị Kích Hoạt (nếu có)</Label>
-                    <Input id="triggerValue" placeholder="vd: 3 (cho tierUp), xmas2024 (cho event), top10 (cho bxh)" disabled />
-                </div>
-                 <div>
-                    <Label htmlFor="mailSubjectEdit">Chủ Đề Thư Gửi Kèm</Label>
-                    <Input id="mailSubjectEdit" placeholder="Chúc mừng bạn đã..." disabled />
-                </div>
-                <div>
-                    <Label htmlFor="mailBodyEdit">Nội Dung Thư Gửi Kèm</Label>
-                    <Textarea id="mailBodyEdit" placeholder="Nội dung chi tiết thư..." disabled />
-                </div>
-                <div>
-                    <Label>Phần Thưởng (Sắp có giao diện thêm/xóa)</Label>
-                    <p className="text-xs text-muted-foreground">Ví dụ: 100 Vàng, 5 x tomatoSeed</p>
-                    {/* TODO: UI to add/remove rewards */}
-                </div>
-                <Button disabled>Lưu Cấu Hình Bonus (Sắp có)</Button>
-            </CardContent>
-          </Card>
-
+        <CardContent className="flex-1 flex items-center justify-center p-6 pt-0">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-4 text-xl">Đang tải dữ liệu cấu hình bonus...</p>
         </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <Card className="shadow-xl flex flex-col flex-1 min-h-0">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
+                 <Gift className="h-7 w-7"/> Quản Lý Cấu Hình Bonus ({bonusConfigs.length})
+              </CardTitle>
+              <CardDescription>
+                Quản lý các cấu hình bonus tự động từ Firestore (collection <code>gameBonusConfigurations</code>).
+                Cloud Functions sẽ sử dụng các cấu hình này để gửi thư thưởng cho người chơi.
+              </CardDescription>
+            </div>
+            <Button onClick={() => openModal('create')} className="bg-accent hover:bg-accent/90">
+              <PlusCircle className="mr-2 h-5 w-5" /> Tạo Cấu Hình Mới
+            </Button>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
+            <Table className="relative border-separate border-spacing-0">
+              <TableHeader className="sticky top-0 bg-card z-10">
+                <TableRow>
+                  <TableHead className="w-[150px]">ID</TableHead>
+                  <TableHead>Mô Tả</TableHead>
+                  <TableHead className="w-[150px]">Loại Kích Hoạt</TableHead>
+                  <TableHead className="w-[100px]">Giá Trị</TableHead>
+                  <TableHead>Phần Thưởng</TableHead>
+                  <TableHead className="w-[100px] text-center">Trạng Thái</TableHead>
+                  <TableHead className="text-center w-[150px]">Hành động</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bonusConfigs.length === 0 && !isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      Không tìm thấy cấu hình bonus nào. Hãy tạo một cấu hình mới.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  bonusConfigs.map((bonus) => (
+                    <TableRow key={bonus.id}>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">{bonus.id}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{bonus.description}</TableCell>
+                      <TableCell>{bonus.triggerType}</TableCell>
+                      <TableCell>{bonus.triggerValue ?? 'N/A'}</TableCell>
+                      <TableCell className="text-xs">
+                        {bonus.rewards.map(getRewardItemName).join(', ')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge className={cn(bonus.isEnabled ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600", "text-white")}>
+                          {bonus.isEnabled ? "Đang Bật" : "Đang Tắt"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center space-x-1">
+                        <Button variant="ghost" size="icon" onClick={() => openModal('view', bonus)} className="hover:text-primary" title="Xem chi tiết">
+                          <Eye className="h-5 w-5" />
+                        </Button>
+                         <Button variant="ghost" size="icon" onClick={() => openModal('edit', bonus)} className="hover:text-blue-600" title="Chỉnh sửa">
+                          <Edit className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteBonus(bonus)} className="hover:text-destructive" title="Xóa">
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )))
+                }
+              </TableBody>
+            </Table>
+        </CardContent>
+      </Card>
+
+      <BonusActionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveChanges}
+        {...modalProps}
+      />
+    </>
   );
 }
+
+    
