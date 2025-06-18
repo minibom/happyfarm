@@ -34,23 +34,16 @@ export interface GameState {
   inventory: Inventory;
   lastUpdate: number;
   unlockedPlotsCount: number;
-  status: 'active' | 'banned_chat'; // For user status, e.g., chat ban
-  lastLogin: number; // Timestamp of last login or game data load
-  email?: string; // User's email, for display in admin
-}
-
-export interface MarketItem {
-  id: InventoryItem;
-  name: string;
-  price: number;
-  type: 'seed' | 'crop';
-  unlockTier: number;
-  icon?: string;
+  status: 'active' | 'banned_chat';
+  lastLogin: number;
+  email?: string;
+  displayName?: string;
 }
 
 export interface ChatMessage {
   id: string;
-  sender: string;
+  senderUid: string;
+  senderDisplayName: string;
   text: string;
   timestamp: number;
 }
@@ -66,8 +59,6 @@ export interface TierInfo {
   growthTimeReductionPercent: number;
 }
 
-// For Admin User Page
 export interface AdminUserView extends GameState {
   uid: string;
-  // email is already optional in GameState, so it's covered
 }

@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Sparkles } from 'lucide-react';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const { signUp, loading, error: authError } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -27,9 +28,9 @@ export default function RegisterPage() {
       return;
     }
     try {
-      await signUp(email, password);
+      await signUp(email, password, displayName);
       toast({ title: "Đăng Ký Thành Công!", description: "Chào mừng đến với Happy Farm! Bạn có thể đăng nhập ngay bây giờ.", className: "bg-primary text-primary-foreground" });
-      router.push('/game'); // Redirect to game page after registration
+      router.push('/game');
     } catch (err: any) {
       console.error("Registration failed:", err);
        const errorMessage = err.code === 'auth/email-already-in-use' 
@@ -49,9 +50,9 @@ export default function RegisterPage() {
           <CardDescription>Tạo tài khoản để bắt đầu trồng trọt.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email*</Label>
               <Input
                 id="email"
                 type="email"
@@ -62,8 +63,21 @@ export default function RegisterPage() {
                 className="text-base"
               />
             </div>
+             <div className="space-y-2">
+              <Label htmlFor="displayName">
+                Tên Hiển Thị (Để trống sẽ được AI tạo ngẫu nhiên <Sparkles className="inline h-3 w-3 text-yellow-500" />)
+              </Label>
+              <Input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Ví dụ: Nông Dân Vui Vẻ"
+                className="text-base"
+              />
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Mật Khẩu</Label>
+              <Label htmlFor="password">Mật Khẩu*</Label>
               <Input
                 id="password"
                 type="password"
@@ -75,7 +89,7 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác Nhận Mật Khẩu</Label>
+              <Label htmlFor="confirmPassword">Xác Nhận Mật Khẩu*</Label>
               <Input
                 id="confirmPassword"
                 type="password"

@@ -152,6 +152,11 @@ export const useGameLogic = () => {
       return;
     }
 
+    // SignUp in useAuth now writes the initial GameState, so onSnapshot should pick it up.
+    // The "else" block for docSnap.exists() being false in onSnapshot is now less critical for *new* users
+    // as their document should ideally be created by signUp.
+    // It remains important for scenarios where the doc might be missing for other reasons.
+
     if (userId && itemDataLoaded && cropData && allSeedIds.length > 0 && allCropIds.length > 0) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
@@ -195,29 +200,32 @@ export const useGameLogic = () => {
             ? firestoreData.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
           
-          loadedState.email = user?.email || firestoreData.email || INITIAL_GAME_STATE.email;
+          loadedState.email = firestoreData.email || user?.email || INITIAL_GAME_STATE.email;
+          loadedState.displayName = firestoreData.displayName || user?.displayName || INITIAL_GAME_STATE.displayName;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
           
-          loadedState.lastLogin = firestoreData.lastLogin || 0; // Use Firestore's value or 0
-          loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || 0;
+          loadedState.lastLogin = firestoreData.lastLogin || Date.now(); 
+          loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
           
           finalStateToSet = loadedState;
 
         } else { 
+          // This case should be less common for new users if signUp creates the doc.
+          // For robustness, if it's somehow missed, create it.
           const newInitialUserState: GameState = {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
+            plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })),
+            email: user?.email || undefined,
+            displayName: user?.displayName || undefined, // Could be Firebase Auth display name if set
             lastLogin: Date.now(), 
             lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
-            email: user?.email || undefined,
             status: 'active' as const,
           };
           finalStateToSet = newInitialUserState;
-          setDoc(gameDocRef, newInitialUserState).catch(error => {
-            console.error("Failed to create initial game state for new user:", error);
-            toast({ title: "Lỗi Tạo Dữ Liệu", description: "Không thể tạo dữ liệu ban đầu cho người chơi mới.", variant: "destructive" });
-          });
+          // No need to setDoc here if signUp is responsible, but if it wasn't, you would.
+          // For now, we assume signUp handles the *very first* creation.
         }
         
         setGameState(finalStateToSet);
@@ -249,7 +257,7 @@ export const useGameLogic = () => {
 
   useEffect(() => {
     if (!isInitialized || !userId || !cropData) return;
-    const currentTierInfo = playerTierInfo; // Use the state version which is updated
+    const currentTierInfo = playerTierInfo;
 
     const gameLoop = setInterval(() => {
       setGameState(prev => {
@@ -286,7 +294,7 @@ export const useGameLogic = () => {
     }, 1000);
 
     return () => clearInterval(gameLoop);
-  }, [isInitialized, userId, cropData, playerTierInfo]); // Added playerTierInfo to dependencies
+  }, [isInitialized, userId, cropData, playerTierInfo]);
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
@@ -335,7 +343,7 @@ export const useGameLogic = () => {
 
   const harvestCrop = useCallback(async (plotId: number) => {
     const currentGameState = gameStateRef.current;
-    const currentTierInfo = playerTierInfo; // Use the state version
+    const currentTierInfo = playerTierInfo;
      if (!cropData) {
         toast({ title: "Lỗi", description: "Dữ liệu cây trồng chưa tải xong.", variant: "destructive" });
         return;
@@ -423,7 +431,7 @@ export const useGameLogic = () => {
   const sellItem = useCallback((itemId: InventoryItem, quantity: number, price: number) => {
     if (quantity <= 0) return;
     const currentGameState = gameStateRef.current;
-    const currentTierInfo = playerTierInfo; // Use the state version
+    const currentTierInfo = playerTierInfo; 
      if (!marketItems) {
         toast({ title: "Lỗi", description: "Dữ liệu chợ chưa tải.", variant: "destructive" });
         return;
@@ -472,6 +480,25 @@ export const useGameLogic = () => {
     toast({ title: "Mở Khóa Thành Công!", description: `Đã mở khóa ô đất ${plotIdToUnlock + 1}.`, className: "bg-accent text-accent-foreground" });
   }, [toast]);
 
+  const updateDisplayName = useCallback(async (newName: string) => {
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      toast({ title: "Tên Không Hợp Lệ", description: "Tên hiển thị không được để trống.", variant: "destructive" });
+      return;
+    }
+    if (trimmedName.length > 20) {
+      toast({ title: "Tên Quá Dài", description: "Tên hiển thị không được quá 20 ký tự.", variant: "destructive" });
+      return;
+    }
+
+    setGameState(prev => ({
+      ...prev,
+      displayName: trimmedName,
+      lastUpdate: Date.now(),
+    }));
+    toast({ title: "Đã Cập Nhật Tên", description: `Tên hiển thị mới của bạn là: ${trimmedName}`, className: "bg-primary text-primary-foreground" });
+  }, [toast]);
+
 
   return {
     gameState,
@@ -480,6 +507,7 @@ export const useGameLogic = () => {
     buyItem,
     sellItem,
     unlockPlot,
+    updateDisplayName,
     isInitialized,
     playerTierInfo,
     cropData,

@@ -160,6 +160,7 @@ export const INITIAL_GAME_STATE: GameState = {
   status: 'active',
   lastLogin: 0,
   email: undefined,
+  displayName: undefined,
 };
 
 export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {

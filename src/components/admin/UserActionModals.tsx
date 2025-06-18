@@ -16,9 +16,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'; // Import Card components
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { AdminUserView } from '@/types';
-import { Gift, Zap, UserX, MessageSquareOff, ShieldCheck, ShieldX } from 'lucide-react';
+import { Gift, Zap, UserX, MessageSquareOff, ShieldCheck, ShieldX, UserCircle2 } from 'lucide-react';
 import { getPlayerTierInfo } from '@/lib/constants';
 
 export interface UserDetailModalProps {
@@ -32,16 +32,22 @@ export const UserDetailModal: FC<UserDetailModalProps> = ({ isOpen, onClose, use
   if (!userData) return null;
 
   const handleSimulatedAction = (actionType: 'reset_progress' | 'grant_items') => {
+    // In a real app, these would trigger backend functions.
+    // For now, they might just log or show a toast.
     onAction(userData.uid, actionType);
   };
 
   const tierInfo = getPlayerTierInfo(userData.level);
+  const displayUserIdentifier = userData.displayName || userData.email || userData.uid;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl">Chi Tiết Người Dùng: <span className="font-semibold text-primary">{userData.email || userData.uid}</span></DialogTitle>
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <UserCircle2 className="h-6 w-6 text-primary"/>
+            Chi Tiết: <span className="font-semibold text-primary">{displayUserIdentifier}</span>
+          </DialogTitle>
           <DialogDescription>
             Thông tin và các hành động quản trị cho người dùng này.
           </DialogDescription>
@@ -51,6 +57,9 @@ export const UserDetailModal: FC<UserDetailModalProps> = ({ isOpen, onClose, use
                 <div className="grid grid-cols-3 items-center gap-x-4 gap-y-2">
                     <Label className="text-right font-medium">User ID (UID):</Label>
                     <Input value={userData.uid} readOnly className="col-span-2 bg-muted text-sm" />
+
+                    <Label className="text-right font-medium">Tên Hiển Thị:</Label>
+                    <Input value={userData.displayName || 'Chưa đặt'} readOnly className="col-span-2 bg-muted text-sm" />
 
                     <Label className="text-right font-medium">Email:</Label>
                     <Input value={userData.email || 'N/A'} readOnly className="col-span-2 bg-muted text-sm" />

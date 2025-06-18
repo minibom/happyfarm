@@ -12,14 +12,19 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import type { GameState } from '@/types';
+import { INITIAL_GAME_STATE } from '@/lib/constants';
+import { generateDisplayName } from '@/ai/flows/generate-display-name';
+import { useToast } from './use-toast';
+
 
 interface AuthContextType {
   user: FirebaseUser | null;
   userId: string | null;
   loading: boolean;
   error: AuthError | null;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, optionalDisplayNameFromForm?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
   initialGameState?: GameState;
@@ -35,46 +40,74 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [initialGameState, setInitialGameState] = useState<GameState | undefined>(undefined);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true); // Set loading true at the start of auth state change
+      setLoading(true);
       if (firebaseUser) {
         setUser(firebaseUser);
         setUserId(firebaseUser.uid);
         setError(null);
-        // If logged-in user is on login or register page, redirect to game page
         if (pathname === '/login' || pathname === '/register') {
           router.push('/game');
         }
       } else {
         setUser(null);
         setUserId(null);
-        // If not logged in, and tries to access /game or /admin, redirect to login
-        // The landing page (/) is public.
-        // Admin layout handles its own more specific admin role check.
-        if (pathname === '/game' || pathname.startsWith('/admin')) {
+        if (pathname === '/game' || pathname.startsWith('/admin') || pathname.startsWith('/library')) {
           router.push('/login');
         }
       }
-      setLoading(false); // Set loading false after processing
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router, pathname]);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, optionalDisplayNameFromForm?: string) => {
     setLoading(true);
     setError(null);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      let finalDisplayName = optionalDisplayNameFromForm?.trim() || '';
+      if (!finalDisplayName) {
+        toast({ title: "Đang Tạo Tên AI...", description: "Vui lòng đợi trong khi AI tạo tên cho bạn.", duration: 3000});
+        try {
+            const aiNameOutput = await generateDisplayName();
+            finalDisplayName = aiNameOutput.displayName;
+            toast({ title: "Tên AI Đã Tạo!", description: `Tên của bạn là: ${finalDisplayName}`, className: "bg-accent text-accent-foreground" });
+        } catch (aiError) {
+            console.error("AI name generation failed:", aiError);
+            finalDisplayName = email.split('@')[0] || `Farmer${Date.now().toString().slice(-4)}`; // Fallback name
+            toast({ title: "Lỗi Tạo Tên AI", description: `Sử dụng tên tạm: ${finalDisplayName}`, variant: "destructive" });
+        }
+      }
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      const userEmail = userCredential.user.email;
+
+      const initialGs: GameState = {
+        ...INITIAL_GAME_STATE,
+        inventory: { ...INITIAL_GAME_STATE.inventory }, // Deep copy inventory
+        plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })), // Deep copy plots
+        email: userEmail || undefined,
+        displayName: finalDisplayName,
+        lastLogin: Date.now(),
+        lastUpdate: Date.now(),
+        status: 'active',
+        unlockedPlotsCount: INITIAL_GAME_STATE.unlockedPlotsCount,
+      };
+      
+      const gameDocRef = doc(db, 'users', uid, 'gameState', 'data');
+      await setDoc(gameDocRef, initialGs);
       // onAuthStateChanged will handle user state and redirect
+
     } catch (e) {
       setError(e as AuthError);
-      setLoading(false); // Ensure loading is false on error
+      setLoading(false);
       throw e;
     }
-    // No setLoading(false) here, onAuthStateChanged will do it
   };
 
   const signIn = async (email: string, password: string) => {
@@ -82,13 +115,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged will handle user state and redirect
     } catch (e) {
       setError(e as AuthError);
-      setLoading(false); // Ensure loading is false on error
+      setLoading(false);
       throw e;
     }
-    // No setLoading(false) here, onAuthStateChanged will do it
   };
 
   const logOut = async () => {
@@ -96,12 +127,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signOut(auth);
-      setInitialGameState(undefined); // Reset initial game state on logout
-      // onAuthStateChanged will handle user state and redirect to /login if necessary
+      setInitialGameState(undefined);
     } catch (e) {
       setError(e as AuthError);
-    } finally {
-      // setLoading(false) will be handled by onAuthStateChanged
     }
   };
 

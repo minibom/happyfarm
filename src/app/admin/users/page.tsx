@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, Trash2, ShieldAlert, Users, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
+import { Eye, Trash2, Users, Search, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { useToast } from '@/hooks/use-toast';
@@ -48,12 +48,14 @@ export default function AdminUsersPage() {
           fetchedUsers.push({
             uid,
             email: gameState.email || 'N/A',
+            displayName: gameState.displayName, // Add displayName
             ...gameState,
           });
         } else {
            fetchedUsers.push({
             uid,
             email: 'N/A (No GameState)',
+            displayName: undefined,
             gold: 0, xp: 0, level: 1, plots: [], inventory: {}, lastUpdate: 0, unlockedPlotsCount: 0,
             status: 'active', lastLogin: 0 
           });
@@ -89,10 +91,11 @@ export default function AdminUsersPage() {
 
     let actionDescription = '';
     let successMessage = '';
+    const userIdentifier = userToUpdate.displayName || userToUpdate.email || userId;
 
     if (action === 'toggle_ban_chat') {
       const newStatus = userToUpdate.status === 'active' ? 'banned_chat' : 'active';
-      actionDescription = newStatus === 'banned_chat' ? `cấm chat ${userToUpdate.email}` : `bỏ cấm chat ${userToUpdate.email}`;
+      actionDescription = newStatus === 'banned_chat' ? `cấm chat ${userIdentifier}` : `bỏ cấm chat ${userIdentifier}`;
       successMessage = `Đã ${actionDescription}.`;
       try {
         const userGameStateRef = doc(db, 'users', userId, 'gameState', 'data');
@@ -108,6 +111,10 @@ export default function AdminUsersPage() {
         return;
       }
     } else {
+       // Placeholder for other actions like delete, reset, grant
+       if (action === 'delete') {
+         toast({ title: "Mô Phỏng", description: `Hành động xóa người dùng ${userIdentifier} chưa được triển khai.`, variant: "default" });
+       }
     }
     if (action === 'view_game_state' && userToUpdate) {
         openUserModal(userToUpdate);
@@ -115,6 +122,7 @@ export default function AdminUsersPage() {
   };
 
   const filteredUsers = users.filter(user => 
+    (user.displayName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.uid.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -152,7 +160,7 @@ export default function AdminUsersPage() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                     type="search" 
-                    placeholder="Tìm kiếm email hoặc UID..." 
+                    placeholder="Tìm kiếm tên, email, UID..." 
                     className="pl-8 w-full"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -165,7 +173,7 @@ export default function AdminUsersPage() {
             <Table className="relative border-separate border-spacing-0">
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
-                  <TableHead className="w-[150px]">User ID</TableHead>
+                  <TableHead>Tên Hiển Thị</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="w-[150px]">Trạng Thái</TableHead>
                   <TableHead className="w-[180px] text-center">Cấp/Bậc</TableHead>
@@ -185,12 +193,13 @@ export default function AdminUsersPage() {
                     const tierInfo = getPlayerTierInfo(user.level);
                     return (
                       <TableRow key={user.uid}>
+                          <TableCell className="font-medium">{user.displayName || <span className="text-muted-foreground italic">Chưa đặt</span>}</TableCell>
                           <TableCell>
-                          <Badge variant="secondary" className="text-xs cursor-pointer" title={user.uid} onClick={() => {navigator.clipboard.writeText(user.uid); toast({title: "Đã sao chép UID"})}}>
-                              {user.uid.substring(0,8)}...
-                          </Badge>
+                            {user.email}
+                            <Badge variant="secondary" className="text-xs cursor-pointer ml-2" title={user.uid} onClick={() => {navigator.clipboard.writeText(user.uid); toast({title: "Đã sao chép UID"})}}>
+                                {user.uid.substring(0,8)}...
+                            </Badge>
                           </TableCell>
-                          <TableCell className="font-medium">{user.email}</TableCell>
                           <TableCell>
                           <Badge 
                               variant={user.status === 'active' ? 'default' : 'destructive'} 

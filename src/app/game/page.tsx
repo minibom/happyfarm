@@ -17,7 +17,7 @@ import type { SeedId, CropId } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog'; // Removed DialogHeader, DialogTitle
 
 
 export default function GamePage() {
@@ -31,6 +31,7 @@ export default function GamePage() {
     buyItem,
     sellItem,
     unlockPlot,
+    updateDisplayName, // Added
     isInitialized,
     playerTierInfo,
     marketItems,
@@ -142,7 +143,7 @@ export default function GamePage() {
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
 
 
-  if (authLoading || !isInitialized || !user || !marketItems || !cropData) {
+  if (authLoading || !isInitialized || !user || !marketItems || !cropData || !gameState) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
@@ -160,7 +161,7 @@ export default function GamePage() {
         cropData={cropData}
         playerTierInfo={playerTierInfo}
         currentAction={currentAction}
-        selectedSeedToPlant={selectedSeedToPlant} // Pass prop here
+        selectedSeedToPlant={selectedSeedToPlant}
         availableSeedsForPlanting={availableSeedsForPlanting}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
@@ -213,6 +214,7 @@ export default function GamePage() {
         playerXP={gameState.xp}
         xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
         playerTierInfo={playerTierInfo}
+        currentDisplayName={gameState.displayName} // Pass current display name
       />
       
       <LeaderboardModal
@@ -223,6 +225,7 @@ export default function GamePage() {
 
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
+          {/* ChatPanel now gets gameState from useGameLogic, so userStatus prop is enough */}
           <ChatPanel isModalMode userStatus={gameState.status} />
         </DialogContent>
       </Dialog>
