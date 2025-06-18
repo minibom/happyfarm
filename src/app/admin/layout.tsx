@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3 } from 'lucide-react';
+import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react'; // Added Mail, Gift
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/items', label: 'Quản lý Vật phẩm', icon: ShoppingBasket },
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { href: '/admin/tiers', label: 'Quản lý Bậc', icon: BarChart3 },
+    { href: '/admin/mail', label: 'Quản lý Thư', icon: Mail }, // New Mail Management
+    { href: '/admin/bonuses', label: 'Quản lý Bonus', icon: Gift }, // New Bonus Management
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
@@ -44,7 +46,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
 
     if (!user) {
-      router.push('/login'); // Ensure redirect to login if no user
+      router.push('/login'); 
       return;
     }
 
@@ -64,7 +66,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         variant: "destructive",
         duration: 5000,
       });
-      router.push('/game'); // Redirect to game page if not admin
+      router.push('/game'); 
     }
     setIsCheckingPermissions(false);
   }, [user, authLoading, router, toast]);
@@ -79,8 +81,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (!isAdmin) {
-    // User is not an admin, and redirection should be in progress.
-    // Render null or a minimal message while redirecting to prevent content flashing.
     return null;
   }
 

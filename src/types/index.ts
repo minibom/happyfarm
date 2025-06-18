@@ -32,11 +32,55 @@ export interface Plot {
   state: PlotState;
   cropId?: CropId;
   plantedAt?: number;
-  // lastFertilizedAt?: number; // Could be used to prevent re-fertilizing too soon if needed
 }
 
 export type InventoryItem = CropId | SeedId | FertilizerId;
 export type Inventory = Record<InventoryItem, number>;
+
+// --- Mail & Reward Types ---
+export type RewardItemType = 'gold' | 'xp' | 'item';
+export interface RewardItem {
+  type: RewardItemType;
+  amount?: number; // For gold or xp
+  itemId?: InventoryItem; // For items
+  quantity?: number; // For items
+}
+
+export type MailSenderType = 'system' | 'admin' | 'event';
+
+export interface MailMessage {
+  id: string; // Unique ID for the mail
+  senderType: MailSenderType;
+  senderName: string; // e.g., "System", "Game Master", "Tomato Festival"
+  recipientUid: string; // Player's Firebase UID
+  subject: string;
+  body: string;
+  rewards: RewardItem[];
+  isRead: boolean;
+  isClaimed: boolean; // If rewards have been claimed
+  createdAt: number; // Timestamp
+  expiresAt?: number; // Optional expiry for event mails
+}
+
+export type BonusTriggerType =
+  | 'firstLogin'
+  | 'tierUp'
+  | 'firstPlotUnlock'
+  | 'leaderboardWeekly'
+  | 'leaderboardMonthly'
+  | 'specialEvent';
+
+export interface BonusConfiguration {
+  id: string; // e.g., 'tierUp_2', 'event_springFestival'
+  triggerType: BonusTriggerType;
+  triggerValue?: string | number; // e.g., tier number '2', event ID 'springFestival'
+  description: string; // For admin reference
+  rewards: RewardItem[];
+  mailSubject: string;
+  mailBody: string;
+  isEnabled: boolean;
+}
+// --- End Mail & Reward Types ---
 
 export interface GameState {
   gold: number;
@@ -50,6 +94,8 @@ export interface GameState {
   lastLogin: number;
   email?: string;
   displayName?: string;
+  mail: MailMessage[]; // Player's mailbox
+  claimedBonuses: Record<string, boolean>; // Tracks which one-time bonuses have been claimed e.g. {'tierUp_2': true}
 }
 
 export interface ChatMessage {
@@ -75,8 +121,7 @@ export interface AdminUserView extends GameState {
   uid: string;
 }
 
-// Types for Dynamic Market System
-export type MarketItemId = CropId | SeedId; // Fertilizers are not part of dynamic market for now
+export type MarketItemId = CropId | SeedId;
 
 export interface MarketPriceData {
   [itemId: string]: number;
@@ -90,7 +135,7 @@ export interface MarketEventData {
   isActive: boolean;
   eventName: string;
   description: string;
-  itemId?: MarketItemId; // Affects only crops/seeds for now
+  itemId?: MarketItemId;
   priceModifier?: number;
   effectDescription?: string;
   expiresAt?: number;
@@ -105,7 +150,7 @@ export interface MarketState {
 
 export interface MarketActivityLog {
   logId?: string;
-  itemId: InventoryItem; // Can be CropId, SeedId, or FertilizerId
+  itemId: InventoryItem;
   quantity: number;
   pricePerUnit: number;
   totalPrice: number;
@@ -114,14 +159,13 @@ export interface MarketActivityLog {
   timestamp: number;
 }
 
-// Used by MarketModal to prepare items for display
 export interface MarketItemDisplay {
   id: InventoryItem;
   name: string;
-  price: number; // This will be the *current* price to use for transaction
+  price: number;
   type: 'seed' | 'crop' | 'fertilizer';
   unlockTier: number;
   icon: string;
-  basePrice?: number; // Original base price for reference (especially for seeds/crops)
-  description?: string; // For fertilizers
+  basePrice?: number;
+  description?: string;
 }

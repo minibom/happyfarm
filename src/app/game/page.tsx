@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { useRouter } from 'next/navigation';
 import ResourceBar from '@/components/game/ResourceBar';
 import MarketModal from '@/components/game/MarketModal';
@@ -9,11 +9,12 @@ import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import LeaderboardModal from '@/components/game/LeaderboardModal';
+import MailModal from '@/components/game/MailModal'; // New MailModal import
 import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId, CropId, FertilizerId, FertilizerDetails } from '@/types';
+import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const {
     gameState,
+    setGameState, // Added setGameState for mail operations
     plantCrop,
     harvestCrop,
     buyItem,
@@ -35,7 +37,6 @@ export default function GamePage() {
     isInitialized,
     playerTierInfo,
     cropData,
-    // fertilizerData is now directly imported from constants for BottomNavBar
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
@@ -43,6 +44,7 @@ export default function GamePage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [isMailModalOpen, setIsMailModalOpen] = useState(false); // State for MailModal
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -64,7 +66,7 @@ export default function GamePage() {
       } else if (gameState.unlockedPlotsCount < TOTAL_PLOTS) {
         toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất trước đó theo thứ tự.", variant: "destructive" });
       } else {
-         toast({ title: "Đã Mở Hết", description: "Tất cả ô đất đã được mở.", variant: "default" });
+         toast({ title: "Đã Mở Hết", description: "Tất cả ô đất đã được mở khóa.", variant: "default" });
       }
       return;
     }
@@ -87,6 +89,7 @@ export default function GamePage() {
         toast({ title: "Không Thể Bón Phân", description: "Chỉ có thể bón phân cho cây đang trồng hoặc đang lớn.", variant: "default"});
       }
     }
+    // If not in global action mode, plot popover logic is handled in FarmPlot.tsx
   };
 
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
@@ -187,9 +190,78 @@ export default function GamePage() {
   const allAvailableSeedsInInventory = ALL_SEED_IDS
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
 
-  const availableFertilizersForSelection = ALL_FERTILIZER_IDS
+  const availableFertilizersForSelection = useMemo(() => {
+    return ALL_FERTILIZER_IDS
     .map(id => FERTILIZER_DATA[id])
     .filter(fert => fert && (gameState.inventory[fert.id] || 0) > 0 && playerTierInfo.tier >= fert.unlockTier) as FertilizerDetails[];
+  }, [gameState.inventory, playerTierInfo.tier]);
+
+
+  // Mail Logic
+  const unreadMailCount = useMemo(() => gameState.mail.filter(m => !m.isRead).length, [gameState.mail]);
+
+  const handleMarkMailAsRead = (mailId: string) => {
+    setGameState(prev => ({
+      ...prev,
+      mail: prev.mail.map(m => m.id === mailId ? { ...m, isRead: true } : m),
+      lastUpdate: Date.now(),
+    }));
+  };
+
+  const handleClaimMailRewards = (mailId: string) => {
+    // Placeholder for actual reward claiming logic
+    // For now, just marks as claimed and shows a toast.
+    // In a real implementation, this would add items/gold/xp to gameState.
+    const mailToClaim = gameState.mail.find(m => m.id === mailId);
+    if (!mailToClaim || mailToClaim.isClaimed || mailToClaim.rewards.length === 0) {
+      toast({ title: "Không thể nhận", description: "Thư không có quà hoặc đã nhận.", variant: "default" });
+      return;
+    }
+
+    // Simulate applying rewards
+    let goldReward = 0;
+    let xpReward = 0;
+    const itemRewards: {itemId: string, quantity: number}[] = [];
+
+    mailToClaim.rewards.forEach(reward => {
+      if (reward.type === 'gold' && reward.amount) goldReward += reward.amount;
+      if (reward.type === 'xp' && reward.amount) xpReward += reward.amount;
+      if (reward.type === 'item' && reward.itemId && reward.quantity) itemRewards.push({itemId: reward.itemId, quantity: reward.quantity});
+    });
+    
+    setGameState(prev => {
+      const updatedMail = prev.mail.map(m => m.id === mailId ? { ...m, isClaimed: true, isRead: true } : m);
+      const newInventory = { ...prev.inventory };
+      itemRewards.forEach(item => {
+        newInventory[item.itemId] = (newInventory[item.itemId] || 0) + item.quantity;
+      });
+
+      let newXp = prev.xp + xpReward;
+      let newLevel = prev.level;
+      let xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
+      while (newXp >= xpThreshold) {
+        newXp -= xpThreshold;
+        newLevel += 1;
+        xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
+      }
+
+      return {
+        ...prev,
+        gold: prev.gold + goldReward,
+        xp: newXp,
+        level: newLevel,
+        inventory: newInventory,
+        mail: updatedMail,
+        lastUpdate: Date.now(),
+      };
+    });
+    toast({ title: "Đã Nhận Quà!", description: `Bạn đã nhận quà từ thư: ${mailToClaim.subject}`, className: "bg-accent text-accent-foreground" });
+  };
+
+  const handleDeleteMail = (mailId: string) => {
+    // Placeholder - for now, mail isn't actually deleted
+    toast({ title: "Sắp có", description: "Chức năng xóa thư sẽ được cập nhật sau.", variant: "default" });
+  };
 
 
   if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo) {
@@ -233,6 +305,8 @@ export default function GamePage() {
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenChatModal={() => setIsChatModalOpen(true)}
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
+        onOpenMailModal={() => setIsMailModalOpen(true)} // Connect to MailModal
+        unreadMailCount={unreadMailCount} // Pass unread count
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onSetFertilizeMode={handleSetFertilizeMode} 
@@ -279,6 +353,15 @@ export default function GamePage() {
         isOpen={showLeaderboardModal}
         onClose={() => setShowLeaderboardModal(false)}
         currentUserId={userId}
+      />
+
+      <MailModal
+        isOpen={isMailModalOpen}
+        onClose={() => setIsMailModalOpen(false)}
+        mailMessages={gameState.mail}
+        onMarkAsRead={handleMarkMailAsRead}
+        onClaimRewards={handleClaimMailRewards}
+        onDeleteMail={handleDeleteMail}
       />
 
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
