@@ -225,19 +225,19 @@ export default function AdminItemsManagementPage() {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="crops"> {/* Removed flex-1 flex flex-col min-h-0 */}
-              <div className="flex justify-end mb-4">
+            <TabsContent value="crops" className="flex-1 flex flex-col min-h-0">
+              <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openCropModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Cây Trồng Mới
                 </Button>
               </div>
               {isCropLoading && cropItems.length === 0 ? (
-                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]"> {/* Removed flex-1, added min-h */}
+                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <p className="ml-4 text-xl">Đang tải dữ liệu cây trồng...</p>
                 </div>
               ) : (
-                <div> {/* Removed flex-1 overflow-y-auto */}
+                <div className="flex-1 overflow-y-auto">
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -299,19 +299,19 @@ export default function AdminItemsManagementPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="fertilizers"> {/* Removed flex-1 flex flex-col min-h-0 */}
-              <div className="flex justify-end mb-4">
+            <TabsContent value="fertilizers" className="flex-1 flex flex-col min-h-0">
+              <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openFertilizerModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Phân Bón Mới
                 </Button>
               </div>
               {isFertilizerLoading && fertilizers.length === 0 ? (
-                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]"> {/* Removed flex-1, added min-h */}
+                <div className="flex items-center justify-center p-6 pt-0 min-h-[200px]">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
                     <p className="ml-4 text-xl">Đang tải dữ liệu phân bón...</p>
                 </div>
               ) : (
-                <div> {/* Removed flex-1 overflow-y-auto */}
+                <div className="flex-1 overflow-y-auto">
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
@@ -383,3 +383,4 @@ export default function AdminItemsManagementPage() {
     </>
   );
 }
+
