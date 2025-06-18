@@ -11,8 +11,8 @@ export interface CropDetails {
   timeToGrowing: number;
   timeToReady: number;
   harvestYield: number;
-  seedPrice: number;
-  cropPrice: number;
+  seedPrice: number; // This will become the base/default price
+  cropPrice: number;  // This will become the base/default price
   unlockTier: number;
 }
 
@@ -61,4 +61,43 @@ export interface TierInfo {
 
 export interface AdminUserView extends GameState {
   uid: string;
+}
+
+// Types for Dynamic Market System
+export type MarketItemId = CropId | SeedId;
+
+export interface MarketPriceData {
+  [itemId: string]: number; // Current price for the item
+}
+
+export interface MarketPriceChange {
+  [itemId: string]: number; // Percentage change (e.g., 0.05 for +5%, -0.1 for -10%)
+}
+
+export interface MarketEventData {
+  isActive: boolean;
+  eventName: string;
+  description: string;
+  itemId?: MarketItemId; // Optional: event might affect a specific item or be general
+  priceModifier?: number; // e.g., 1.2 for +20% price, 0.8 for -20%
+  effectDescription?: string; // e.g. "Giá bán cà chua tăng 20%"
+  expiresAt?: number; // Timestamp for when the event ends
+}
+
+export interface MarketState {
+  prices: MarketPriceData;
+  priceChanges: MarketPriceChange; // To show up/down arrows
+  currentEvent: MarketEventData | null;
+  lastUpdated: number; // Timestamp of the last price update
+}
+
+export interface MarketActivityLog {
+  logId?: string;
+  itemId: MarketItemId;
+  quantity: number;
+  pricePerUnit: number; // Price at which the transaction occurred
+  totalPrice: number;
+  type: 'buy' | 'sell';
+  userId: string;
+  timestamp: number; // Firestore server timestamp
 }

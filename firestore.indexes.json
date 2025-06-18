@@ -1,3 +1,4 @@
+
 {
   "indexes": [
     {
@@ -84,6 +85,16 @@
         },
         {
           "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "marketActivityLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]

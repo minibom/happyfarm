@@ -1,5 +1,5 @@
 
-import type { CropDetails, CropId, GameState, Plot, SeedId, TierInfo } from '@/types';
+import type { CropDetails, CropId, GameState, Plot, SeedId, TierInfo, MarketState, MarketEventData } from '@/types';
 
 export const GRID_ROWS = 5;
 export const GRID_COLS = 5;
@@ -162,6 +162,27 @@ export const INITIAL_GAME_STATE: GameState = {
   email: undefined,
   displayName: undefined,
 };
+
+// Initial Market State
+// Prices will be derived from CROP_DATA initially,
+// and then dynamically updated by the AI flow.
+const initialMarketPrices: MarketState['prices'] = {};
+const initialMarketPriceChanges: MarketState['priceChanges'] = {};
+
+ALL_CROP_IDS.forEach(cropId => {
+  initialMarketPrices[CROP_DATA[cropId].seedName] = CROP_DATA[cropId].seedPrice;
+  initialMarketPrices[cropId] = CROP_DATA[cropId].cropPrice;
+  initialMarketPriceChanges[CROP_DATA[cropId].seedName] = 0;
+  initialMarketPriceChanges[cropId] = 0;
+});
+
+export const INITIAL_MARKET_STATE: MarketState = {
+  prices: initialMarketPrices,
+  priceChanges: initialMarketPriceChanges,
+  currentEvent: null,
+  lastUpdated: Date.now(),
+};
+
 
 export const LEVEL_UP_XP_THRESHOLD = (level: number): number => {
   return Math.floor(100 * Math.pow(level, 1.5));

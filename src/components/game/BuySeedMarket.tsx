@@ -3,22 +3,26 @@ import React, { type FC } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Coins, MinusCircle, PlusCircle, Lock, Clock, Wheat } from 'lucide-react';
+import { Coins, MinusCircle, PlusCircle, Lock, Clock, Wheat, TrendingUp, TrendingDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { MarketItem, InventoryItem, CropId, CropDetails } from '@/types';
+import type { MarketItem, InventoryItem, CropId, CropDetails, MarketPriceData, MarketPriceChange, MarketEventData, MarketItemId } from '@/types';
 import { getPlayerTierInfo } from '@/lib/constants';
 
 interface BuySeedMarketProps {
-  seedsToDisplay: MarketItem[];
+  seedsToDisplay: MarketItem[]; // This now includes dynamic price from MarketModal
   playerGold: number;
   onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
-  cropData: Record<CropId, CropDetails>;
+  cropData: Record<CropId, CropDetails> | null; // For detailed info not in MarketItem
   playerTier: number;
   quantities: Record<InventoryItem, number>;
   onQuantityButtonClick: (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => void;
   onQuantityInputChange: (itemId: InventoryItem, value: string, type: 'seed' | 'crop', itemUnlockTier: number) => void;
   setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
+  marketPrices: MarketPriceData;
+  priceChanges: MarketPriceChange;
+  marketEvent: MarketEventData | null;
+  getItemDetails: (itemId: MarketItemId) => ({ name: string, icon: string, basePrice: number, type: 'seed' | 'crop', unlockTier: number }) | null;
 }
 
 const formatMillisecondsToTime = (ms: number): string => {
@@ -46,12 +50,16 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
   seedsToDisplay,
   playerGold,
   onBuyItem,
-  cropData,
+  cropData, // Now primarily for non-price details
   playerTier,
   quantities,
   onQuantityButtonClick,
   onQuantityInputChange,
   setQuantities,
+  marketPrices,
+  priceChanges,
+  marketEvent,
+  getItemDetails,
 }) => {
   return (
     <TooltipProvider>
@@ -60,10 +68,23 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
           const quantity = quantities[item.id] || 0;
           const isLockedForPurchase = playerTier < item.unlockTier;
           const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
+          
+          const itemDetails = getItemDetails(item.id); // Get base details
+          if (!itemDetails || !cropData) return null;
 
-          const itemIcon = item.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
-          const cropDetail = cropData[item.id.replace('Seed', '') as CropId];
-          const totalHarvestTime = cropDetail ? cropDetail.timeToGrowing + cropDetail.timeToReady : 0;
+          const currentPrice = marketPrices[item.id] ?? itemDetails.basePrice;
+          let eventAdjustedPrice = currentPrice;
+          if (marketEvent?.isActive && marketEvent.itemId === item.id && marketEvent.priceModifier) {
+            eventAdjustedPrice = Math.max(1, Math.round(currentPrice * marketEvent.priceModifier));
+          }
+          const finalPrice = eventAdjustedPrice;
+
+
+          const priceChangePercent = priceChanges[item.id] || 0;
+
+          const itemIcon = itemDetails.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
+          const cropDetailFromData = cropData[item.id.replace('Seed', '') as CropId]; // For timeToGrow etc.
+          const totalHarvestTime = cropDetailFromData ? cropDetailFromData.timeToGrowing + cropDetailFromData.timeToReady : 0;
           const formattedHarvestTime = formatMillisecondsToTime(totalHarvestTime);
 
           return (
@@ -86,10 +107,12 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
                     </div>
                   )}
                 </div>
-                <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={item.name}>{item.name}</span>
+                <span className="text-xs font-semibold text-center truncate w-full mt-1 mb-0.5" title={itemDetails.name}>{itemDetails.name}</span>
                 <div className="flex items-center gap-1 text-sm text-primary my-0.5">
                   <Coins className="w-4 h-4" />
-                  <span>{item.price}</span>
+                  <span>{finalPrice}</span>
+                  {priceChangePercent > 0 && <TrendingUp className="w-3 h-3 text-green-500" />}
+                  {priceChangePercent < 0 && <TrendingDown className="w-3 h-3 text-red-500" />}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                   <Clock className="w-3 h-3" />
@@ -115,10 +138,10 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
               <Button
                 size="sm"
                 onClick={() => {
-                  onBuyItem(item.id, quantity, item.price);
+                  onBuyItem(item.id, quantity, finalPrice); // Use finalPrice for transaction
                   setQuantities(prev => ({ ...prev, [item.id]: 0 }));
                 }}
-                disabled={isLockedForPurchase || quantity === 0 || playerGold < item.price * quantity}
+                disabled={isLockedForPurchase || quantity === 0 || playerGold < finalPrice * quantity}
                 className="w-full rounded-t-none bg-accent hover:bg-accent/90 text-xs py-1 h-auto"
               >
                 Mua
