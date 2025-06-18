@@ -6,8 +6,8 @@ import {
   LEVEL_UP_XP_THRESHOLD,
   TOTAL_PLOTS,
   CROP_DATA as FALLBACK_CROP_DATA,
-  FERTILIZER_DATA as FALLBACK_FERTILIZER_DATA, // Added fallback for fertilizer
-  ALL_FERTILIZER_IDS, // Added
+  FERTILIZER_DATA as FALLBACK_FERTILIZER_DATA,
+  ALL_FERTILIZER_IDS,
   getPlayerTierInfo,
   getPlotUnlockCost,
   INITIAL_UNLOCKED_PLOTS,
@@ -24,8 +24,8 @@ export const useGameLogic = () => {
   const { user, userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [itemDataLoaded, setItemDataLoaded] = useState(false); // For crops
-  const [fertilizerDataLoaded, setFertilizerDataLoaded] = useState(false); // For fertilizers
+  const [itemDataLoaded, setItemDataLoaded] = useState(false);
+  const [fertilizerDataLoaded, setFertilizerDataLoaded] = useState(false);
   const [gameDataLoaded, setGameDataLoaded] = useState(false);
   const [marketState, setMarketState] = useState<MarketState>(INITIAL_MARKET_STATE);
 
@@ -43,11 +43,10 @@ export const useGameLogic = () => {
     setPlayerTierInfo(getPlayerTierInfo(gameState.level));
   }, [gameState]);
 
-  // Fetch static CROP_DATA
   useEffect(() => {
     const fetchItemData = async () => {
       try {
-        const itemsCollectionRef = collection(db, 'gameItems'); // Assuming crops are in 'gameItems'
+        const itemsCollectionRef = collection(db, 'gameItems');
         const querySnapshot = await getDocs(itemsCollectionRef);
         const fetchedItems: Record<CropId, CropDetails> = {};
         querySnapshot.forEach((docSnap) => {
@@ -71,32 +70,12 @@ export const useGameLogic = () => {
     fetchItemData();
   }, [toast]);
 
-  // Fetch static FERTILIZER_DATA (can be from Firestore if desired, or constants for now)
   useEffect(() => {
-    // For now, using constants directly. If fertilizers become dynamic:
-    // const fetchFertilizerConfig = async () => {
-    //   try {
-    //     const fertCollectionRef = collection(db, 'gameFertilizers');
-    //     const querySnapshot = await getDocs(fertCollectionRef);
-    //     const fetchedFertilizers: Record<FertilizerId, FertilizerDetails> = {};
-    //     querySnapshot.forEach((docSnap) => {
-    //       fetchedFertilizers[docSnap.id as FertilizerId] = docSnap.data() as FertilizerDetails;
-    //     });
-    //     setFertilizerData(Object.keys(fetchedFertilizers).length > 0 ? fetchedFertilizers : FALLBACK_FERTILIZER_DATA);
-    //   } catch (error) {
-    //     console.error("Failed to fetch fertilizer data from Firestore:", error);
-    //     setFertilizerData(FALLBACK_FERTILIZER_DATA);
-    //   } finally {
-    //     setFertilizerDataLoaded(true);
-    //   }
-    // };
-    // fetchFertilizerConfig();
-    setFertilizerData(FALLBACK_FERTILIZER_DATA); // Using constants for now
+    setFertilizerData(FALLBACK_FERTILIZER_DATA); 
     setFertilizerDataLoaded(true);
   }, []);
 
 
-  // Subscribe to dynamic market state
   useEffect(() => {
     const marketDocRef = doc(db, 'marketState', 'global');
     const unsubscribeMarket = onSnapshot(marketDocRef, (docSnap) => {
@@ -197,7 +176,7 @@ export const useGameLogic = () => {
           const validatedInventory: Inventory = {};
           ALL_SEED_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
           ALL_CROP_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
-          ALL_FERTILIZER_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0); // Validate fertilizer inventory
+          ALL_FERTILIZER_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0); 
 
           if (firestoreData.inventory && typeof firestoreData.inventory === 'object') {
             for (const key in firestoreData.inventory) {
@@ -282,7 +261,6 @@ export const useGameLogic = () => {
           if (!currentCropDetail) return plot;
 
           const growthTimeReduction = currentTierInfo.growthTimeReductionPercent;
-          // Effective times are based on original plantedAt, but fertilizer adjusts plantedAt
           const effectiveTimeToGrowing = currentCropDetail.timeToGrowing * (1 - growthTimeReduction);
           const effectiveTimeToReady = currentCropDetail.timeToReady * (1 - growthTimeReduction);
 
@@ -310,16 +288,6 @@ export const useGameLogic = () => {
 
   const logMarketActivity = async (logData: Omit<MarketActivityLog, 'timestamp' | 'logId' | 'userId'>) => {
     if (!userId) return;
-    // try {
-    //   const activityCollectionRef = collection(db, 'marketActivityLogs');
-    //   await addDoc(activityCollectionRef, {
-    //     ...logData,
-    //     userId: userId,
-    //     timestamp: serverTimestamp(),
-    //   });
-    // } catch (e) {
-    //   console.error("Error logging market activity:", e);
-    // }
     console.log("Market Activity (simulated log):", { ...logData, userId, timestamp: Date.now() });
   };
 
@@ -370,7 +338,7 @@ export const useGameLogic = () => {
 
   const harvestCrop = useCallback(async (plotId: number) => {
     const currentGameState = gameStateRef.current;
-    const currentTierInfoValue = getPlayerTierInfo(currentGameState.level); // Use direct call
+    const currentTierInfoValue = getPlayerTierInfo(currentGameState.level);
      if (!cropData) {
         toast({ title: "Lỗi", description: "Dữ liệu cây trồng chưa tải xong.", variant: "destructive" });
         return;
@@ -423,48 +391,31 @@ export const useGameLogic = () => {
     if (quantity <= 0) return;
     const currentGameState = gameStateRef.current;
     const currentTierInfo = getPlayerTierInfo(currentGameState.level);
+    let itemDetails;
+    let itemName;
+    let itemUnlockTier;
+    let isFertilizer = false;
 
-    if (!cropData) {
-        toast({ title: "Lỗi", description: "Dữ liệu vật phẩm cơ bản chưa tải.", variant: "destructive" });
-        return;
+    if (ALL_FERTILIZER_IDS.includes(itemId as FertilizerId) && fertilizerData) {
+        itemDetails = fertilizerData[itemId as FertilizerId];
+        itemName = itemDetails?.name;
+        itemUnlockTier = itemDetails?.unlockTier;
+        isFertilizer = true;
+    } else if (cropData) {
+        const baseCropId = itemId.endsWith('Seed') ? itemId.replace('Seed', '') as CropId : itemId as CropId;
+        itemDetails = cropData[baseCropId];
+        itemName = itemId.endsWith('Seed') ? `${itemDetails?.name} (Hạt)` : itemDetails?.name;
+        itemUnlockTier = itemDetails?.unlockTier;
     }
 
-    const itemDetails = itemId.endsWith('Seed')
-        ? cropData[itemId.replace('Seed','') as CropId]
-        : cropData[itemId as CropId]; // This needs to handle fertilizers too if they become buyable
-
-    if (!itemDetails) { // Could be a fertilizer not in cropData
-        const fertDetail = fertilizerData?.[itemId as FertilizerId];
-        if (!fertDetail) {
-            toast({ title: "Lỗi", description: "Không tìm thấy thông tin vật phẩm.", variant: "destructive" });
-            return;
-        }
-         if (currentTierInfo.tier < fertDetail.unlockTier) {
-            toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt Bậc ${fertDetail.unlockTier} để mua ${fertDetail.name}.`, variant: "destructive", duration: 7000 });
-            return;
-        }
-        const totalCost = quantity * priceAtTransaction; // priceAtTransaction would be fertDetail.price
-        if (currentGameState.gold < totalCost) {
-            toast({ title: "Không Đủ Vàng", description: "Bạn không có đủ vàng.", variant: "destructive" });
-            return;
-        }
-        setGameState(prev => {
-            if (prev.gold < totalCost) return prev;
-            const newInventory = { ...prev.inventory };
-            newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
-            return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, lastUpdate: Date.now() };
-        });
-        logMarketActivity({ itemId, quantity, pricePerUnit: priceAtTransaction, totalPrice: totalCost, type: 'buy' });
-        toast({ title: "Đã Mua!", description: `Mua ${quantity} x ${fertDetail.name}.`, className: "bg-accent text-accent-foreground" });
-        return;
+    if (!itemDetails || !itemName || typeof itemUnlockTier !== 'number') {
+      toast({ title: "Lỗi", description: "Không tìm thấy thông tin vật phẩm.", variant: "destructive" });
+      return;
     }
 
-    const itemName = itemId.endsWith('Seed') ? `${itemDetails.name} (Hạt)` : itemDetails.name;
-
-
-    if (currentTierInfo.tier < itemDetails.unlockTier) {
-         toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (itemDetails.unlockTier-1) * 10 + 1 ).tierName} (Bậc ${itemDetails.unlockTier}) để mua ${itemName}.`, variant: "destructive", duration: 7000 });
-        return;
+    if (currentTierInfo.tier < itemUnlockTier) {
+      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo((itemUnlockTier - 1) * 10 + 1).tierName} (Bậc ${itemUnlockTier}) để mua ${itemName}.`, variant: "destructive", duration: 7000 });
+      return;
     }
 
     const totalCost = quantity * priceAtTransaction;
@@ -474,7 +425,7 @@ export const useGameLogic = () => {
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev;
+      if (prev.gold < totalCost) return prev; // Double check gold
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, lastUpdate: Date.now() };
@@ -626,8 +577,8 @@ export const useGameLogic = () => {
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
-        if (p.id === plotId && p.plantedAt) { // Ensure plantedAt exists
-          return { ...p, plantedAt: p.plantedAt + timeReductionAmount }; // Effectively reduce remaining time
+        if (p.id === plotId && p.plantedAt) { 
+          return { ...p, plantedAt: p.plantedAt + timeReductionAmount }; 
         }
         return p;
       });
@@ -648,10 +599,10 @@ export const useGameLogic = () => {
     sellItem,
     unlockPlot,
     updateDisplayName,
-    applyFertilizer, // Added
+    applyFertilizer, 
     isInitialized,
     playerTierInfo,
     cropData,
-    fertilizerData, // Added
+    fertilizerData, 
   };
 };

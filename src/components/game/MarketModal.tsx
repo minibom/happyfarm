@@ -10,12 +10,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { InventoryItem, CropDetails, CropId, MarketItemId, MarketEventData } from '@/types';
-import { ShoppingCart, TrendingUp, TrendingDown, AlertTriangle, Info } from 'lucide-react';
-import { getPlayerTierInfo, CROP_DATA, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
+import type { InventoryItem, CropDetails, CropId, MarketItemId, MarketEventData, MarketItemDisplay, FertilizerDetails, FertilizerId } from '@/types';
+import { ShoppingCart, TrendingUp, TrendingDown, AlertTriangle, Info, Zap as FertilizerIcon } from 'lucide-react';
+import { getPlayerTierInfo, CROP_DATA, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import BuySeedMarket from './BuySeedMarket';
 import SellCropMarket from './SellCropMarket';
-import { useMarket, type MarketData } from '@/hooks/useMarket'; // Updated import
+import BuyFertilizerMarket from './BuyFertilizerMarket'; // New import
+import { useMarket, type MarketData } from '@/hooks/useMarket';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
@@ -27,7 +28,6 @@ interface MarketModalProps {
   playerInventory: Record<InventoryItem, number>;
   onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
   onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void;
-  // cropData and playerTier are now less directly used for pricing, but good for context
   cropData: Record<CropId, CropDetails> | null; 
   playerTier: number;
 }
@@ -39,13 +39,12 @@ const MarketModal: FC<MarketModalProps> = ({
   playerInventory,
   onBuyItem,
   onSellItem,
-  cropData, // Keep for potential fallbacks or detailed item info not in market state
+  cropData, 
   playerTier,
 }) => {
   const market = useMarket();
   const [quantities, setQuantities] = useState<Record<InventoryItem, number>>({});
 
-  // Reset quantities when modal opens or market data changes significantly
   useEffect(() => {
     if (isOpen) {
       setQuantities({});
@@ -55,17 +54,17 @@ const MarketModal: FC<MarketModalProps> = ({
 
   const seedsToDisplay = useMemo(() => {
     if (market.loading || !cropData) return [];
-    // Use ALL_SEED_IDS from constants to ensure all potential seeds are considered
     return ALL_SEED_IDS.map(seedId => {
       const details = market.getItemDetails(seedId);
       if (!details) return null;
       return {
         id: seedId,
         name: details.name,
-        price: market.prices[seedId] ?? details.basePrice, // Use dynamic price, fallback to base
-        type: 'seed' as 'seed',
+        price: market.prices[seedId] ?? details.basePrice, 
+        type: 'seed' as const,
         unlockTier: details.unlockTier,
         icon: details.icon,
+        basePrice: details.basePrice,
       };
     }).filter(item => item !== null)
       .sort((a, b) => {
@@ -75,33 +74,52 @@ const MarketModal: FC<MarketModalProps> = ({
           if (aIsLocked !== bIsLocked) return aIsLocked ? 1 : -1;
           if (a.unlockTier !== b.unlockTier) return a.unlockTier - b.unlockTier;
           return a.name.localeCompare(b.name);
-      }) as MarketItem[]; // Assert type after filtering nulls
+      }) as MarketItemDisplay[];
   }, [market.loading, market.prices, market.getItemDetails, playerTier, cropData]);
 
   const cropsToSell = useMemo(() => {
     if (market.loading || !playerInventory || !cropData) return [];
-    // Use ALL_CROP_IDS for available crops to sell
     return ALL_CROP_IDS.map(cropId => {
-      if ((playerInventory[cropId] || 0) <= 0) return null; // Only if player has some
+      if ((playerInventory[cropId] || 0) <= 0) return null;
       const details = market.getItemDetails(cropId);
       if (!details) return null;
       return {
         id: cropId,
         name: details.name,
-        price: market.prices[cropId] ?? details.basePrice, // Use dynamic price
-        type: 'crop' as 'crop',
-        unlockTier: details.unlockTier, // For consistency, though not directly used for selling
+        price: market.prices[cropId] ?? details.basePrice,
+        type: 'crop' as const,
+        unlockTier: details.unlockTier,
         icon: details.icon,
+        basePrice: details.basePrice,
       };
     }).filter(item => item !== null)
       .sort((a,b) => {
           if (!a || !b) return 0;
           return a.name.localeCompare(b.name);
-      }) as MarketItem[];
+      }) as MarketItemDisplay[];
   }, [market.loading, market.prices, playerInventory, market.getItemDetails, cropData]);
 
+  const fertilizersToDisplay = useMemo(() => {
+    // Fertilizers have static prices from FERTILIZER_DATA
+    return ALL_FERTILIZER_IDS.map(fertId => {
+        const details = FERTILIZER_DATA[fertId];
+        if (!details) return null;
+        return { // Conforms to FertilizerDetails structure
+            ...details, // Includes id, name, icon, description, unlockTier, timeReductionPercent, price
+        };
+    }).filter(item => item !== null)
+      .sort((a,b) => {
+          if (!a || !b) return 0;
+          const aIsLocked = a.unlockTier > playerTier;
+          const bIsLocked = b.unlockTier > playerTier;
+          if (aIsLocked !== bIsLocked) return aIsLocked ? 1 : -1;
+          if (a.unlockTier !== b.unlockTier) return a.unlockTier - b.unlockTier;
+          return a.name.localeCompare(b.name);
+      }) as FertilizerDetails[];
+  }, [playerTier]); // Depends only on playerTier for filtering availability
 
-  if (market.loading && !market.prices) { // Show loader if critical data isn't ready
+
+  if (market.loading && !market.prices) { 
      return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-lg md:max-w-xl">
@@ -122,23 +140,27 @@ const MarketModal: FC<MarketModalProps> = ({
     );
   }
 
-  const handleQuantityButtonClick = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => {
-    const itemDetails = market.getItemDetails(itemId);
-    if (!itemDetails) return;
-    const currentMarketPrice = market.prices[itemId] ?? itemDetails.basePrice;
+  const handleQuantityButtonClick = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop' | 'fertilizer', itemUnlockTier: number) => {
+    const itemBaseDetails = type === 'seed' ? cropData?.[itemId.replace('Seed', '') as CropId] 
+                         : type === 'crop' ? cropData?.[itemId as CropId] 
+                         : FERTILIZER_DATA[itemId as FertilizerId];
 
-    if (type === 'seed' && playerTier < itemUnlockTier && delta > 0) return;
+    if (!itemBaseDetails) return;
+
+    if (type === 'seed' || type === 'fertilizer') { // Buying seeds or fertilizers
+        if (playerTier < itemUnlockTier && delta > 0) return;
+    }
 
     setQuantities(prev => {
       const currentQuantity = prev[itemId] || 0;
       let newQuantity = currentQuantity + delta;
       if (newQuantity < 0) newQuantity = 0;
 
-      if (type === 'crop') {
+      if (type === 'crop') { // Selling crops
         const maxSellable = playerInventory[itemId] || 0;
         if (newQuantity > maxSellable) newQuantity = maxSellable;
       }
-      // Consider max buyable based on gold for seeds if desired
+      // Max buyable based on gold for seeds/fertilizers can be added here if needed
       return { ...prev, [itemId]: newQuantity };
     });
   };
@@ -146,13 +168,15 @@ const MarketModal: FC<MarketModalProps> = ({
   const handleQuantityInputChange = (
     itemId: InventoryItem,
     value: string,
-    type: 'seed' | 'crop',
+    type: 'seed' | 'crop' | 'fertilizer',
     itemUnlockTier: number
   ) => {
-    const itemDetails = market.getItemDetails(itemId);
-    if (!itemDetails) return;
+    const itemBaseDetails = type === 'seed' ? cropData?.[itemId.replace('Seed', '') as CropId] 
+                         : type === 'crop' ? cropData?.[itemId as CropId] 
+                         : FERTILIZER_DATA[itemId as FertilizerId];
+    if (!itemBaseDetails) return;
 
-    if (type === 'seed' && playerTier < itemUnlockTier && value !== '' && parseInt(value, 10) > 0) return;
+    if ((type === 'seed' || type === 'fertilizer') && playerTier < itemUnlockTier && value !== '' && parseInt(value, 10) > 0) return;
 
     let numValue = parseInt(value, 10);
     if (isNaN(numValue) || value === '') {
@@ -165,7 +189,7 @@ const MarketModal: FC<MarketModalProps> = ({
       if (numValue > maxSellable) numValue = maxSellable;
     }
     
-    if (type === 'seed' && playerTier < itemUnlockTier) {
+    if ((type === 'seed' || type === 'fertilizer') && playerTier < itemUnlockTier) {
         setQuantities(prev => ({ ...prev, [itemId]: 0 }));
     } else {
         setQuantities(prev => ({ ...prev, [itemId]: numValue }));
@@ -206,7 +230,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl flex flex-col max-h-[85vh]">
+      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl flex flex-col max-h-[85vh]"> {/* Increased max-w-2xl for 3 tabs */}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
             <ShoppingCart className="w-7 h-7 text-primary" /> Chợ Nông Sản
@@ -224,17 +248,20 @@ const MarketModal: FC<MarketModalProps> = ({
             </div>
         )}
 
-        <Tabs defaultValue="buy" className="w-full flex-grow flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="buy">Mua Hạt Giống</TabsTrigger>
-            <TabsTrigger value="sell">Bán Nông Sản</TabsTrigger>
+        <Tabs defaultValue="buy_seed" className="w-full flex-grow flex flex-col min-h-0">
+          <TabsList className="grid w-full grid-cols-3"> {/* Changed to grid-cols-3 */}
+            <TabsTrigger value="buy_seed">Mua Hạt Giống</TabsTrigger>
+            <TabsTrigger value="sell_crop">Bán Nông Sản</TabsTrigger>
+            <TabsTrigger value="buy_fertilizer">
+              <FertilizerIcon className="mr-1 h-4 w-4" /> Mua Phân Bón
+            </TabsTrigger>
           </TabsList>
-          <TabsContent value="buy" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
+          <TabsContent value="buy_seed" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
             <BuySeedMarket
               seedsToDisplay={seedsToDisplay}
               playerGold={playerGold}
               onBuyItem={onBuyItem}
-              cropData={cropData} // Pass full CROP_DATA for item details
+              cropData={cropData} 
               playerTier={playerTier}
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
@@ -246,12 +273,12 @@ const MarketModal: FC<MarketModalProps> = ({
               getItemDetails={market.getItemDetails}
             />
           </TabsContent>
-          <TabsContent value="sell" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
+          <TabsContent value="sell_crop" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
             <SellCropMarket
               cropsToSell={cropsToSell}
               playerInventory={playerInventory}
               onSellItem={onSellItem}
-              cropData={cropData} // Pass full CROP_DATA
+              cropData={cropData} 
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
               onQuantityInputChange={handleQuantityInputChange}
@@ -260,6 +287,18 @@ const MarketModal: FC<MarketModalProps> = ({
               priceChanges={market.priceChanges}
               marketEvent={market.currentEvent}
               getItemDetails={market.getItemDetails}
+            />
+          </TabsContent>
+          <TabsContent value="buy_fertilizer" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
+            <BuyFertilizerMarket
+              fertilizersToDisplay={fertilizersToDisplay}
+              playerGold={playerGold}
+              onBuyItem={onBuyItem} // Same onBuyItem can be used
+              playerTier={playerTier}
+              quantities={quantities}
+              onQuantityButtonClick={handleQuantityButtonClick}
+              onQuantityInputChange={handleQuantityInputChange}
+              setQuantities={setQuantities}
             />
           </TabsContent>
         </Tabs>

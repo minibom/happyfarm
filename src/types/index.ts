@@ -24,7 +24,7 @@ export interface FertilizerDetails {
   description: string;
   unlockTier: number;
   timeReductionPercent: number; // e.g., 0.1 for 10% of *remaining* time
-  price: number; // Placeholder for now
+  price: number;
 }
 
 export interface Plot {
@@ -76,7 +76,7 @@ export interface AdminUserView extends GameState {
 }
 
 // Types for Dynamic Market System
-export type MarketItemId = CropId | SeedId; // Fertilizers could be added here later if made buyable
+export type MarketItemId = CropId | SeedId; // Fertilizers are not part of dynamic market for now
 
 export interface MarketPriceData {
   [itemId: string]: number;
@@ -90,7 +90,7 @@ export interface MarketEventData {
   isActive: boolean;
   eventName: string;
   description: string;
-  itemId?: MarketItemId;
+  itemId?: MarketItemId; // Affects only crops/seeds for now
   priceModifier?: number;
   effectDescription?: string;
   expiresAt?: number;
@@ -105,7 +105,7 @@ export interface MarketState {
 
 export interface MarketActivityLog {
   logId?: string;
-  itemId: MarketItemId;
+  itemId: InventoryItem; // Can be CropId, SeedId, or FertilizerId
   quantity: number;
   pricePerUnit: number;
   totalPrice: number;
@@ -115,11 +115,13 @@ export interface MarketActivityLog {
 }
 
 // Used by MarketModal to prepare items for display
-export interface MarketItem {
+export interface MarketItemDisplay {
   id: InventoryItem;
   name: string;
-  price: number;
-  type: 'seed' | 'crop'; // Could be expanded for fertilizer
+  price: number; // This will be the *current* price to use for transaction
+  type: 'seed' | 'crop' | 'fertilizer';
   unlockTier: number;
   icon: string;
+  basePrice?: number; // Original base price for reference (especially for seeds/crops)
+  description?: string; // For fertilizers
 }
