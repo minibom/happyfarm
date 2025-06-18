@@ -9,19 +9,19 @@ import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import LeaderboardModal from '@/components/game/LeaderboardModal';
-import GameArea from '@/components/game/GameArea'; 
-import ChatPanel from '@/components/game/ChatPanel'; 
+import GameArea from '@/components/game/GameArea';
+import ChatPanel from '@/components/game/ChatPanel';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId } from '@/types';
-import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS } from '@/lib/constants';
+import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog'; // Removed DialogHeader, DialogTitle
 
 
 export default function GamePage() {
-  const { user, userId, loading: authLoading } = useAuth(); 
+  const { user, userId, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const {
@@ -34,8 +34,7 @@ export default function GamePage() {
     updateDisplayName, // Added
     isInitialized,
     playerTierInfo,
-    marketItems,
-    allSeedIds,
+    // marketItems, // This is now part of useMarket hook or derived differently
     cropData,
   } = useGameLogic();
 
@@ -43,13 +42,13 @@ export default function GamePage() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false); 
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
 
   useEffect(() => {
-    if (!authLoading && !user && isInitialized) { 
+    if (!authLoading && !user && isInitialized) {
       router.push('/login');
     }
   }, [user, authLoading, router, isInitialized]);
@@ -131,7 +130,7 @@ export default function GamePage() {
     setSelectedSeedToPlant(undefined);
   }
 
-  const availableSeedsForPlanting = allSeedIds
+  const availableSeedsForPlanting = ALL_SEED_IDS
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
     .filter(seedId => {
         if (!cropData) return false;
@@ -139,11 +138,11 @@ export default function GamePage() {
         return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
     });
 
-  const allAvailableSeedsInInventory = allSeedIds
+  const allAvailableSeedsInInventory = ALL_SEED_IDS
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
 
 
-  if (authLoading || !isInitialized || !user || !marketItems || !cropData || !gameState) {
+  if (authLoading || !isInitialized || !user || !cropData || !gameState) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
@@ -174,7 +173,7 @@ export default function GamePage() {
         onOpenMarket={() => setShowMarket(true)}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenChatModal={() => setIsChatModalOpen(true)}
-        onOpenLeaderboard={() => setShowLeaderboardModal(true)} 
+        onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onClearAction={handleClearAction}
@@ -189,7 +188,6 @@ export default function GamePage() {
       <MarketModal
         isOpen={showMarket}
         onClose={() => setShowMarket(false)}
-        marketItems={marketItems}
         playerGold={gameState.gold}
         playerInventory={gameState.inventory}
         onBuyItem={buyItem}
@@ -202,8 +200,8 @@ export default function GamePage() {
         onClose={() => setShowInventoryModal(false)}
         inventory={gameState.inventory}
         cropData={cropData}
-        allSeedIds={allSeedIds}
-        allCropIds={cropData ? Object.keys(cropData) as CropId[] : []}
+        allSeedIds={ALL_SEED_IDS}
+        allCropIds={ALL_CROP_IDS}
       />
       <PlayerProfileModal
         isOpen={showProfileModal}
@@ -220,7 +218,7 @@ export default function GamePage() {
       <LeaderboardModal
         isOpen={showLeaderboardModal}
         onClose={() => setShowLeaderboardModal(false)}
-        currentUserId={userId} 
+        currentUserId={userId}
       />
 
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
