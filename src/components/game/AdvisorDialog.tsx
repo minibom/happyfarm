@@ -9,8 +9,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Brain, RefreshCw } from 'lucide-react';
-import Image from 'next/image';
+import { Brain, RefreshCw, Smile } from 'lucide-react'; // Added Smile icon
+// import Image from 'next/image'; // Removed Image import
 
 interface AdvisorDialogProps {
   isOpen: boolean;
@@ -30,14 +30,7 @@ const AdvisorDialog: FC<AdvisorDialogProps> = ({ isOpen, onClose, advice, onGetN
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 my-4">
-          <Image 
-            src="https://placehold.co/100x100.png" 
-            alt="NPC Cố Vấn Nông Trại" 
-            width={100} 
-            height={100} 
-            className="rounded-full shadow-lg border-4 border-primary"
-            data-ai-hint="friendly farmer"
-          />
+          <Smile className="w-24 h-24 text-primary opacity-80" /> {/* Replaced Image with Smile icon */}
           {isLoading && <p className="text-muted-foreground">Đang suy nghĩ...</p>}
           {!isLoading && advice && (
             <DialogDescription className="text-center text-lg bg-secondary/50 p-4 rounded-md shadow">
