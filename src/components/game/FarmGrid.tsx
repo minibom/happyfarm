@@ -11,7 +11,8 @@ interface FarmGridProps {
   availableFertilizersForPopover: FertilizerDetails[]; // New prop
   onPlantFromPopover: (plotId: number, seedId: SeedId) => void;
   onFertilizeFromPopover: (plotId: number, fertilizerId: FertilizerId) => void; // New prop
-  onUprootCrop: (plotId: number) => void; // New prop
+  onUprootCrop: (plotId: number) => void; 
+  onHarvestFromPopover: (plotId: number) => void; // New prop
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
   isGloballyFertilizing: boolean;
@@ -26,10 +27,11 @@ const FarmGrid: FC<FarmGridProps> = ({
   onPlotClick,
   selectedPlotId,
   availableSeedsForPopover,
-  availableFertilizersForPopover, // Destructure
+  availableFertilizersForPopover, 
   onPlantFromPopover,
-  onFertilizeFromPopover, // Destructure
-  onUprootCrop, // Destructure
+  onFertilizeFromPopover, 
+  onUprootCrop, 
+  onHarvestFromPopover, // Destructure
   isGloballyPlanting,
   isGloballyHarvesting,
   isGloballyFertilizing,
@@ -48,7 +50,8 @@ const FarmGrid: FC<FarmGridProps> = ({
           isSelected={plot.id === selectedPlotId}
           availableSeedsForPopover={availableSeedsForPopover}
           onPlantFromPopover={(seedId) => onPlantFromPopover(plot.id, seedId)}
-          onUprootCrop={onUprootCrop} // Pass onUprootCrop
+          onUprootCrop={onUprootCrop} 
+          onHarvestFromPopover={onHarvestFromPopover} // Pass down
           isGloballyPlanting={isGloballyPlanting}
           isGloballyHarvesting={isGloballyHarvesting}
           isGloballyFertilizing={isGloballyFertilizing}

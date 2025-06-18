@@ -20,7 +20,8 @@ interface GameAreaProps {
   handlePlotClick: (plotId: number) => void;
   plantSeedFromPlotPopover: (plotId: number, seedId: SeedId) => void;
   fertilizeFromPlotPopover: (plotId: number, fertilizerId: FertilizerId) => void;
-  uprootCropFromPlotPopover: (plotId: number) => void; // New prop for uprooting
+  uprootCropFromPlotPopover: (plotId: number) => void;
+  harvestCropFromPlotPopover: (plotId: number) => void; // New prop
   unlockPlot: (plotId: number) => void;
   userStatus: 'active' | 'banned_chat';
 }
@@ -37,7 +38,8 @@ const GameArea: FC<GameAreaProps> = ({
   handlePlotClick,
   plantSeedFromPlotPopover,
   fertilizeFromPlotPopover,
-  uprootCropFromPlotPopover, // Destructure new prop
+  uprootCropFromPlotPopover,
+  harvestCropFromPlotPopover, // Destructure
   unlockPlot,
   userStatus,
 }) => {
@@ -87,7 +89,8 @@ const GameArea: FC<GameAreaProps> = ({
             availableFertilizersForPopover={availableFertilizersForPopover} 
             onPlantFromPopover={plantSeedFromPlotPopover}
             onFertilizeFromPopover={fertilizeFromPlotPopover}
-            onUprootCrop={uprootCropFromPlotPopover} // Pass down uprootCrop
+            onUprootCrop={uprootCropFromPlotPopover} 
+            onHarvestFromPopover={harvestCropFromPlotPopover} // Pass down
             isGloballyPlanting={currentAction === 'planting'}
             isGloballyHarvesting={currentAction === 'harvesting'}
             isGloballyFertilizing={currentAction === 'fertilizing'} 

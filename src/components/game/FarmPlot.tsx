@@ -1,7 +1,9 @@
 
+'use client';
+
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { Sprout, Gift, Lock, Coins, Zap as FertilizerIcon, Axe } from 'lucide-react'; // Added Axe for uproot
+import { Sprout, Gift, Lock, Coins, Zap as FertilizerIcon, Axe, Hand } from 'lucide-react'; // Added Hand
 import { LeafIcon } from '@/components/icons/LeafIcon';
 import type { Plot, SeedId, CropId, CropDetails } from '@/types';
 import { cn } from '@/lib/utils';
@@ -16,7 +18,8 @@ interface FarmPlotProps {
   onClick: () => void;
   availableSeedsForPopover: SeedId[];
   onPlantFromPopover: (seedId: SeedId) => void;
-  onUprootCrop: (plotId: number) => void; // New prop for uprooting
+  onUprootCrop: (plotId: number) => void;
+  onHarvestFromPopover: (plotId: number) => void; // New prop for harvesting from popover
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
   isGloballyFertilizing: boolean;
@@ -34,7 +37,8 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onClick,
   availableSeedsForPopover,
   onPlantFromPopover,
-  onUprootCrop, // Destructure new prop
+  onUprootCrop,
+  onHarvestFromPopover, // Destructure new prop
   isGloballyPlanting,
   isGloballyHarvesting,
   isGloballyFertilizing,
@@ -180,7 +184,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
     if (isGloballyPlanting || isGloballyHarvesting || isGloballyFertilizing) {
       onClick(); // Global actions take precedence
     } else {
-      // Open popover for non-global actions (plant, uproot)
+      // Open popover for non-global actions (plant, uproot, harvest)
       setIsPlotPopoverOpen(true);
     }
   };
@@ -313,6 +317,19 @@ const FarmPlot: FC<FarmPlotProps> = ({
                       <Axe className="mr-2 h-4 w-4" /> Nhổ Cây
                     </Button>
                   )}
+                  {plot.state === 'ready_to_harvest' && (
+                    <Button
+                      variant="default" // Or another appropriate variant like "primary" or "accent"
+                      size="sm"
+                      onClick={() => {
+                        onHarvestFromPopover(plot.id);
+                        setIsPlotPopoverOpen(false);
+                      }}
+                      className="w-full justify-start bg-primary hover:bg-primary/90"
+                    >
+                      <Hand className="mr-2 h-4 w-4" /> Thu Hoạch
+                    </Button>
+                  )}
                 </div>
               </PopoverContent>
             )}
@@ -327,3 +344,4 @@ const FarmPlot: FC<FarmPlotProps> = ({
 };
 
 export default FarmPlot;
+
