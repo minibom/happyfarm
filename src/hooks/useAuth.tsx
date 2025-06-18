@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -37,21 +38,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true); // Set loading true at the start of auth state change
       if (firebaseUser) {
         setUser(firebaseUser);
         setUserId(firebaseUser.uid);
         setError(null);
+        // If logged-in user is on login or register page, redirect to game page
         if (pathname === '/login' || pathname === '/register') {
-          router.push('/');
+          router.push('/game');
         }
       } else {
         setUser(null);
         setUserId(null);
-        if (pathname !== '/login' && pathname !== '/register') {
+        // If not logged in, and tries to access /game or /admin, redirect to login
+        // The landing page (/) is public.
+        // Admin layout handles its own more specific admin role check.
+        if (pathname === '/game' || pathname.startsWith('/admin')) {
           router.push('/login');
         }
       }
-      setLoading(false);
+      setLoading(false); // Set loading false after processing
     });
 
     return () => unsubscribe();
@@ -62,11 +68,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle user state and redirect
     } catch (e) {
       setError(e as AuthError);
-      setLoading(false);
+      setLoading(false); // Ensure loading is false on error
       throw e;
     }
+    // No setLoading(false) here, onAuthStateChanged will do it
   };
 
   const signIn = async (email: string, password: string) => {
@@ -74,11 +82,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged will handle user state and redirect
     } catch (e) {
       setError(e as AuthError);
-      setLoading(false);
+      setLoading(false); // Ensure loading is false on error
       throw e;
     }
+    // No setLoading(false) here, onAuthStateChanged will do it
   };
 
   const logOut = async () => {
@@ -86,11 +96,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       await signOut(auth);
-      setInitialGameState(undefined);
+      setInitialGameState(undefined); // Reset initial game state on logout
+      // onAuthStateChanged will handle user state and redirect to /login if necessary
     } catch (e) {
       setError(e as AuthError);
     } finally {
-      setLoading(false);
+      // setLoading(false) will be handled by onAuthStateChanged
     }
   };
 

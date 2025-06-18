@@ -29,7 +29,7 @@ export default function RegisterPage() {
     try {
       await signUp(email, password);
       toast({ title: "Đăng Ký Thành Công!", description: "Chào mừng đến với Happy Farm! Bạn có thể đăng nhập ngay bây giờ.", className: "bg-primary text-primary-foreground" });
-      router.push('/'); 
+      router.push('/game'); // Redirect to game page after registration
     } catch (err: any) {
       console.error("Registration failed:", err);
        const errorMessage = err.code === 'auth/email-already-in-use' 
@@ -88,15 +88,20 @@ export default function RegisterPage() {
             </div>
             {authError && <p className="text-sm text-destructive text-center">{authError.message}</p>}
             <Button type="submit" className="w-full text-lg py-3" disabled={loading}>
-              {loading ? 'Đang Đăng Ký...' : 'Đăng Ký'}
+              {loading ? 'Đang Đang Ký...' : 'Đăng Ký'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex-col items-center justify-center space-y-2">
           <p className="text-sm">
             Đã có tài khoản?{' '}
             <Link href="/login" className="font-medium text-primary hover:underline">
               Đăng nhập tại đây
+            </Link>
+          </p>
+           <p className="text-sm">
+            <Link href="/" className="font-medium text-muted-foreground hover:underline">
+              Về trang chủ
             </Link>
           </p>
         </CardFooter>

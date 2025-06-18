@@ -1,222 +1,97 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import ResourceBar from '@/components/game/ResourceBar';
-import MarketModal from '@/components/game/MarketModal';
-import BottomNavBar from '@/components/game/BottomNavBar';
-import InventoryModal from '@/components/game/InventoryModal';
-import PlayerProfileModal from '@/components/game/PlayerProfileModal';
-import GameArea from '@/components/game/GameArea'; // Import the new component
-import ChatPanel from '@/components/game/ChatPanel'; // Keep for modal chat
-import { useGameLogic } from '@/hooks/useGameLogic';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId, CropId } from '@/types';
-import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS } from '@/lib/constants';
-import { Loader2, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
+import { Tractor, Wheat, LogIn, UserPlus, Leaf } from 'lucide-react';
 
-
-export default function HomePage() {
-  const { user, loading: authLoading } = useAuth();
+export default function LandingPage() {
+  const { user, loading } = useAuth();
   const router = useRouter();
-  const { toast } = useToast();
-  const {
-    gameState,
-    plantCrop,
-    harvestCrop,
-    buyItem,
-    sellItem,
-    unlockPlot,
-    isInitialized,
-    playerTierInfo,
-    marketItems,
-    allSeedIds,
-    cropData,
-  } = useGameLogic();
 
-  const [showMarket, setShowMarket] = useState(false);
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-
-  const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
-  const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
+  const handleJoinGame = () => {
+    if (user) {
+      router.push('/game');
+    } else {
       router.push('/login');
     }
-  }, [user, authLoading, router]);
-
-  const handlePlotClick = (plotId: number) => {
-    const plot = gameState.plots.find(p => p.id === plotId);
-    if (!plot || !cropData) return;
-
-    if (plotId >= gameState.unlockedPlotsCount) {
-      if (plotId === gameState.unlockedPlotsCount && gameState.unlockedPlotsCount < TOTAL_PLOTS) {
-        unlockPlot(plotId);
-      } else if (gameState.unlockedPlotsCount < TOTAL_PLOTS) {
-        toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất trước đó theo thứ tự.", variant: "destructive" });
-      } else {
-         toast({ title: "Đã Mở Hết", description: "Tất cả ô đất đã được mở.", variant: "default" });
-      }
-      return;
-    }
-
-    if (currentAction === 'planting' && selectedSeedToPlant) {
-      const seedCropDetail = cropData[selectedSeedToPlant.replace('Seed','') as CropId];
-      if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
-        plantCrop(plotId, selectedSeedToPlant);
-      } else if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier < seedCropDetail.unlockTier) {
-        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
-      }
-    } else if (currentAction === 'harvesting') {
-      if (plot.state === 'ready_to_harvest') {
-        harvestCrop(plotId);
-      }
-    }
   };
-
-  const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
-     if (!cropData) return;
-     if (plotId >= gameState.unlockedPlotsCount) {
-        toast({ title: "Đất Bị Khóa", description: "Không thể trồng trên ô đất bị khóa.", variant: "destructive"});
-        return;
-     }
-
-     const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
-     if (seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
-        plantCrop(plotId, seedId);
-     } else if (seedCropDetail) {
-        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
-     }
-  };
-
-  const handleSetPlantMode = (seedId: SeedId) => {
-    if (!cropData) return;
-    const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
-    if (!seedCropDetail || playerTierInfo.tier < seedCropDetail.unlockTier) {
-      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để chọn hạt giống ${seedCropDetail.name}.`, variant: "destructive" });
-      setCurrentAction('none');
-      setSelectedSeedToPlant(undefined);
-      return;
-    }
-
-    if (currentAction === 'planting' && selectedSeedToPlant === seedId) {
-      setCurrentAction('none');
-      setSelectedSeedToPlant(undefined);
-    } else {
-      setCurrentAction('planting');
-      setSelectedSeedToPlant(seedId);
-    }
-  };
-
-  const handleToggleHarvestMode = () => {
-    if (currentAction === 'harvesting') {
-      setCurrentAction('none');
-    } else {
-      setCurrentAction('harvesting');
-      setSelectedSeedToPlant(undefined);
-    }
-  };
-
-  const handleClearAction = () => {
-    setCurrentAction('none');
-    setSelectedSeedToPlant(undefined);
-  }
-
-  const availableSeedsForPlanting = allSeedIds
-    .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
-    .filter(seedId => {
-        if (!cropData) return false;
-        const cropDetail = cropData[seedId.replace('Seed','') as CropId];
-        return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
-    });
-
-  const allAvailableSeedsInInventory = allSeedIds
-    .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
-
-
-  if (authLoading || !isInitialized || !user || !marketItems || !cropData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
-        <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
-        Đang tải Happy Farm...
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4 pb-24">
-      <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-200 via-yellow-100 to-sky-200 p-6 text-center overflow-hidden">
+      <div className="absolute inset-0 opacity-20">
+        {[...Array(20)].map((_, i) => (
+          <Leaf
+            key={i}
+            className="absolute text-green-400 animate-pulse"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              transform: `scale(${Math.random() * 1 + 0.5}) rotate(${Math.random() * 360}deg)`,
+              animationDuration: `${Math.random() * 5 + 5}s`,
+              animationDelay: `${Math.random() * 2}s`,
+            }}
+            size={Math.random() * 80 + 20}
+          />
+        ))}
+      </div>
+      <main className="z-10">
+        <header className="mb-10 sm:mb-12">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary font-headline mb-4 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+            <Wheat className="w-12 h-12 sm:w-16 sm:h-16 text-yellow-500" />
+            Happy Farm
+            <Tractor className="w-12 h-12 sm:w-16 sm:h-16 text-red-500" />
+          </h1>
+          <p className="text-xl sm:text-2xl text-green-700 max-w-xl sm:max-w-2xl mx-auto">
+            Chào mừng bạn đến với Nông Trại Vui Vẻ! Hãy gieo hạt, chăm sóc cây trồng, thu hoạch và xây dựng trang trại mơ ước của bạn.
+          </p>
+        </header>
 
-      <GameArea
-        gameState={gameState}
-        cropData={cropData}
-        playerTierInfo={playerTierInfo}
-        currentAction={currentAction}
-        availableSeedsForPlanting={availableSeedsForPlanting}
-        handlePlotClick={handlePlotClick}
-        plantSeedFromPlotPopover={plantSeedFromPlotPopover}
-        unlockPlot={unlockPlot}
-        userStatus={gameState.status}
-      />
+        <div className="mb-10 sm:mb-12">
+          <Image
+            src="https://placehold.co/600x400.png"
+            alt="Happy Farm Game Screenshot"
+            width={600}
+            height={400}
+            className="rounded-xl shadow-2xl border-4 border-white transform transition-transform duration-500 hover:scale-105"
+            priority
+            data-ai-hint="cheerful farm illustration"
+          />
+        </div>
 
-      <BottomNavBar
-        onOpenInventory={() => setShowInventoryModal(true)}
-        onOpenMarket={() => setShowMarket(true)}
-        onOpenProfile={() => setShowProfileModal(true)}
-        onOpenChatModal={() => setIsChatModalOpen(true)}
-        onSetPlantMode={handleSetPlantMode}
-        onToggleHarvestMode={handleToggleHarvestMode}
-        onClearAction={handleClearAction}
-        currentAction={currentAction}
-        selectedSeed={selectedSeedToPlant}
-        availableSeeds={allAvailableSeedsInInventory}
-        inventory={gameState.inventory}
-        cropData={cropData}
-        playerTier={playerTierInfo.tier}
-      />
+        <div className="space-y-4 sm:space-y-0 sm:flex sm:flex-row sm:items-center sm:justify-center sm:space-x-6">
+          <Button
+            onClick={handleJoinGame}
+            size="lg"
+            className="w-full sm:w-auto text-lg sm:text-xl px-8 sm:px-10 py-6 sm:py-7 bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg transform hover:scale-105 transition-transform"
+            disabled={loading}
+          >
+            <LogIn className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+            {loading ? "Đang tải..." : (user ? "Vào Game" : "Tham Gia Ngay")}
+          </Button>
+          {!user && !loading && (
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto text-lg sm:text-xl px-8 sm:px-10 py-6 sm:py-7 border-primary text-primary hover:bg-primary/10 shadow-lg transform hover:scale-105 transition-transform"
+            >
+              <Link href="/register">
+                <UserPlus className="mr-2 h-5 w-5 sm:h-6 sm:w-6" />
+                Đăng Ký
+              </Link>
+            </Button>
+          )}
+        </div>
+      </main>
 
-      <MarketModal
-        isOpen={showMarket}
-        onClose={() => setShowMarket(false)}
-        marketItems={marketItems}
-        playerGold={gameState.gold}
-        playerInventory={gameState.inventory}
-        onBuyItem={buyItem}
-        onSellItem={sellItem}
-        cropData={cropData}
-        playerTier={playerTierInfo.tier}
-      />
-      <InventoryModal
-        isOpen={showInventoryModal}
-        onClose={() => setShowInventoryModal(false)}
-        inventory={gameState.inventory}
-        cropData={cropData}
-        allSeedIds={allSeedIds}
-        allCropIds={cropData ? Object.keys(cropData) as CropId[] : []}
-      />
-      <PlayerProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        playerEmail={user.email || 'Không có email'}
-        playerLevel={gameState.level}
-        playerGold={gameState.gold}
-        playerXP={gameState.xp}
-        xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
-        playerTierInfo={playerTierInfo}
-      />
-      
-      <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
-        <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
-          <ChatPanel isModalMode userStatus={gameState.status} />
-        </DialogContent>
-      </Dialog>
-
+      <footer className="mt-12 sm:mt-16 text-sm text-gray-600 z-10">
+        <p>&copy; {new Date().getFullYear()} Happy Farm by Firebase Studio. Chúc bạn chơi game vui vẻ!</p>
+      </footer>
     </div>
   );
 }
+

@@ -24,7 +24,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       toast({ title: "Đăng Nhập Thành Công", description: "Chào mừng trở lại Happy Farm!", className: "bg-primary text-primary-foreground" });
-      router.push('/');
+      router.push('/game'); // Redirect to game page
     } catch (err: any) {
       console.error("Login failed:", err);
       const errorMessage = err.code === 'auth/invalid-credential' 
@@ -75,11 +75,16 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex-col items-center justify-center space-y-2">
           <p className="text-sm">
             Chưa có tài khoản?{' '}
             <Link href="/register" className="font-medium text-primary hover:underline">
               Đăng ký tại đây
+            </Link>
+          </p>
+          <p className="text-sm">
+            <Link href="/" className="font-medium text-muted-foreground hover:underline">
+              Về trang chủ
             </Link>
           </p>
         </CardFooter>

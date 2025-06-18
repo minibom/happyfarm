@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
 
     if (!user) {
-      router.push('/login');
+      router.push('/login'); // Ensure redirect to login if no user
       return;
     }
 
@@ -64,7 +64,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         variant: "destructive",
         duration: 5000,
       });
-      router.push('/');
+      router.push('/game'); // Redirect to game page if not admin
     }
     setIsCheckingPermissions(false);
   }, [user, authLoading, router, toast]);
@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <SidebarHeader className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
             <Button variant="ghost" size="icon" className="h-10 w-10 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8" asChild>
-              <Link href="/">
+              <Link href="/game">
                 <ShieldCheck className="h-6 w-6 text-primary" />
               </Link>
             </Button>
@@ -120,7 +120,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   asChild
                   tooltip={{ children: "Về Trang Game", side: 'right', align: 'center' }}
                 >
-                  <Link href="/">
+                  <Link href="/game">
                     <Home />
                     <span>Về Trang Game</span>
                   </Link>
