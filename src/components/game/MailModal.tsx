@@ -17,7 +17,7 @@ import type { MailMessage, RewardItem } from '@/types';
 import { Mail, Inbox, Package, Coins, Star, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants'; 
+import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
 import { Timestamp } from 'firebase/firestore';
 
 interface MailModalProps {
@@ -25,8 +25,8 @@ interface MailModalProps {
   onClose: () => void;
   mailMessages: MailMessage[];
   onMarkAsRead: (mailId: string) => void;
-  onClaimRewards: (mailId: string) => void; 
-  onDeleteMail: (mailId: string) => void; 
+  onClaimRewards: (mailId: string) => void;
+  onDeleteMail: (mailId: string) => void;
 }
 
 const MailModal: FC<MailModalProps> = ({
@@ -58,7 +58,7 @@ const MailModal: FC<MailModalProps> = ({
     }
     return 'Phần thưởng không xác định';
   };
-  
+
   const getRewardItemIcon = (reward: RewardItem) => {
     if (reward.type === 'gold') return <Coins className="w-4 h-4 text-yellow-500" />;
     if (reward.type === 'xp') return <Star className="w-4 h-4 text-yellow-400" />;
@@ -72,7 +72,7 @@ const MailModal: FC<MailModalProps> = ({
     return <Package className="w-4 h-4 text-muted-foreground" />;
   }
 
-  const sortedMailMessages = mailMessages; 
+  const sortedMailMessages = mailMessages;
 
   const formatTimestamp = (timestamp: any): string => {
     if (!timestamp) return 'N/A';
@@ -146,7 +146,9 @@ const MailModal: FC<MailModalProps> = ({
                     </p>
                 </div>
                 <ScrollArea className="flex-grow h-0 bg-muted/30 p-3 rounded-md mb-3">
-                  <p className="text-sm whitespace-pre-wrap">{selectedMail.body}</p>
+                  <p className="text-sm whitespace-pre-wrap">
+                    {typeof selectedMail.body === 'string' && selectedMail.body.trim() !== '' ? selectedMail.body : "(Nội dung thư trống hoặc không có.)"}
+                  </p>
                 </ScrollArea>
                 {selectedMail.rewards.length > 0 && (
                   <div className="mb-3">
@@ -162,8 +164,8 @@ const MailModal: FC<MailModalProps> = ({
                   </div>
                 )}
                 <div className="mt-auto flex gap-2">
-                  <Button 
-                    onClick={() => onClaimRewards(selectedMail.id)} 
+                  <Button
+                    onClick={() => onClaimRewards(selectedMail.id)}
                     disabled={selectedMail.isClaimed || selectedMail.rewards.length === 0}
                     className="bg-green-500 hover:bg-green-600 text-white"
                   >
