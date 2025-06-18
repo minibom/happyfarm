@@ -164,9 +164,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
   const ownedAvailableFertilizers = availableFertilizers.filter(fert => (inventory[fert.id] || 0) > 0);
 
-  const UnreadMailBadge = () => (
+  const UnreadMailBadgeOnMenuItem = () => (
     unreadMailCount > 0 ? (
-      <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
+      <Badge className="ml-auto h-4 px-1.5 text-[9px] bg-red-500 text-white">
         {unreadMailCount > 9 ? '9+' : unreadMailCount}
       </Badge>
     ) : null
@@ -318,23 +318,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                      onClick={onOpenMailModal}
-                      variant="outline"
-                      className={cn(buttonBaseClass, "relative")}
-                      aria-label="Hộp thư"
-                  >
-                      <MailIcon className={iconClass} />
-                      <span className={labelClass}>Thư</span>
-                      <UnreadMailBadge />
-                  </Button>
-                </TooltipTrigger>
-              <TooltipContent side="top">
-                  <p>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount} chưa đọc)`}</p>
-              </TooltipContent>
-            </Tooltip>
+            {/* Mail button removed from direct view on desktop */}
 
             <DropdownMenu>
               <Tooltip>
@@ -355,6 +339,13 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                  <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <MailIcon className="mr-2 h-4 w-4" />
+                      <span>Hộp Thư</span>
+                    </div>
+                    <UnreadMailBadgeOnMenuItem />
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onOpenLeaderboard}>
                       <ListOrdered className="mr-2 h-4 w-4" />
                       <span>Bảng Xếp Hạng</span>
@@ -431,9 +422,12 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     <UserCircle2 className="mr-2 h-4 w-4" />
                     <span>Hồ Sơ</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onOpenMailModal}>
-                    <MailIcon className="mr-2 h-4 w-4" />
-                    <span>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount})`}</span>
+                <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
+                    <div className="flex items-center">
+                        <MailIcon className="mr-2 h-4 w-4" />
+                        <span>Hộp Thư</span>
+                    </div>
+                    <UnreadMailBadgeOnMenuItem />
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onOpenLeaderboard}>
                     <ListOrdered className="mr-2 h-4 w-4" />
@@ -469,3 +463,4 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
+
