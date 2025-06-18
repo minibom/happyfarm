@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3 } from 'lucide-react';
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail } from 'lucide-react'; // Added Mail icon
 import { useToast } from '@/hooks/use-toast';
 import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA } from '@/lib/constants';
 import { db } from '@/lib/firebase';
@@ -185,58 +185,83 @@ export default function AdminConfigPage() {
             </Card>
           </div>
 
-          <Card className="border-sky-500/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                  <BarChart3 className="h-6 w-6 text-sky-500" />
-                  <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cấp Bậc (Tiers)</CardTitle>
-              </div>
-              <CardDescription>
-                Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code> 
-                lên collection <code>gameTiers</code> trong Firestore.
-                Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu cấp bậc trên database.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handlePushTierData} className="bg-sky-500 hover:bg-sky-600 text-white">
-                <UploadCloud className="mr-2 h-5 w-5" />
-                Đẩy Dữ Liệu Cấp Bậc
-              </Button>
-              <p className="mt-2 text-sm text-muted-foreground">
-                GHI ĐÈ dữ liệu trên <code>gameTiers</code>.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-500/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                  <BarChartHorizontalBig className="h-6 w-6 text-blue-500" />
-                  <CardTitle className="text-xl">Quản Lý Sự Kiện Game (Placeholder)</CardTitle>
-              </div>
-              <CardDescription>
-                Khu vực này có thể chứa các cài đặt cho sự kiện trong game. (Sắp có)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" disabled className="mt-2">Thiết Lập Sự Kiện Mới</Button>
-            </CardContent>
-          </Card>
-          
-          <Card className="border-orange-500/50">
-            <CardHeader>
-                <CardTitle className="text-xl">Thông Báo Hệ Thống (Placeholder)</CardTitle>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-sky-500/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <BarChart3 className="h-6 w-6 text-sky-500" />
+                    <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cấp Bậc (Tiers)</CardTitle>
+                </div>
                 <CardDescription>
-                Gửi thông báo chung cho tất cả người chơi trong game. (Sắp có)
+                  Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code> 
+                  lên collection <code>gameTiers</code> trong Firestore.
+                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu cấp bậc trên database.
                 </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button variant="outline" disabled className="mt-2">Soạn Thông Báo</Button>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handlePushTierData} className="bg-sky-500 hover:bg-sky-600 text-white">
+                  <UploadCloud className="mr-2 h-5 w-5" />
+                  Đẩy Dữ Liệu Cấp Bậc
+                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên <code>gameTiers</code>.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-teal-500/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <Mail className="h-6 w-6 text-teal-500" />
+                    <CardTitle className="text-xl">Đồng Bộ Temp Thư (Placeholder)</CardTitle>
+                </div>
+                <CardDescription>
+                  Khu vực này có thể chứa các tiện ích đồng bộ dữ liệu thư mẫu. (Sắp có)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" disabled className="mt-2">Đồng Bộ Thư Mẫu</Button>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-blue-500/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <BarChartHorizontalBig className="h-6 w-6 text-blue-500" />
+                    <CardTitle className="text-xl">Quản Lý Sự Kiện Game (Placeholder)</CardTitle>
+                </div>
+                <CardDescription>
+                  Khu vực này có thể chứa các cài đặt cho sự kiện trong game. (Sắp có)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" disabled className="mt-2">Thiết Lập Sự Kiện Mới</Button>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-orange-500/50">
+              <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <ServerCog className="h-6 w-6 text-orange-500" />
+                    <CardTitle className="text-xl">Thông Báo Hệ Thống (Placeholder)</CardTitle>
+                  </div>
+                  <CardDescription>
+                  Gửi thông báo chung cho tất cả người chơi trong game. (Sắp có)
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Button variant="outline" disabled className="mt-2">Soạn Thông Báo</Button>
+              </CardContent>
+            </Card>
+          </div>
 
         </CardContent>
       </Card>
     </div>
   );
 }
+
+
+    
