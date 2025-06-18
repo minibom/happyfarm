@@ -1,11 +1,27 @@
 
 'use client';
 
-import { type FC, useMemo } from 'react'; 
+import { type FC, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare, Library, ListOrdered } from 'lucide-react';
+import {
+  PackageSearch,
+  ShoppingCart,
+  Sprout,
+  Hand,
+  Settings,
+  LogOut,
+  ShieldCheck,
+  UserCircle2,
+  Lock,
+  MessageSquare,
+  Library,
+  ListOrdered,
+  ClipboardList, // For default action button
+  Zap, // For fertilizer action
+  ChevronDown, // For main action button dropdown indicator
+} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -18,8 +34,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import type { SeedId, Inventory, CropId, CropDetails } from '@/types';
+import type { SeedId, Inventory, CropId, CropDetails, FertilizerId, FertilizerDetails } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -30,15 +50,19 @@ interface BottomNavBarProps {
   onOpenMarket: () => void;
   onOpenProfile: () => void;
   onOpenChatModal: () => void;
-  onOpenLeaderboard: () => void; 
+  onOpenLeaderboard: () => void;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
+  onSetFertilizeMode: (fertilizerId: FertilizerId) => void; // New prop
   onClearAction: () => void;
-  currentAction: 'planting' | 'harvesting' | 'none';
+  currentAction: 'planting' | 'harvesting' | 'fertilizing' | 'none'; // Updated prop
   selectedSeed?: SeedId;
+  selectedFertilizerId?: FertilizerId; // New prop
   availableSeeds: SeedId[];
+  availableFertilizers: FertilizerDetails[]; // New prop: Fertilizers player owns & can use (tier met)
   inventory: Inventory;
   cropData: Record<CropId, CropDetails> | null;
+  fertilizerData: Record<FertilizerId, FertilizerDetails> | null; // New prop
   playerTier: number;
 }
 
@@ -47,19 +71,23 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenMarket,
   onOpenProfile,
   onOpenChatModal,
-  onOpenLeaderboard, 
+  onOpenLeaderboard,
   onSetPlantMode,
   onToggleHarvestMode,
+  onSetFertilizeMode,
   onClearAction,
   currentAction,
   selectedSeed,
+  selectedFertilizerId,
   availableSeeds,
+  availableFertilizers,
   inventory,
   cropData,
+  fertilizerData,
   playerTier,
 }) => {
   const router = useRouter();
-  const { user, logOut } = useAuth(); 
+  const { user, logOut } = useAuth();
   const { toast } = useToast();
 
   const isAdmin = useMemo(() => {
@@ -69,14 +97,19 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     return adminUids.includes(user.uid);
   }, [user]);
 
-  const getCropInfo = (seedId: SeedId) => {
+  const getSeedCropInfo = (seedId: SeedId) => {
     if (!cropData) return null;
     const cropId = seedId.replace('Seed', '') as CropId;
     return cropData[cropId];
   };
 
-  const selectedSeedInfo = selectedSeed && currentAction === 'planting' ? getCropInfo(selectedSeed) : null;
-  const selectedSeedName = selectedSeedInfo?.name;
+  const getFertilizerInfo = (fertilizerId: FertilizerId) => {
+    if (!fertilizerData) return null;
+    return fertilizerData[fertilizerId];
+  }
+
+  const selectedSeedInfo = selectedSeed && currentAction === 'planting' ? getSeedCropInfo(selectedSeed) : null;
+  const selectedFertilizerInfo = selectedFertilizerId && currentAction === 'fertilizing' ? getFertilizerInfo(selectedFertilizerId) : null;
 
   const handleAdminNavigation = () => {
     router.push('/admin/items');
@@ -93,20 +126,46 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     }
   };
 
-  if (!cropData) {
-    return null;
+  if (!cropData || !fertilizerData) {
+    return null; // Or a loading state
   }
 
   const buttonBaseClass = "p-2 h-auto w-[72px] rounded-lg shadow-md flex flex-col items-center justify-center gap-1";
+  const mainActionButtonClass = "p-2 h-auto w-auto min-w-[80px] max-w-[150px] rounded-lg shadow-md flex flex-row items-center justify-center gap-1.5 text-xs";
   const iconClass = "h-5 w-5";
   const labelClass = "text-[10px] leading-none";
+
+  let mainActionIcon = <ClipboardList className={iconClass} />;
+  let mainActionLabel = "Hành Động";
+  let mainActionTooltip = "Chọn Hành Động (Trồng/Thu Hoạch/Bón Phân)";
+  let mainActionActiveColorClass = "";
+
+  if (currentAction === 'planting' && selectedSeedInfo) {
+    mainActionIcon = <span className="text-xl h-5 flex items-center justify-center">{selectedSeedInfo.icon}</span>;
+    mainActionLabel = `Trồng: ${selectedSeedInfo.name.substring(0,10)}${selectedSeedInfo.name.length > 10 ? '...' : ''}`;
+    mainActionTooltip = `Đang trồng: ${selectedSeedInfo.name}`;
+    mainActionActiveColorClass = "bg-primary hover:bg-primary/90 text-primary-foreground";
+  } else if (currentAction === 'harvesting') {
+    mainActionIcon = <Hand className={iconClass} />;
+    mainActionLabel = "Thu Hoạch";
+    mainActionTooltip = "Chế độ Thu Hoạch";
+    mainActionActiveColorClass = "bg-primary hover:bg-primary/90 text-primary-foreground gentle-pulse";
+  } else if (currentAction === 'fertilizing' && selectedFertilizerInfo) {
+    mainActionIcon = <span className="text-xl h-5 flex items-center justify-center">{selectedFertilizerInfo.icon}</span>;
+    mainActionLabel = `Bón: ${selectedFertilizerInfo.name.substring(0,10)}${selectedFertilizerInfo.name.length > 10 ? '...' : ''}`;
+    mainActionTooltip = `Đang bón: ${selectedFertilizerInfo.name}`;
+    mainActionActiveColorClass = "bg-blue-500 hover:bg-blue-600 text-white";
+  }
+
+
+  const ownedAvailableFertilizers = availableFertilizers.filter(fert => (inventory[fert.id] || 0) > 0);
 
   return (
     <TooltipProvider>
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
-          
-           <div className="block md:hidden">
+
+          <div className="block md:hidden">
             <Tooltip>
                 <TooltipTrigger asChild>
                 <Button
@@ -124,87 +183,103 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </TooltipContent>
             </Tooltip>
            </div>
-          
+
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className={cn(
-                      buttonBaseClass,
-                      currentAction === 'planting' && "bg-primary hover:bg-primary/90 text-primary-foreground"
-                    )}
-                    aria-label="Trồng Hạt Giống"
+                    className={cn(mainActionButtonClass, mainActionActiveColorClass)}
+                    aria-label="Chọn Hành Động"
                   >
-                    {currentAction === 'planting' && selectedSeedInfo?.icon ? (
-                        <span className="text-xl h-5 flex items-center justify-center">{selectedSeedInfo.icon}</span>
-                    ) : (
-                        <Sprout className={iconClass} />
-                    )}
-                    <span className={labelClass}>Trồng</span>
+                    {mainActionIcon}
+                    <span className="truncate">{mainActionLabel}</span>
+                    <ChevronDown className="h-3 w-3 ml-auto opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p>{currentAction === 'planting' && selectedSeedName ? `Đang trồng: ${selectedSeedName}` : 'Chọn Hạt Giống Để Trồng'}</p>
+                <p>{mainActionTooltip}</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" side="top" className="mb-2 max-h-72 overflow-y-auto">
-              {availableSeeds.length > 0 ? (
-                availableSeeds.map(seedId => {
-                  const crop = getCropInfo(seedId);
-                  if (!crop) return null;
-                  const isSeedLocked = playerTier < crop.unlockTier;
-                  const requiredTierName = isSeedLocked ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
+            <DropdownMenuContent align="end" side="top" className="mb-2 max-h-80 overflow-y-auto">
+              {/* Plant Seed Sub-Menu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Sprout className="mr-2 h-4 w-4" />
+                  Trồng Hạt Giống
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                    {availableSeeds.length > 0 ? (
+                      availableSeeds.map(seedId => {
+                        const crop = getSeedCropInfo(seedId);
+                        if (!crop) return null;
+                        // Tier check is already done in GamePage for availableSeeds
+                        return (
+                          <DropdownMenuItem
+                              key={seedId}
+                              onSelect={() => onSetPlantMode(seedId)}
+                          >
+                            {crop.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                            Trồng {crop.name} ({inventory[seedId]})
+                          </DropdownMenuItem>
+                        );
+                      })
+                    ) : (
+                      <DropdownMenuItem disabled>Không có hạt giống để trồng</DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
 
-                  return (
-                    <DropdownMenuItem
-                        key={seedId}
-                        onClick={() => onSetPlantMode(seedId)}
-                        disabled={!crop || isSeedLocked}
-                        className={cn(isSeedLocked && "opacity-60")}
-                    >
-                      {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
-                       Trồng {crop?.name || seedId.replace('Seed','')} ({inventory[seedId]})
-                      {isSeedLocked && <Lock className="ml-auto h-3 w-3 text-muted-foreground" />}
-                      {isSeedLocked && <span className="ml-1 text-xs text-muted-foreground">(Bậc {crop.unlockTier})</span>}
-                    </DropdownMenuItem>
-                  );
-                })
-              ) : (
-                <DropdownMenuItem disabled>Không có hạt giống để trồng</DropdownMenuItem>
-              )}
-              {currentAction === 'planting' && (
+              {/* Harvest Action */}
+              <DropdownMenuItem onSelect={onToggleHarvestMode}>
+                <Hand className="mr-2 h-4 w-4" />
+                Thu Hoạch
+              </DropdownMenuItem>
+
+              {/* Fertilize Sub-Menu */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Bón Phân
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                    {ownedAvailableFertilizers.length > 0 ? (
+                      ownedAvailableFertilizers.map(fertilizer => {
+                        // Tier check for availableFertilizers is done in GamePage
+                        return (
+                          <DropdownMenuItem
+                              key={fertilizer.id}
+                              onSelect={() => onSetFertilizeMode(fertilizer.id)}
+                          >
+                            {fertilizer.icon && <span className="mr-2 text-lg">{fertilizer.icon}</span>}
+                            Bón {fertilizer.name} ({inventory[fertilizer.id]})
+                          </DropdownMenuItem>
+                        );
+                      })
+                    ) : (
+                      <DropdownMenuItem disabled>Không có phân bón trong kho</DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+
+              {/* Cancel Action */}
+              {currentAction !== 'none' && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onClearAction} className="text-destructive">
-                     Hủy Chế Độ Trồng
+                  <DropdownMenuItem onSelect={onClearAction} className="text-destructive">
+                    Hủy Hành Động
                   </DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={onToggleHarvestMode}
-                variant="outline"
-                className={cn(
-                  buttonBaseClass,
-                  currentAction === 'harvesting' && "bg-primary hover:bg-primary/90 text-primary-foreground gentle-pulse"
-                )}
-                aria-label="Thu Hoạch"
-              >
-                <Hand className={iconClass} />
-                <span className={labelClass}>Thu Hoạch</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>Bật/Tắt Chế Độ Thu Hoạch</p>
-            </TooltipContent>
-          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -276,7 +351,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                 <DropdownMenuItem onClick={onOpenLeaderboard}>
+                 <DropdownMenuItem onSelect={onOpenLeaderboard}>
                     <ListOrdered className="mr-2 h-4 w-4" />
                     <span>Bảng Xếp Hạng</span>
                 </DropdownMenuItem>
@@ -289,14 +364,14 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <DropdownMenuSeparator />
                 {isAdmin && (
                   <>
-                    <DropdownMenuItem onClick={handleAdminNavigation}>
+                    <DropdownMenuItem onSelect={handleAdminNavigation}>
                         <ShieldCheck className="mr-2 h-4 w-4" />
                         <span>Vào trang Admin</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem onSelect={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Đăng Xuất</span>
                 </DropdownMenuItem>
