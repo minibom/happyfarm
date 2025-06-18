@@ -132,6 +132,12 @@ export interface ActiveGameEvent { // For Firestore `activeGameEvents` collectio
 }
 // --- End Game Event Types ---
 
+// --- AI Greeting Type ---
+export interface AIGreetingOutput {
+    greeting: string;
+}
+// --- End AI Greeting Type ---
+
 
 export interface GameState {
   gold: number;

@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase'; // Firestore instance
-import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, where, getDocs } from 'firebase/firestore';
 
 import ResourceBar from '@/components/game/ResourceBar';
 import MarketModal from '@/components/game/MarketModal';
@@ -15,13 +15,15 @@ import LeaderboardModal from '@/components/game/LeaderboardModal';
 import MailModal from '@/components/game/MailModal';
 import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
+import WelcomePopup from '@/components/game/WelcomePopup'; // New
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState } from '@/types';
+import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting'; // New
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
@@ -56,11 +58,84 @@ export default function GamePage() {
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
   const [selectedFertilizerId, setSelectedFertilizerId] = useState<FertilizerId | undefined>(undefined);
 
+  // Welcome Popup State
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
+  const [activeGameEventsForPopup, setActiveGameEventsForPopup] = useState<ActiveGameEvent[]>([]);
+  const [aiGreeting, setAiGreeting] = useState<string | null>(null);
+  const [isLoadingWelcomeData, setIsLoadingWelcomeData] = useState(true);
+
+
   useEffect(() => {
     if (!authLoading && !user && isInitialized) {
       router.push('/login');
     }
   }, [user, authLoading, router, isInitialized]);
+
+  // Welcome Popup Logic
+  useEffect(() => {
+    if (!isInitialized || !userId) return;
+
+    const WELCOME_POPUP_SESSION_KEY = 'happyFarmWelcomePopupShown';
+    const hasShownWelcomePopupThisSession = sessionStorage.getItem(WELCOME_POPUP_SESSION_KEY);
+
+    if (hasShownWelcomePopupThisSession) {
+      setIsLoadingWelcomeData(false); // Already shown, no need to load data
+      return;
+    }
+
+    const fetchWelcomeData = async () => {
+      setIsLoadingWelcomeData(true);
+      try {
+        const now = Timestamp.now();
+        const eventsCollectionRef = collection(db, 'activeGameEvents');
+        const q = query(
+          eventsCollectionRef,
+          where('isActive', '==', true),
+          where('startTime', '<=', now)
+          // We'll filter endTime on the client-side as Firestore doesn't support two range filters on different fields
+        );
+        const snapshot = await getDocs(q);
+        const fetchedEvents: ActiveGameEvent[] = [];
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+          if (data.endTime.toMillis() > now.toMillis()) { // Client-side filter for endTime
+            fetchedEvents.push({ id: docSnap.id, ...data });
+          }
+        });
+        setActiveGameEventsForPopup(fetchedEvents);
+
+        if (fetchedEvents.length === 0) {
+          try {
+            const greetingOutput = await generateWelcomeGreeting();
+            setAiGreeting(greetingOutput.greeting);
+          } catch (aiError) {
+            console.error("AI greeting generation failed:", aiError);
+            setAiGreeting("Chào mừng bạn trở lại Happy Farm! Chúc bạn một ngày vui vẻ!"); // Fallback
+          }
+        }
+        setShowWelcomePopup(true);
+        sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
+      } catch (error) {
+        console.error("Error fetching active events for popup:", error);
+        // Fallback to AI greeting if event fetch fails
+        try {
+            const greetingOutput = await generateWelcomeGreeting();
+            setAiGreeting(greetingOutput.greeting);
+        } catch (aiError) {
+            console.error("AI greeting generation failed after event error:", aiError);
+            setAiGreeting("Chào bạn! Nông trại luôn chào đón bạn!");
+        }
+        setShowWelcomePopup(true);
+        sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
+      } finally {
+        setIsLoadingWelcomeData(false);
+      }
+    };
+
+    fetchWelcomeData();
+
+  }, [isInitialized, userId]);
+
 
   // Listen to Mail Subcollection
   useEffect(() => {
@@ -472,6 +547,15 @@ export default function GamePage() {
         </DialogContent>
       </Dialog>
 
+      {showWelcomePopup && !isLoadingWelcomeData && (
+        <WelcomePopup
+          isOpen={showWelcomePopup}
+          onClose={() => setShowWelcomePopup(false)}
+          activeEvents={activeGameEventsForPopup}
+          aiGreeting={aiGreeting}
+          isLoadingGreeting={isLoadingWelcomeData} // Pass this down correctly
+        />
+      )}
     </div>
   );
 }

@@ -7,3 +7,4 @@ import '@/ai/flows/ai-farming-advisor.ts';
 import '@/ai/flows/generate-display-name.ts';
 import '@/ai/flows/update-market-prices-flow.ts';
 import '@/ai/flows/create-market-event-flow.ts';
+import '@/ai/flows/generate-welcome-greeting.ts'; // Added new flow
