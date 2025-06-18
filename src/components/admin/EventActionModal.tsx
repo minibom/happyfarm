@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar"; // Renamed to avoid conflict
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Card } from "@/components/ui/card"; // Added Card import
 import { format } from "date-fns";
 import { Timestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
@@ -38,9 +39,9 @@ export interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   mode: 'view' | 'edit' | 'create';
-  eventData: ActiveGameEvent; 
-  eventId?: string; 
-  onSave?: (data: ActiveGameEvent, idToSave: string, originalId?: string) => void; 
+  eventData: ActiveGameEvent;
+  eventId?: string;
+  onSave?: (data: ActiveGameEvent, idToSave: string, originalId?: string) => void;
   eventTemplates: GameEventConfig[]; // To select a base template
 }
 
@@ -55,18 +56,18 @@ const affectedItemOptions: GameEventEffect['affectedItemIds'][] = [
     // Specific items will be input manually
 ];
 
-export const EventActionModal: FC<EventModalProps> = ({ 
-    isOpen, 
-    onClose, 
-    mode, 
-    eventData: initialEventData, 
-    eventId: initialEventId, 
+export const EventActionModal: FC<EventModalProps> = ({
+    isOpen,
+    onClose,
+    mode,
+    eventData: initialEventData,
+    eventId: initialEventId,
     onSave,
     eventTemplates
 }) => {
   const [formData, setFormData] = useState<ActiveGameEvent>(initialEventData);
   const [currentEventId, setCurrentEventId] = useState<string | undefined>(initialEventId);
-  
+
   const [currentEffectType, setCurrentEffectType] = useState<GameEventType>(eventTypes[0]);
   const [currentEffectValue, setCurrentEffectValue] = useState<number>(0.1); // e.g., 10%
   const [currentAffectedItems, setCurrentAffectedItems] = useState<string>(''); // Comma-separated string or "ALL_CROPS"
@@ -105,16 +106,16 @@ export const EventActionModal: FC<EventModalProps> = ({
         if (template && (mode === 'create' || mode === 'edit')) { // Apply template in create or edit
         const now = Timestamp.now();
         const durationMillis = (template.defaultDurationHours || 24) * 60 * 60 * 1000;
-        
+
         // Preserve current ID if in create mode and already set, otherwise use template's nature or new event ID
         const newEventId = mode === 'create' ? (formData.id || `event_${Date.now().toString().slice(-6)}`) : currentEventId;
-        
+
         setFormData(prev => ({
             ...prev, // Keep existing ID if editing, or current ID if creating
             id: newEventId || `event_tpl_${template.id}_${Date.now().toString().slice(-4)}`,
-            name: template.templateName, 
+            name: template.templateName,
             description: template.description,
-            effects: template.defaultEffects.map(eff => ({...eff})), 
+            effects: template.defaultEffects.map(eff => ({...eff})),
             startTime: formData.startTime || now, // Keep existing start time if already set
             endTime: formData.endTime || Timestamp.fromMillis((formData.startTime || now).toMillis() + durationMillis), // Keep existing end time if already set
             configId: template.id,
@@ -131,7 +132,7 @@ export const EventActionModal: FC<EventModalProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-  
+
   const handleSwitchChange = (checked: boolean) => {
     setFormData(prev => ({ ...prev, isActive: checked }));
   };
@@ -143,7 +144,7 @@ export const EventActionModal: FC<EventModalProps> = ({
   };
 
   const handleEventIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newId = e.target.value.replace(/[^a-z0-9_.-]/gi, ''); 
+    const newId = e.target.value.replace(/[^a-z0-9_.-]/gi, '');
     setCurrentEventId(newId);
     if (mode === 'create') {
         setFormData(prev => ({ ...prev, id: newId }));
@@ -169,10 +170,10 @@ export const EventActionModal: FC<EventModalProps> = ({
         }
     }
 
-    const newEffect: GameEventEffect = { 
-        type: currentEffectType, 
-        value: currentEffectValue, 
-        affectedItemIds: affected 
+    const newEffect: GameEventEffect = {
+        type: currentEffectType,
+        value: currentEffectValue,
+        affectedItemIds: affected
     };
     setFormData(prev => ({ ...prev, effects: [...prev.effects, newEffect] }));
     setCurrentAffectedItems('');
@@ -206,16 +207,16 @@ export const EventActionModal: FC<EventModalProps> = ({
     const finalData = {...formData, id: currentEventId };
 
     if (onSave) {
-      onSave(finalData, currentEventId, initialEventId); 
+      onSave(finalData, currentEventId, initialEventId);
     }
     onClose();
   };
 
   const titleText = mode === 'create' ? 'Tạo Sự Kiện Mới' : mode === 'edit' ? `Chỉnh Sửa: ${initialEventData.name}` : `Chi Tiết: ${initialEventData.name}`;
-  const descriptionText = mode === 'create' 
-    ? "Điền thông tin cho sự kiện mới. Sự kiện sẽ được lưu vào 'activeGameEvents'." 
-    : mode === 'edit' 
-    ? "Chỉnh sửa thông tin sự kiện." 
+  const descriptionText = mode === 'create'
+    ? "Điền thông tin cho sự kiện mới. Sự kiện sẽ được lưu vào 'activeGameEvents'."
+    : mode === 'edit'
+    ? "Chỉnh sửa thông tin sự kiện."
     : "Xem chi tiết thông tin sự kiện.";
 
   const isReadOnly = mode === 'view';
@@ -250,11 +251,11 @@ export const EventActionModal: FC<EventModalProps> = ({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="eventId" className="text-right">ID Sự Kiện*</Label>
-            <Input 
-              id="eventId" 
-              name="id" 
-              value={currentEventId || ''} 
-              onChange={handleEventIdChange} 
+            <Input
+              id="eventId"
+              name="id"
+              value={currentEventId || ''}
+              onChange={handleEventIdChange}
               placeholder="vd: weekend_harvest_boom_01"
               className="col-span-3"
               readOnly={mode === 'edit' || mode === 'view'}
@@ -291,7 +292,7 @@ export const EventActionModal: FC<EventModalProps> = ({
                         initialFocus
                     />
                     {/* Basic Time Input - Consider a proper TimePicker component for better UX */}
-                    <Input type="time" className="mt-1" defaultValue={formData.startTime ? format(formData.startTime.toDate(), "HH:mm") : "00:00"} 
+                    <Input type="time" className="mt-1" defaultValue={formData.startTime ? format(formData.startTime.toDate(), "HH:mm") : "00:00"}
                         onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
                             const newDate = formData.startTime ? formData.startTime.toDate() : new Date();
@@ -334,12 +335,12 @@ export const EventActionModal: FC<EventModalProps> = ({
                 </Popover>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="isActive" className="text-right">Kích hoạt</Label>
             <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} disabled={isReadOnly} className="col-span-3"/>
           </div>
-          
+
           {/* Effects Section */}
           {!isReadOnly && (
             <div className="border-t pt-6 mt-4 space-y-4">
