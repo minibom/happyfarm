@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { InventoryItem, CropDetails, CropId, MarketItemId, MarketEventData, MarketItemDisplay, FertilizerDetails, FertilizerId } from '@/types';
+import type { InventoryItem, CropDetails, CropId, MarketItemId, MarketEventData, MarketItemDisplay, FertilizerDetails, FertilizerId, ActiveGameEvent } from '@/types';
 import { ShoppingCart, TrendingUp, TrendingDown, AlertTriangle, Info, Zap as FertilizerIcon, Coins } from 'lucide-react';
 import { getPlayerTierInfo, CROP_DATA, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import BuySeedMarket from './BuySeedMarket';
@@ -29,7 +29,7 @@ interface MarketModalProps {
   playerInventory: Record<InventoryItem, number>;
   onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
   onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void;
-  cropData: Record<CropId, CropDetails> | null;
+  cropData: Record<CropId, CropDetails> | null; // Still useful for base details if market hook doesn't provide all
   playerTier: number;
 }
 
@@ -42,7 +42,7 @@ const MarketModal: FC<MarketModalProps> = ({
   playerInventory,
   onBuyItem,
   onSellItem,
-  cropData,
+  cropData, // Kept for fallback/direct access if needed, though useMarket is primary
   playerTier,
 }) => {
   const market = useMarket();
@@ -54,22 +54,23 @@ const MarketModal: FC<MarketModalProps> = ({
     if (isOpen) {
       setQuantities({});
     }
-  }, [isOpen, market.prices]);
+  }, [isOpen, market.prices]); // Reset quantities when modal opens or market prices change
 
 
   const seedsToDisplay = useMemo(() => {
-    if (market.loading || !cropData) return [];
+    if (market.loading) return [];
     return ALL_SEED_IDS.map(seedId => {
       const details = market.getItemDetails(seedId);
       if (!details) return null;
-      return {
+      return { // This structure matches MarketItemDisplay
         id: seedId,
         name: details.name,
-        price: market.prices[seedId] ?? details.basePrice,
+        price: details.effectivePrice, // Use effectivePrice from market hook
         type: 'seed' as const,
         unlockTier: details.unlockTier,
         icon: details.icon,
         basePrice: details.basePrice,
+        description: CROP_DATA[seedId.replace('Seed','') as CropId]?.description || ""
       };
     }).filter(item => item !== null)
       .sort((a, b) => {
@@ -80,10 +81,10 @@ const MarketModal: FC<MarketModalProps> = ({
           if (a.unlockTier !== b.unlockTier) return a.unlockTier - b.unlockTier;
           return a.name.localeCompare(b.name);
       }) as MarketItemDisplay[];
-  }, [market.loading, market.prices, market.getItemDetails, playerTier, cropData]);
+  }, [market.loading, market.getItemDetails, playerTier]);
 
   const cropsToSell = useMemo(() => {
-    if (market.loading || !playerInventory || !cropData) return [];
+    if (market.loading || !playerInventory) return [];
     return ALL_CROP_IDS.map(cropId => {
       if ((playerInventory[cropId] || 0) <= 0) return null;
       const details = market.getItemDetails(cropId);
@@ -91,24 +92,35 @@ const MarketModal: FC<MarketModalProps> = ({
       return {
         id: cropId,
         name: details.name,
-        price: market.prices[cropId] ?? details.basePrice,
+        price: details.effectivePrice, // Use effectivePrice
         type: 'crop' as const,
         unlockTier: details.unlockTier,
         icon: details.icon,
         basePrice: details.basePrice,
+        description: CROP_DATA[cropId]?.description || ""
       };
     }).filter(item => item !== null)
       .sort((a,b) => {
           if (!a || !b) return 0;
           return a.name.localeCompare(b.name);
       }) as MarketItemDisplay[];
-  }, [market.loading, market.prices, playerInventory, market.getItemDetails, cropData]);
+  }, [market.loading, playerInventory, market.getItemDetails]);
 
   const fertilizersToDisplay = useMemo(() => {
+    if (market.loading) return [];
     return ALL_FERTILIZER_IDS.map(fertId => {
-        const details = FERTILIZER_DATA[fertId];
+        const details = market.getItemDetails(fertId as FertilizerId); // Assuming getItemDetails can handle FertilizerId
         if (!details) return null;
-        return { ...details };
+        return {
+            id: fertId,
+            name: details.name,
+            icon: details.icon,
+            description: FERTILIZER_DATA[fertId as FertilizerId]?.description || "",
+            unlockTier: details.unlockTier,
+            price: details.effectivePrice, // Use effectivePrice
+            timeReductionPercent: FERTILIZER_DATA[fertId as FertilizerId]?.timeReductionPercent || 0, // Assuming this is not price-event sensitive
+            basePrice: details.basePrice
+        };
     }).filter(item => item !== null)
       .sort((a,b) => {
           if (!a || !b) return 0;
@@ -117,20 +129,15 @@ const MarketModal: FC<MarketModalProps> = ({
           if (aIsLocked !== bIsLocked) return aIsLocked ? 1 : -1;
           if (a.unlockTier !== b.unlockTier) return a.unlockTier - b.unlockTier;
           return a.name.localeCompare(b.name);
-      }) as FertilizerDetails[];
-  }, [playerTier]);
+      }) as (FertilizerDetails & {effectivePrice: number, basePrice?: number})[];
+  }, [market.loading, market.getItemDetails, playerTier]);
 
 
   const handleQuantityButtonClick = (itemId: InventoryItem, delta: number, type: 'seed' | 'crop' | 'fertilizer', itemUnlockTier: number) => {
-    const itemBaseDetails = type === 'seed' ? cropData?.[itemId.replace('Seed', '') as CropId]
-                         : type === 'crop' ? cropData?.[itemId as CropId]
-                         : FERTILIZER_DATA[itemId as FertilizerId];
+     const itemBaseDetails = market.getItemDetails(itemId as MarketItemId);
 
     if (!itemBaseDetails) return;
-
-    if (type === 'seed' || type === 'fertilizer') {
-        if (playerTier < itemUnlockTier && delta > 0) return;
-    }
+    if ((type === 'seed' || type === 'fertilizer') && playerTier < itemUnlockTier && delta > 0) return;
 
     setQuantities(prev => {
       const currentQuantity = prev[itemId] || 0;
@@ -151,9 +158,7 @@ const MarketModal: FC<MarketModalProps> = ({
     type: 'seed' | 'crop' | 'fertilizer',
     itemUnlockTier: number
   ) => {
-    const itemBaseDetails = type === 'seed' ? cropData?.[itemId.replace('Seed', '') as CropId]
-                         : type === 'crop' ? cropData?.[itemId as CropId]
-                         : FERTILIZER_DATA[itemId as FertilizerId];
+    const itemBaseDetails = market.getItemDetails(itemId as MarketItemId);
     if (!itemBaseDetails) return;
 
     if ((type === 'seed' || type === 'fertilizer') && playerTier < itemUnlockTier && value !== '' && parseInt(value, 10) > 0) return;
@@ -181,32 +186,15 @@ const MarketModal: FC<MarketModalProps> = ({
     let count = 0;
     Object.entries(quantities).forEach(([itemId, quantity]) => {
       if (quantity > 0) {
-        let itemPrice = 0;
-        let itemType: 'seed' | 'crop' | 'fertilizer' | undefined = undefined;
-
-        if (activeTab === 'buy_seed' && seedsToDisplay.find(s => s.id === itemId)) {
-          itemPrice = market.prices[itemId as MarketItemId] ?? seedsToDisplay.find(s => s.id === itemId)!.basePrice;
-          itemType = 'seed';
-        } else if (activeTab === 'sell_crop' && cropsToSell.find(c => c.id === itemId)) {
-          itemPrice = market.prices[itemId as MarketItemId] ?? cropsToSell.find(c => c.id === itemId)!.basePrice;
-          itemType = 'crop';
-        } else if (activeTab === 'buy_fertilizer' && fertilizersToDisplay.find(f => f.id === itemId)) {
-          itemPrice = fertilizersToDisplay.find(f => f.id === itemId)!.price;
-          itemType = 'fertilizer';
-        }
-
-        if (itemPrice > 0 && itemType) {
-            let effectivePrice = itemPrice;
-            if (market.currentEvent?.isActive && market.currentEvent.itemId === itemId && market.currentEvent.priceModifier) {
-                effectivePrice = Math.max(1, Math.round(itemPrice * market.currentEvent.priceModifier));
-            }
-            currentTotal += quantity * effectivePrice;
+        const details = market.getItemDetails(itemId as MarketItemId);
+        if (details && details.effectivePrice > 0) {
+            currentTotal += quantity * details.effectivePrice;
             count++;
         }
       }
     });
     return { totalAmount: currentTotal, itemsToTransactCount: count };
-  }, [quantities, activeTab, seedsToDisplay, cropsToSell, fertilizersToDisplay, market.prices, market.currentEvent]);
+  }, [quantities, activeTab, market.getItemDetails]); // Depend on getItemDetails for prices
 
 
   const handleCentralizedTransaction = () => {
@@ -218,30 +206,11 @@ const MarketModal: FC<MarketModalProps> = ({
     Object.entries(quantities).forEach(([itemIdStr, quantity]) => {
       if (quantity > 0) {
         const itemId = itemIdStr as InventoryItem;
-        let itemPrice = 0;
-        let itemToTransact: MarketItemDisplay | FertilizerDetails | undefined;
-        let itemName = "Vật phẩm không xác định";
-
-        if (activeTab === 'buy_seed') {
-          itemToTransact = seedsToDisplay.find(s => s.id === itemId);
-          if (itemToTransact) itemPrice = market.prices[itemId as MarketItemId] ?? itemToTransact.basePrice;
-          itemName = itemToTransact?.name || itemName;
-        } else if (activeTab === 'sell_crop') {
-          itemToTransact = cropsToSell.find(c => c.id === itemId);
-          if (itemToTransact) itemPrice = market.prices[itemId as MarketItemId] ?? itemToTransact.basePrice;
-          itemName = itemToTransact?.name || itemName;
-        } else if (activeTab === 'buy_fertilizer') {
-          itemToTransact = fertilizersToDisplay.find(f => f.id === itemId);
-          if (itemToTransact) itemPrice = (itemToTransact as FertilizerDetails).price;
-          itemName = itemToTransact?.name || itemName;
-        }
-
-        if (itemToTransact && itemPrice > 0) {
-            let effectivePrice = itemPrice;
-            if (market.currentEvent?.isActive && market.currentEvent.itemId === itemId && market.currentEvent.priceModifier) {
-                effectivePrice = Math.max(1, Math.round(itemPrice * market.currentEvent.priceModifier));
-            }
-
+        const details = market.getItemDetails(itemId as MarketItemId);
+        
+        if (details && details.effectivePrice > 0) {
+          const effectivePrice = details.effectivePrice;
+          const itemName = details.name;
           try {
             if (activeTab === 'buy_seed' || activeTab === 'buy_fertilizer') {
               if (playerGold >= quantity * effectivePrice) {
@@ -281,36 +250,58 @@ const MarketModal: FC<MarketModalProps> = ({
   };
 
 
-  const renderMarketEventBanner = (event: MarketEventData | null) => {
-    if (!event || !event.isActive) return null;
+  const renderActiveMarketEvents = () => {
+    if (market.activeMarketEvents.length === 0) return null;
+    // Display only one relevant event or a summary
+    const relevantEvent = market.activeMarketEvents.find(event => {
+        if (activeTab === 'buy_seed' && event.type === 'ITEM_PURCHASE_PRICE_MODIFIER' && (event.affectedItemIds === 'ALL_SEEDS' || seedsToDisplay.some(s => Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(s.id)))) return true;
+        if (activeTab === 'buy_fertilizer' && event.type === 'ITEM_PURCHASE_PRICE_MODIFIER' && (event.affectedItemIds === 'ALL_FERTILIZERS' || fertilizersToDisplay.some(f => Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(f.id as FertilizerId)))) return true;
+        if (activeTab === 'sell_crop' && event.type === 'ITEM_SELL_PRICE_MODIFIER' && (event.affectedItemIds === 'ALL_CROPS' || cropsToSell.some(c => Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(c.id)))) return true;
+        return false;
+    });
+
+    if (!relevantEvent) return null;
+
     let bgColor = "bg-blue-500";
     let icon = <Info className="w-5 h-5" />;
-    if (event.priceModifier && event.priceModifier > 1) {
-        bgColor = "bg-green-500";
-        icon = <TrendingUp className="w-5 h-5" />;
-    } else if (event.priceModifier && event.priceModifier < 1) {
-        bgColor = "bg-red-500";
-        icon = <TrendingDown className="w-5 h-5" />;
+    if (relevantEvent.effects[0]?.value > 1 && (relevantEvent.type === 'ITEM_SELL_PRICE_MODIFIER' || relevantEvent.type === 'ITEM_PURCHASE_PRICE_MODIFIER')) { // Assuming value > 1 is price increase for sell, or higher cost for buy (less likely for player beneficial events)
+        bgColor = "bg-green-500"; icon = <TrendingUp className="w-5 h-5" />;
+    } else if (relevantEvent.effects[0]?.value < 1 && (relevantEvent.type === 'ITEM_SELL_PRICE_MODIFIER' || relevantEvent.type === 'ITEM_PURCHASE_PRICE_MODIFIER')) { // value < 1 is price decrease for sell (bad) or buy (good)
+        bgColor = relevantEvent.type === 'ITEM_PURCHASE_PRICE_MODIFIER' ? "bg-green-500" : "bg-red-500";
+        icon = relevantEvent.type === 'ITEM_PURCHASE_PRICE_MODIFIER' ? <TrendingDown className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />;
     }
+    
+    const effectDescription = relevantEvent.effects.map(eff => {
+        let target = "mọi thứ";
+        if (Array.isArray(eff.affectedItemIds)) target = eff.affectedItemIds.slice(0,2).join(', ') + (eff.affectedItemIds.length > 2 ? '...' : '');
+        else if (eff.affectedItemIds) target = eff.affectedItemIds.replace('ALL_', '').toLowerCase();
+        
+        if (eff.type === 'ITEM_PURCHASE_PRICE_MODIFIER' || eff.type === 'ITEM_SELL_PRICE_MODIFIER') {
+            return `${target} giá ${((eff.value -1) * 100).toFixed(0)}%`;
+        }
+        return "";
+    }).join('; ');
+
+
     return (
       <div className={cn("p-3 rounded-md text-sm text-white mb-4 shadow-lg", bgColor)}>
         <div className="flex items-center gap-2 mb-1">
           {icon}
-          <h4 className="font-bold text-base">{event.eventName}</h4>
+          <h4 className="font-bold text-base">{relevantEvent.name}</h4>
         </div>
-        <p className="text-xs leading-relaxed">{event.description}</p>
-        {event.effectDescription && <p className="mt-1 text-xs font-semibold">{event.effectDescription}</p>}
-        {event.expiresAt && (
+        <p className="text-xs leading-relaxed">{relevantEvent.description}</p>
+        {effectDescription && <p className="mt-1 text-xs font-semibold">{effectDescription}</p>}
+        {relevantEvent.endTime && (
           <p className="mt-1 text-xs opacity-80">
-            Kết thúc sau: {new Date(event.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-            {' '}({new Date(event.expiresAt).toLocaleDateString('vi-VN')})
+            Kết thúc sau: {new Date(relevantEvent.endTime.toDate()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            {' '}({new Date(relevantEvent.endTime.toDate()).toLocaleDateString('vi-VN')})
           </p>
         )}
       </div>
     );
   };
 
-  if (market.loading && !market.prices) {
+  if (market.loading) {
      return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-lg md:max-w-xl">
@@ -350,7 +341,7 @@ const MarketModal: FC<MarketModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        {renderMarketEventBanner(market.currentEvent)}
+        {renderActiveMarketEvents()}
         {market.error && (
             <div className="p-3 my-2 bg-destructive/10 border border-destructive text-destructive text-xs rounded-md flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4"/>
@@ -371,7 +362,7 @@ const MarketModal: FC<MarketModalProps> = ({
               seedsToDisplay={seedsToDisplay}
               playerGold={playerGold}
               onBuyItem={onBuyItem}
-              cropData={cropData}
+              cropData={CROP_DATA} // Pass CROP_DATA directly
               playerTier={playerTier}
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
@@ -379,7 +370,7 @@ const MarketModal: FC<MarketModalProps> = ({
               setQuantities={setQuantities}
               marketPrices={market.prices}
               priceChanges={market.priceChanges}
-              marketEvent={market.currentEvent}
+              marketEvent={market.currentEvent} // Legacy, may remove
               getItemDetails={market.getItemDetails}
             />
           </TabsContent>
@@ -400,14 +391,14 @@ const MarketModal: FC<MarketModalProps> = ({
               cropsToSell={cropsToSell}
               playerInventory={playerInventory}
               onSellItem={onSellItem}
-              cropData={cropData}
+              cropData={CROP_DATA} // Pass CROP_DATA directly
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
               onQuantityInputChange={handleQuantityInputChange}
               setQuantities={setQuantities}
               marketPrices={market.prices}
               priceChanges={market.priceChanges}
-              marketEvent={market.currentEvent}
+              marketEvent={market.currentEvent} // Legacy, may remove
               getItemDetails={market.getItemDetails}
             />
           </TabsContent>

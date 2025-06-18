@@ -21,3 +21,6 @@ export const getPlotUnlockCost = (plotIndex: number): number => {
 };
 
 export const LOCAL_STORAGE_GAME_KEY = 'happyFarmGame';
+
+// Maximum cap for combined growth time reduction (e.g., 90%)
+export const MAX_GROWTH_TIME_REDUCTION_CAP = 0.9;

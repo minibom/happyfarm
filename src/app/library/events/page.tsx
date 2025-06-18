@@ -4,41 +4,94 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Zap, Info, CalendarDays, Tag, TrendingUp, TrendingDown, Gift } from 'lucide-react';
+import { Loader2, Zap, Info, CalendarDays, Tag, TrendingUp, TrendingDown, Gift, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import type { MarketEventData, MarketItemId } from '@/types';
-import { useMarket } from '@/hooks/useMarket'; // To get item details
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore'; // Added collection, query, where
+import type { ActiveGameEvent, MarketItemId } from '@/types'; // Changed MarketEventData to ActiveGameEvent
+import { useMarket } from '@/hooks/useMarket';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 export default function LibraryEventsPage() {
-  const [marketEvent, setMarketEvent] = useState<MarketEventData | null>(null);
+  const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]); // Store multiple active events
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getItemDetails } = useMarket(); // Use hook to resolve item names and icons
+  const { getItemDetails } = useMarket();
 
   useEffect(() => {
-    const marketDocRef = doc(db, 'marketState', 'global');
-    const unsubscribe = onSnapshot(marketDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setMarketEvent(data.currentEvent || null);
-      } else {
-        setMarketEvent(null);
-      }
+    const now = Timestamp.now();
+    const eventsCollectionRef = collection(db, 'activeGameEvents');
+    const q = query(
+      eventsCollectionRef,
+      where('isActive', '==', true),
+      where('startTime', '<=', now)
+      // endTime will be filtered client-side as Firestore doesn't support two range filters on different fields
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedEvents: ActiveGameEvent[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+        // Client-side filter for endTime
+        if (data.endTime.toMillis() > now.toMillis()) {
+          fetchedEvents.push({ id: docSnap.id, ...data });
+        }
+      });
+      setActiveEvents(fetchedEvents.sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis())); // Sort by start time
       setIsLoading(false);
       setError(null);
     }, (err) => {
-      console.error("Error fetching market event:", err);
+      console.error("Error fetching active game events:", err);
       setError("Không thể tải thông tin sự kiện. Vui lòng thử lại sau.");
       setIsLoading(false);
-      setMarketEvent(null);
+      setActiveEvents([]);
     });
 
     return () => unsubscribe();
   }, []);
+
+  const getAffectedItemInfo = (itemId?: MarketItemId | 'ALL_CROPS' | 'ALL_SEEDS' | 'ALL_FERTILIZERS' | InventoryItem[]) => {
+    if (!itemId) return null;
+    if (typeof itemId === 'string' && itemId.startsWith('ALL_')) {
+        return { name: itemId.replace('ALL_', 'Tất Cả ').toLowerCase(), icon: '🏷️', type: 'Danh Mục' };
+    }
+    if (Array.isArray(itemId)) {
+        const firstItemDetails = itemId.length > 0 ? getItemDetails(itemId[0] as MarketItemId) : null;
+        const name = firstItemDetails ? `${firstItemDetails.name}${itemId.length > 1 ? ` và ${itemId.length -1} khác` : ''}` : 'Nhiều Vật Phẩm';
+        return { name, icon: firstItemDetails?.icon || '📦', type: 'Nhiều Loại'};
+    }
+    const details = getItemDetails(itemId as MarketItemId); // Cast if it's a single item ID
+    if (!details) return { name: itemId, icon: '❓', type: 'Không rõ' };
+    return { name: details.name, icon: details.icon, type: details.type === 'seed' ? 'Hạt Giống' : details.type === 'fertilizer' ? 'Phân Bón' : 'Nông Sản' };
+  };
+  
+  const getEffectDisplayInfo = (event: ActiveGameEvent) => {
+    if (!event.effects || event.effects.length === 0) return { text: "Không có hiệu ứng cụ thể", icon: <Info className="inline mr-1 h-4 w-4"/>, color: "bg-blue-500" };
+    
+    const firstEffect = event.effects[0];
+    let text = event.name; // Default to event name if effect description is complex
+    let icon = <Zap className="inline mr-1 h-4 w-4"/>;
+    let color = "bg-blue-500";
+
+    if (firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' || firstEffect.type === 'ITEM_PURCHASE_PRICE_MODIFIER') {
+        if (firstEffect.value > 1) { // Price increase (good for sell, bad for buy)
+            text = `${firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' ? 'Giá bán tăng' : 'Giá mua tăng'} ${((firstEffect.value - 1) * 100).toFixed(0)}%`;
+            icon = <TrendingUp className="inline mr-1 h-4 w-4"/>;
+            color = "bg-green-500";
+        } else if (firstEffect.value < 1) { // Price decrease (bad for sell, good for buy)
+            text = `${firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' ? 'Giá bán giảm' : 'Giá mua giảm'} ${((1 - firstEffect.value) * 100).toFixed(0)}%`;
+            icon = <TrendingDown className="inline mr-1 h-4 w-4"/>;
+            color = "bg-red-500";
+        }
+    } else if (firstEffect.type === 'CROP_GROWTH_TIME_REDUCTION') {
+        text = `TG trồng giảm ${(firstEffect.value * 100).toFixed(0)}%`;
+        icon = <Zap className="inline mr-1 h-4 w-4"/>; // Or a clock icon
+        color = "bg-sky-500";
+    }
+    return { text, icon, color };
+  }
+
 
   if (isLoading) {
     return (
@@ -58,15 +111,6 @@ export default function LibraryEventsPage() {
       </Alert>
     );
   }
-  
-  const getAffectedItemInfo = () => {
-      if (!marketEvent || !marketEvent.itemId) return null;
-      const details = getItemDetails(marketEvent.itemId);
-      if (!details) return { name: marketEvent.itemId, icon: '❓', type: 'Không rõ' };
-      return { name: details.name, icon: details.icon, type: details.type === 'seed' ? 'Hạt Giống' : 'Nông Sản' };
-  }
-
-  const affectedItemInfo = getAffectedItemInfo();
 
   return (
     <Card className="shadow-xl flex-1 flex flex-col">
@@ -75,11 +119,11 @@ export default function LibraryEventsPage() {
           <Zap className="h-7 w-7" /> Sự Kiện Đang Diễn Ra
         </CardTitle>
         <CardDescription>
-          Thông tin về các sự kiện đặc biệt đang ảnh hưởng đến thị trường trong game.
+          Thông tin về các sự kiện đặc biệt đang ảnh hưởng đến thị trường và nông trại trong game.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex-1">
-        {!marketEvent || !marketEvent.isActive ? (
+      <CardContent className="flex-1 space-y-4">
+        {activeEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center h-full py-10">
             <Image 
                 src="https://placehold.co/300x200.png" 
@@ -94,65 +138,54 @@ export default function LibraryEventsPage() {
             <p className="text-sm text-muted-foreground mt-1">Hãy kiểm tra lại sau để không bỏ lỡ nhé!</p>
           </div>
         ) : (
-          <Card className="bg-gradient-to-br from-primary/10 via-background to-accent/10 border-primary/30 shadow-lg">
-            <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <CardTitle className="text-2xl text-primary mb-1">{marketEvent.eventName}</CardTitle>
-                        <CardDescription className="text-sm">{marketEvent.description}</CardDescription>
+          activeEvents.map(event => {
+            const affectedItemInfo = event.effects.length > 0 ? getAffectedItemInfo(event.effects[0].affectedItemIds) : null;
+            const displayEffect = getEffectDisplayInfo(event);
+            return (
+              <Card key={event.id} className="bg-gradient-to-br from-primary/10 via-background to-accent/10 border-primary/30 shadow-lg">
+                <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                        <div>
+                            <CardTitle className="text-2xl text-primary mb-1">{event.name}</CardTitle>
+                            <CardDescription className="text-sm">{event.description}</CardDescription>
+                        </div>
+                         <div className={cn(
+                            "p-2 rounded-md text-white text-xs font-semibold shadow",
+                            displayEffect.color
+                        )}>
+                            {displayEffect.icon}
+                            {displayEffect.text}
+                        </div>
                     </div>
-                    <div className={cn(
-                        "p-2 rounded-md text-white text-xs font-semibold shadow",
-                        marketEvent.priceModifier && marketEvent.priceModifier > 1 ? "bg-green-500" :
-                        marketEvent.priceModifier && marketEvent.priceModifier < 1 ? "bg-red-500" : "bg-blue-500"
-                    )}>
-                        {marketEvent.priceModifier && marketEvent.priceModifier > 1 ? <TrendingUp className="inline mr-1 h-4 w-4"/> :
-                         marketEvent.priceModifier && marketEvent.priceModifier < 1 ? <TrendingDown className="inline mr-1 h-4 w-4"/> :
-                         <Gift className="inline mr-1 h-4 w-4"/>}
-                        {marketEvent.effectDescription || "Ưu Đãi Đặc Biệt"}
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {affectedItemInfo && (
+                    <div className="flex items-center gap-2 p-3 bg-background/70 rounded-md border">
+                        <span className="text-2xl">{affectedItemInfo.icon}</span>
+                        <div>
+                            <p className="font-semibold">Đối tượng ảnh hưởng:</p>
+                            <p>{affectedItemInfo.name} <Badge variant="outline" className="ml-1 text-xs">{affectedItemInfo.type}</Badge></p>
+                        </div>
                     </div>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {affectedItemInfo && (
-                <div className="flex items-center gap-2 p-3 bg-background/70 rounded-md border">
-                    <span className="text-2xl">{affectedItemInfo.icon}</span>
-                    <div>
-                        <p className="font-semibold">Vật phẩm ảnh hưởng:</p>
-                        <p>{affectedItemInfo.name} <Badge variant="outline" className="ml-1 text-xs">{affectedItemInfo.type}</Badge></p>
+                  )}
+                  {event.endTime && (
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                      <span>
+                        <span className="font-semibold">Kết thúc vào: </span> 
+                        {new Date(event.endTime.toDate()).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
-                </div>
-              )}
-              {marketEvent.priceModifier && (
-                <p>
-                  <span className="font-semibold">Thay đổi giá: </span> 
-                  {(marketEvent.priceModifier * 100 - 100).toFixed(0)}%
-                  (Giá mới = Giá gốc x {marketEvent.priceModifier.toFixed(2)})
-                </p>
-              )}
-              {marketEvent.expiresAt && (
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    <span className="font-semibold">Kết thúc vào: </span> 
-                    {new Date(marketEvent.expiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              )}
-               {marketEvent.durationHours && !marketEvent.expiresAt && ( // Fallback if only durationHours is present
-                 <div className="flex items-center gap-2">
-                   <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                   <span><span className="font-semibold">Thời gian: </span> {marketEvent.durationHours} giờ</span>
-                 </div>
-               )}
-            </CardContent>
-             <CardFooter>
-                <p className="text-xs text-muted-foreground italic">Thông tin sự kiện được cập nhật tự động.</p>
-             </CardFooter>
-          </Card>
+                  )}
+                </CardContent>
+                 <CardFooter>
+                    <p className="text-xs text-muted-foreground italic">Thông tin sự kiện được cập nhật tự động.</p>
+                 </CardFooter>
+              </Card>
+            )
+          })
         )}
       </CardContent>
     </Card>
   );
 }
-    

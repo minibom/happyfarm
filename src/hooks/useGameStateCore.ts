@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, TierInfo, Plot, PlotState, CropId, SeedId, FertilizerId, InventoryItem, MailMessage, RewardItem } from '@/types';
+import type { GameState, TierInfo, Plot, PlotState, CropId, SeedId, FertilizerId, InventoryItem, ActiveGameEvent, CropDetails } from '@/types';
 import {
   INITIAL_GAME_STATE,
   LEVEL_UP_XP_THRESHOLD,
@@ -12,13 +12,14 @@ import {
   ALL_SEED_IDS,
   ALL_CROP_IDS,
   ALL_FERTILIZER_IDS,
-  TIER_DATA, 
+  TIER_DATA,
+  MAX_GROWTH_TIME_REDUCTION_CAP, // Assuming this will be added to game-config
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp } from 'firebase/firestore';
-import type { CropDetails } from '@/types';
+import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp, collection, query, where } from 'firebase/firestore';
+
 
 interface UseGameStateCoreProps {
   cropData: Record<CropId, CropDetails> | null;
@@ -29,6 +30,7 @@ interface UseGameStateCoreProps {
 export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoaded }: UseGameStateCoreProps) => {
   const { user, userId, loading: authLoading } = useAuth();
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
+  const [activeGameEvents, setActiveGameEvents] = useState<ActiveGameEvent[]>([]);
   const [gameDataLoaded, setGameDataLoaded] = useState(false);
   const [playerTierInfo, setPlayerTierInfo] = useState<TierInfo>(getPlayerTierInfo(INITIAL_GAME_STATE.level));
   const { toast } = useToast();
@@ -75,12 +77,44 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }
   }, [gameState, gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, saveGameStateToFirestore]);
 
+  // Fetch Active Game Events
+  useEffect(() => {
+    if (!userId) return;
+
+    const now = Timestamp.now();
+    const eventsCollectionRef = collection(db, 'activeGameEvents');
+    const q = query(
+      eventsCollectionRef,
+      where('isActive', '==', true),
+      where('startTime', '<=', now)
+      // endTime will be filtered client-side as Firestore doesn't support two range filters on different fields
+    );
+
+    const unsubscribeEvents = onSnapshot(q, (snapshot) => {
+      const fetchedEvents: ActiveGameEvent[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+        // Client-side filter for endTime
+        if (data.endTime.toMillis() > now.toMillis()) {
+          fetchedEvents.push({ id: docSnap.id, ...data });
+        }
+      });
+      setActiveGameEvents(fetchedEvents);
+    }, (error) => {
+      console.error("Error fetching active game events:", error);
+      toast({ title: "Lỗi Tải Sự Kiện", description: "Không thể tải dữ liệu sự kiện game.", variant: "destructive" });
+    });
+
+    return () => unsubscribeEvents();
+  }, [userId, toast]);
+
+
   useEffect(() => {
     if (authLoading) {
       setGameDataLoaded(false);
       return;
     }
-    let unsubscribe: Unsubscribe | undefined;
+    let unsubscribeGameState: Unsubscribe | undefined;
 
     if (!userId) {
       setGameState(INITIAL_GAME_STATE);
@@ -90,7 +124,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     
     if (userId && itemDataLoaded && fertilizerDataLoaded) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-      unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
+      unsubscribeGameState = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
         if (docSnap.exists()) {
           const firestoreData = docSnap.data() as Partial<GameState>; 
@@ -179,10 +213,10 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       });
 
       return () => {
-        if (unsubscribe) unsubscribe();
+        if (unsubscribeGameState) unsubscribeGameState();
       };
     }
-  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded]); // Added gameDataLoaded to dependencies
+  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded]);
 
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
@@ -207,26 +241,38 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
     const gameLoopInterval = setInterval(() => {
       setGameState(prev => {
-        if (!prev || !prev.plots || !cropData) return prev;
+        if (!prev || !prev.plots || !cropData) return prev; // Ensure prev and cropData are defined
         const now = Date.now();
         const updatedPlots = prev.plots.map(plot => {
-          if (plot.id >= prev.unlockedPlotsCount) return plot;
+          if (plot.id >= prev.unlockedPlotsCount || !plot.cropId) return plot;
 
-          const currentCropDetail = plot.cropId ? cropData[plot.cropId] : null;
-          if (!currentCropDetail) return plot;
+          const cropDetail = cropData[plot.cropId];
+          if (!cropDetail) return plot; // Crop data not found for this plot's cropId
 
-          const growthTimeReduction = currentTierInfo.growthTimeReductionPercent;
-          const effectiveTimeToGrowing = currentCropDetail.timeToGrowing * (1 - growthTimeReduction);
-          const effectiveTimeToReady = currentCropDetail.timeToReady * (1 - growthTimeReduction);
-
-          if (plot.state === 'planted' && plot.plantedAt) {
-            if (now >= plot.plantedAt + effectiveTimeToGrowing) {
-              return { ...plot, state: 'growing' as const };
+          let totalGrowthTimeReduction = currentTierInfo.growthTimeReductionPercent;
+          activeGameEvents.forEach(event => {
+            if (event.type === 'CROP_GROWTH_TIME_REDUCTION') {
+              const affectsAllCrops = event.affectedItemIds === 'ALL_CROPS';
+              const affectsSpecificCrop = Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(plot.cropId!);
+              if (affectsAllCrops || affectsSpecificCrop) {
+                totalGrowthTimeReduction += event.value;
+              }
             }
-          } else if (plot.state === 'growing' && plot.plantedAt) {
-            if (now >= plot.plantedAt + effectiveTimeToReady) {
-              return { ...plot, state: 'ready_to_harvest' as const };
-            }
+          });
+          totalGrowthTimeReduction = Math.min(totalGrowthTimeReduction, MAX_GROWTH_TIME_REDUCTION_CAP);
+
+          const effectiveTimeToGrowing = cropDetail.timeToGrowing * (1 - totalGrowthTimeReduction);
+          const effectiveTimeToReady = cropDetail.timeToReady * (1 - totalGrowthTimeReduction);
+          
+          let newPlotState = plot.state;
+          if (plot.state === 'planted' && plot.plantedAt && now >= plot.plantedAt + effectiveTimeToGrowing) {
+            newPlotState = 'growing';
+          } else if (plot.state === 'growing' && plot.plantedAt && now >= plot.plantedAt + effectiveTimeToReady) {
+            newPlotState = 'ready_to_harvest';
+          }
+
+          if (newPlotState !== plot.state) {
+            return { ...plot, state: newPlotState as PlotState };
           }
           return plot;
         });
@@ -239,9 +285,9 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }, 1000);
 
     return () => clearInterval(gameLoopInterval);
-  }, [gameDataLoaded, itemDataLoaded, userId, cropData]);
+  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]); // Added playerTierInfo
 
   const isInitialized = gameDataLoaded && itemDataLoaded && fertilizerDataLoaded && !!userId && !authLoading && !!cropData;
 
-  return { gameState, setGameState, isInitialized, playerTierInfo, gameDataLoaded };
+  return { gameState, setGameState, isInitialized, playerTierInfo, gameDataLoaded, activeGameEvents };
 };
