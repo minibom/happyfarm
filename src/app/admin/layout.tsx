@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react'; // Changed ShoppingBasket to Package
+import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   const menuItems = [
-    { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package }, // Updated href and label
+    { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package },
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { href: '/admin/tiers', label: 'Quản lý Bậc', icon: BarChart3 },
     { href: '/admin/mail', label: 'Quản lý Thư', icon: Mail },
@@ -46,18 +46,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
 
     if (!user) {
-      router.push('/login'); 
+      router.push('/login');
       return;
     }
 
-    const adminUidsString = process.env.NEXT_PUBLIC_ADMIN_UIDS || '';
-    const adminUids = adminUidsString.split(',').map(uid => uid.trim()).filter(uid => uid);
+    const adminUidsString = process.env.NEXT_PUBLIC_ADMIN_UIDS;
+    const adminUids = adminUidsString ? adminUidsString.split(',').map(uid => uid.trim()).filter(uid => uid) : [];
 
     if (adminUids.length === 0) {
         console.warn("NEXT_PUBLIC_ADMIN_UIDS is not set. No one will have admin access.");
     }
 
-    if (adminUids.includes(user.uid)) {
+    if (user && adminUids.includes(user.uid)) {
       setIsAdmin(true);
     } else {
       toast({
@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         variant: "destructive",
         duration: 5000,
       });
-      router.push('/game'); 
+      router.push('/game');
     }
     setIsCheckingPermissions(false);
   }, [user, authLoading, router, toast]);
@@ -81,6 +81,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (!isAdmin) {
+    // If not admin, and not checking permissions, and not auth loading, redirect or show nothing.
+    // router.push('/game') might have already been called, but this ensures no admin content renders.
     return null;
   }
 
