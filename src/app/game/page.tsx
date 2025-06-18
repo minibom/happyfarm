@@ -8,7 +8,7 @@ import MarketModal from '@/components/game/MarketModal';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
-import LeaderboardModal from '@/components/game/LeaderboardModal'; // Import LeaderboardModal
+import LeaderboardModal from '@/components/game/LeaderboardModal';
 import GameArea from '@/components/game/GameArea'; 
 import ChatPanel from '@/components/game/ChatPanel'; 
 import { useGameLogic } from '@/hooks/useGameLogic';
@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 
 export default function GamePage() {
-  const { user, userId, loading: authLoading } = useAuth(); // Added userId
+  const { user, userId, loading: authLoading } = useAuth(); 
   const router = useRouter();
   const { toast } = useToast();
   const {
@@ -42,7 +42,7 @@ export default function GamePage() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false); // State for LeaderboardModal
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false); 
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -160,6 +160,7 @@ export default function GamePage() {
         cropData={cropData}
         playerTierInfo={playerTierInfo}
         currentAction={currentAction}
+        selectedSeedToPlant={selectedSeedToPlant} // Pass prop here
         availableSeedsForPlanting={availableSeedsForPlanting}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
@@ -172,7 +173,7 @@ export default function GamePage() {
         onOpenMarket={() => setShowMarket(true)}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenChatModal={() => setIsChatModalOpen(true)}
-        onOpenLeaderboard={() => setShowLeaderboardModal(true)} // Pass handler for LeaderboardModal
+        onOpenLeaderboard={() => setShowLeaderboardModal(true)} 
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onClearAction={handleClearAction}
@@ -229,5 +230,3 @@ export default function GamePage() {
     </div>
   );
 }
-
-    
