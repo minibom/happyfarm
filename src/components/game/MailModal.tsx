@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
+  // DialogFooter, // Removed DialogFooter import
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -86,8 +86,8 @@ const MailModal: FC<MailModalProps> = ({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => { onClose(); setSelectedMail(null); }}>
-      <DialogContent className="sm:max-w-2xl flex flex-col max-h-[85vh]">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { onClose(); setSelectedMail(null); } }}>
+      <DialogContent className="sm:max-w-3xl flex flex-col max-h-[90vh] h-[700px]"> {/* Increased width and height */}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
             <Mail className="w-7 h-7 text-primary" /> Hộp Thư
@@ -99,7 +99,7 @@ const MailModal: FC<MailModalProps> = ({
 
         <div className="flex-grow flex min-h-0 gap-4 mt-2">
           {/* Mail List */}
-          <div className="w-1/3 border-r pr-4 flex flex-col min-h-0">
+          <div className="w-2/5 border-r pr-4 flex flex-col min-h-0"> {/* Adjusted width */}
             <h3 className="text-lg font-semibold mb-2 sticky top-0 bg-background py-1">Danh Sách Thư</h3>
             <ScrollArea className="flex-grow h-0">
               {sortedMailMessages.length === 0 ? (
@@ -135,7 +135,7 @@ const MailModal: FC<MailModalProps> = ({
           </div>
 
           {/* Mail Content */}
-          <div className="w-2/3 flex flex-col min-h-0">
+          <div className="w-3/5 flex flex-col min-h-0"> {/* Adjusted width */}
             {selectedMail ? (
               <>
                 <h3 className="text-xl font-semibold mb-1 truncate">{selectedMail.subject}</h3>
@@ -185,13 +185,11 @@ const MailModal: FC<MailModalProps> = ({
             )}
           </div>
         </div>
-
-        <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => { onClose(); setSelectedMail(null); }}>Đóng</Button>
-        </DialogFooter>
+        {/* DialogFooter with the close button has been removed */}
       </DialogContent>
     </Dialog>
   );
 };
 
 export default MailModal;
+
