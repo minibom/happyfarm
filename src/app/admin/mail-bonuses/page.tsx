@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
