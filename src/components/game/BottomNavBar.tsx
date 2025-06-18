@@ -30,7 +30,7 @@ interface BottomNavBarProps {
   onOpenMarket: () => void;
   onOpenProfile: () => void;
   onOpenChatModal: () => void;
-  onOpenLeaderboard: () => void; // New prop for leaderboard
+  onOpenLeaderboard: () => void; 
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onClearAction: () => void;
@@ -47,7 +47,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenMarket,
   onOpenProfile,
   onOpenChatModal,
-  onOpenLeaderboard, // Use new prop
+  onOpenLeaderboard, 
   onSetPlantMode,
   onToggleHarvestMode,
   onClearAction,
@@ -240,24 +240,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
-         <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={onOpenLeaderboard} // Call new handler
-                variant="outline"
-                className={cn(buttonBaseClass)}
-                aria-label="Bảng Xếp Hạng"
-              >
-                <ListOrdered className={iconClass} />
-                <span className={labelClass}>BXH</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>Bảng Xếp Hạng</p>
-            </TooltipContent>
-          </Tooltip>
-
-
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -294,7 +276,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                {/* Removed old leaderboard links */}
+                 <DropdownMenuItem onClick={onOpenLeaderboard}>
+                    <ListOrdered className="mr-2 h-4 w-4" />
+                    <span>Bảng Xếp Hạng</span>
+                </DropdownMenuItem>
                  <DropdownMenuItem asChild>
                     <Link href="/library" className="w-full">
                         <Library className="mr-2 h-4 w-4" />
