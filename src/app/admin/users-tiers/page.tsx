@@ -5,12 +5,12 @@ import { useState, useEffect } from 'react';
 import type { AdminUserView, GameState } from '@/types'; // Make sure GameState is imported if needed for UserActions
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart3, Trash2, Eye, Edit, ShieldCheck, MessageSquareOff, ShieldX } from 'lucide-react';
+import { Loader2, Users, BarChart3, Trash2, Eye, Edit, ShieldCheck, MessageSquareOff, ShieldX, TrendingUp, DollarSign, Zap } from 'lucide-react'; // Added TrendingUp, DollarSign, Zap
 import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, where } from 'firebase/firestore'; // Added where
-import { TIER_DATA, type TierDetail } from '@/lib/constants';
+import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -262,7 +262,7 @@ const TiersManagementView = () => {
   return (
     <div className="flex-1 overflow-y-auto"> {/* Simple scroll for tier list, no sticky header needed */}
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
             <TableHead className="w-[80px] text-center">Bậc</TableHead>
             <TableHead className="w-[60px] text-center">Icon</TableHead>
@@ -291,12 +291,12 @@ const TiersManagementView = () => {
                   )}
                   {tier.sellPriceBoostPercent > 0 && (
                     <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                      <Users className="h-3 w-3 text-yellow-500"/> Giá Bán: +{(tier.sellPriceBoostPercent * 100).toFixed(0)}% {/* Assuming Users icon as DollarSign was not imported */}
+                      <DollarSign className="h-3 w-3 text-yellow-500"/> Giá Bán: +{(tier.sellPriceBoostPercent * 100).toFixed(0)}%
                     </Badge>
                   )}
                   {tier.growthTimeReductionPercent > 0 && (
                     <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                      <BarChart3 className="h-3 w-3 text-blue-500"/> TG Trồng: -{(tier.growthTimeReductionPercent * 100).toFixed(0)}% {/* Assuming Zap icon */}
+                      <Zap className="h-3 w-3 text-blue-500"/> TG Trồng: -{(tier.growthTimeReductionPercent * 100).toFixed(0)}%
                     </Badge>
                   )}
                    {tier.xpBoostPercent === 0 && tier.sellPriceBoostPercent === 0 && tier.growthTimeReductionPercent === 0 && (
@@ -312,21 +312,6 @@ const TiersManagementView = () => {
   );
 };
 // --- End of Tier Management Specific Logic ---
-
-// --- INITIAL_GAME_STATE definition (needed by UsersManagementView if gameStateSnap doesn't exist) ---
-const INITIAL_GAME_STATE: GameState = {
-  gold: 0,
-  xp: 0,
-  level: 1,
-  plots: [], // This might need adjustment if users page directly manipulates plots
-  inventory: {},
-  lastUpdate: 0,
-  unlockedPlotsCount: 1, // Sensible default
-  status: 'active',
-  lastLogin: 0,
-  claimedBonuses: {},
-};
-// --- End INITIAL_GAME_STATE ---
 
 
 export default function AdminUsersTiersPage() {
@@ -373,6 +358,3 @@ export default function AdminUsersTiersPage() {
     </Card>
   );
 }
-
-
-    
