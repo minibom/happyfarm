@@ -239,19 +239,19 @@ export default function AdminItemsManagementPage() {
                     <p className="ml-4 text-xl">Đang tải dữ liệu cây trồng...</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto min-w-0"> {/* Added min-w-0 */}
+                <div className="flex-1 overflow-y-auto min-w-0">
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
                         <TableHead className="w-[50px]">Icon</TableHead>
                         <TableHead>Tên (ID)</TableHead>
-                        <TableHead>Hạt Giống</TableHead>
-                        <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
+                        <TableHead className="w-[100px] hidden xl:table-cell">Hạt Giống</TableHead>
+                        <TableHead className="w-[100px] text-center hidden lg:table-cell">Bậc Mở</TableHead>
                         <TableHead className="w-[120px]">TG Lớn</TableHead>
-                        <TableHead className="w-[120px]">TG Sẵn</TableHead>
+                        <TableHead className="w-[120px] hidden sm:table-cell">TG Sẵn</TableHead>
                         <TableHead className="w-[80px] text-center">S.Lượng</TableHead>
                         <TableHead className="w-[100px]">Giá Hạt</TableHead>
-                        <TableHead className="w-[100px]">Giá N.Sản</TableHead>
+                        <TableHead className="w-[100px] hidden md:table-cell">Giá N.Sản</TableHead>
                         <TableHead className="text-center w-[120px]">Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -270,17 +270,17 @@ export default function AdminItemsManagementPage() {
                               <div className="font-medium">{item.name}</div>
                               <Badge variant="outline" className="text-xs mt-1">{item.id}</Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden xl:table-cell">
                               <Badge variant="secondary" className="text-xs">{item.seedName.replace(' Hạt Giống', '')}</Badge>
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center hidden lg:table-cell">
                               <Badge className={cn("bg-purple-500 hover:bg-purple-600 text-white border-current", TIER_DATA[item.unlockTier-1]?.colorClass || '')}>Bậc {item.unlockTier}</Badge>
                             </TableCell>
                             <TableCell>{formatMillisecondsToTime(item.timeToGrowing)}</TableCell>
-                            <TableCell>{formatMillisecondsToTime(item.timeToReady)}</TableCell>
+                            <TableCell className="hidden sm:table-cell">{formatMillisecondsToTime(item.timeToReady)}</TableCell>
                             <TableCell className="text-center">{item.harvestYield}</TableCell>
                             <TableCell className="text-primary font-semibold">{item.seedPrice.toLocaleString()}</TableCell>
-                            <TableCell className="text-accent font-semibold">{item.cropPrice.toLocaleString()}</TableCell>
+                            <TableCell className="text-accent font-semibold hidden md:table-cell">{item.cropPrice.toLocaleString()}</TableCell>
                             <TableCell className="text-center space-x-1">
                               <Button variant="ghost" size="icon" onClick={() => openCropModal('view', item)} className="hover:text-primary" title="Xem chi tiết">
                                 <Eye className="h-5 w-5" />
@@ -315,16 +315,16 @@ export default function AdminItemsManagementPage() {
                     <p className="ml-4 text-xl">Đang tải dữ liệu phân bón...</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto min-w-0"> {/* Added min-w-0 */}
+                <div className="flex-1 overflow-y-auto min-w-0">
                   <Table className="relative border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
                         <TableHead className="w-[50px]">Icon</TableHead>
                         <TableHead>Tên (ID)</TableHead>
-                        <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
+                        <TableHead className="w-[100px] text-center hidden xl:table-cell">Bậc Mở</TableHead>
                         <TableHead>Mô Tả</TableHead>
-                        <TableHead className="w-[100px] text-center">Giá</TableHead>
-                        <TableHead className="w-[120px] text-center">Giảm TG (%)</TableHead>
+                        <TableHead className="w-[100px] text-center hidden lg:table-cell">Giá</TableHead>
+                        <TableHead className="w-[120px] text-center hidden md:table-cell">Giảm TG (%)</TableHead>
                         <TableHead className="text-center w-[120px]">Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -343,12 +343,12 @@ export default function AdminItemsManagementPage() {
                               <div className="font-medium">{fert.name}</div>
                               <Badge variant="outline" className="text-xs mt-1">{fert.id}</Badge>
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="text-center hidden xl:table-cell">
                                <Badge className={cn("bg-purple-500 hover:bg-purple-600 text-white border-current", TIER_DATA[fert.unlockTier-1]?.colorClass || '')}>Bậc {fert.unlockTier}</Badge>
                             </TableCell>
                             <TableCell className="text-xs truncate max-w-xs" title={fert.description}>{fert.description}</TableCell>
-                            <TableCell className="text-center text-primary font-semibold">{fert.price.toLocaleString()}</TableCell>
-                            <TableCell className="text-center text-blue-600 font-semibold">{(fert.timeReductionPercent * 100).toFixed(0)}%</TableCell>
+                            <TableCell className="text-center text-primary font-semibold hidden lg:table-cell">{fert.price.toLocaleString()}</TableCell>
+                            <TableCell className="text-center text-blue-600 font-semibold hidden md:table-cell">{(fert.timeReductionPercent * 100).toFixed(0)}%</TableCell>
                             <TableCell className="text-center space-x-1">
                               <Button variant="ghost" size="icon" onClick={() => openFertilizerModal('view', fert)} className="hover:text-primary" title="Xem chi tiết">
                                 <Eye className="h-5 w-5" />
