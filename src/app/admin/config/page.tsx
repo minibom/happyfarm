@@ -137,51 +137,53 @@ export default function AdminConfigPage() {
     <div className="space-y-6">
       <Card className="shadow-xl">
         <CardContent className="space-y-6 p-6">
-          <Card className="border-primary/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                  <DatabaseZap className="h-6 w-6 text-primary" />
-                  <CardTitle className="text-xl">Đồng Bộ Cây Trồng & Phân Bón</CardTitle>
-              </div>
-              <CardDescription>
-                Đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>constants.ts</code> lên <code>gameItems</code>
-                VÀ Phân Bón lên <code>gameFertilizers</code>.
-                Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu trên database.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handlePushCropFertilizerData} className="bg-accent hover:bg-accent/90">
-                <UploadCloud className="mr-2 h-5 w-5" />
-                Đẩy Dữ Liệu Cây Trồng & Phân Bón
-              </Button>
-              <p className="mt-2 text-sm text-muted-foreground">
-                GHI ĐÈ dữ liệu trên <code>gameItems</code> và <code>gameFertilizers</code>.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-primary/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <DatabaseZap className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-xl">Đồng Bộ Cây Trồng & Phân Bón</CardTitle>
+                </div>
+                <CardDescription>
+                  Đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>constants.ts</code> lên <code>gameItems</code>
+                  VÀ Phân Bón lên <code>gameFertilizers</code>.
+                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu trên database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handlePushCropFertilizerData} className="bg-accent hover:bg-accent/90">
+                  <UploadCloud className="mr-2 h-5 w-5" />
+                  Đẩy Dữ Liệu Cây Trồng & Phân Bón
+                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên <code>gameItems</code> và <code>gameFertilizers</code>.
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card className="border-purple-500/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                  <Gift className="h-6 w-6 text-purple-500" />
-                  <CardTitle className="text-xl">Đồng Bộ Cấu Hình Bonus</CardTitle>
-              </div>
-              <CardDescription>
-                Đẩy TOÀN BỘ cấu hình Bonus từ <code>constants.ts</code> 
-                lên collection <code>gameBonusConfigurations</code> trong Firestore.
-                Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu bonus trên database.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handlePushBonusConfigs} className="bg-purple-500 hover:bg-purple-600 text-white">
-                <UploadCloud className="mr-2 h-5 w-5" />
-                Đẩy Cấu Hình Bonus
-              </Button>
-              <p className="mt-2 text-sm text-muted-foreground">
-                GHI ĐÈ dữ liệu trên <code>gameBonusConfigurations</code>.
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="border-purple-500/50">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <Gift className="h-6 w-6 text-purple-500" />
+                    <CardTitle className="text-xl">Đồng Bộ Cấu Hình Bonus</CardTitle>
+                </div>
+                <CardDescription>
+                  Đẩy TOÀN BỘ cấu hình Bonus từ <code>constants.ts</code> 
+                  lên collection <code>gameBonusConfigurations</code> trong Firestore.
+                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu bonus trên database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handlePushBonusConfigs} className="bg-purple-500 hover:bg-purple-600 text-white">
+                  <UploadCloud className="mr-2 h-5 w-5" />
+                  Đẩy Cấu Hình Bonus
+                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên <code>gameBonusConfigurations</code>.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
           <Card className="border-sky-500/50">
             <CardHeader>
