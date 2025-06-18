@@ -1,10 +1,11 @@
 
 'use client';
 
-import { type FC, useMemo } from 'react'; // Corrected useMemo import
+import { type FC, useMemo } from 'react'; 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Import Link
 import { Button } from '@/components/ui/button';
-import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare } from 'lucide-react';
+import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare, Library, ListOrdered } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -56,7 +57,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   playerTier,
 }) => {
   const router = useRouter();
-  const { user, logOut } = useAuth(); // Get user from useAuth
+  const { user, logOut } = useAuth(); 
   const { toast } = useToast();
 
   const isAdmin = useMemo(() => {
@@ -102,7 +103,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
     <TooltipProvider>
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
-          {/* Chat Button - Visible on small screens only */}
+          
            <div className="block md:hidden">
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -261,18 +262,37 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     <Button
                         variant="outline"
                         className={cn(buttonBaseClass)}
-                        aria-label="Cài Đặt & Quản trị"
+                        aria-label="Cài Đặt & Khác"
                     >
                         <Settings className={iconClass} />
-                        <span className={labelClass}>Cài Đặt</span>
+                        <span className={labelClass}>Khác</span>
                     </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p>Cài Đặt & Quản trị</p>
+                <p>Cài Đặt & Khác</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" side="top" className="mb-2">
+            <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                <DropdownMenuItem asChild>
+                    <Link href="/leaderboard/level" className="w-full">
+                        <ListOrdered className="mr-2 h-4 w-4" />
+                        <span>BXH - Cấp Độ</span>
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                     <Link href="/leaderboard/tier" className="w-full">
+                        <ListOrdered className="mr-2 h-4 w-4" />
+                        <span>BXH - Bậc</span>
+                    </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                    <Link href="/library" className="w-full">
+                        <Library className="mr-2 h-4 w-4" />
+                        <span>Thư Viện Game</span>
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {isAdmin && (
                   <>
                     <DropdownMenuItem onClick={handleAdminNavigation}>
