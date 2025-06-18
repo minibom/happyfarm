@@ -1,3 +1,4 @@
+
 # Happy Farm - A Next.js Farming Game 🚜🌾
 
 Welcome to Happy Farm! This is a delightful farming game built with Next.js, React, and powered by Firebase for backend services and Genkit for AI features.
@@ -12,6 +13,7 @@ In Happy Farm, players can:
 - Chat with other players.
 - Compete on the leaderboard.
 - Customize their display name.
+- Receive in-game mail with potential rewards.
 
 ## Technology Stack
 
@@ -84,7 +86,7 @@ In Happy Farm, players can:
 -   `src/app/`: Contains the Next.js App Router pages and layouts.
     -   `src/app/game/`: Main game page.
     -   `src/app/admin/`: Admin panel pages.
-    -   `src/app/library/`: Game information library.
+    -   `src/app/library/`: Game information library (redesigned with sidebar navigation).
     -   `src/app/login/`, `src/app/register/`: Auth pages.
 -   `src/components/`: Reusable UI components.
     -   `src/components/game/`: Components specific to the game UI.
@@ -97,7 +99,14 @@ In Happy Farm, players can:
     -   `src/ai/genkit.ts`: Genkit client initialization.
     -   `src/ai/dev.ts`: Genkit development server entry point.
 -   `src/lib/`: Utility functions, constants, and Firebase configuration.
-    -   `src/lib/constants.ts`: Core game data like crop details, tiers, initial game state.
+    -   `src/lib/constants.ts`: Re-exports constants from modular files.
+    -   `src/lib/crop-data.ts`: Crop definitions.
+    -   `src/lib/fertilizer-data.ts`: Fertilizer definitions.
+    -   `src/lib/tier-data.ts`: Tier definitions and logic.
+    -   `src/lib/bonus-configurations.ts`: Definitions for automatic bonus rewards.
+    -   `src/lib/mail-templates.ts`: Predefined mail templates for admin use.
+    -   `src/lib/game-config.ts`: Core game numerical configurations.
+    -   `src/lib/initial-states.ts`: Initial game state and market state.
     -   `src/lib/firebase.ts`: Firebase app initialization.
 -   `public/`: Static assets.
 
@@ -109,16 +118,33 @@ To grant admin access:
 2.  Set the `NEXT_PUBLIC_ADMIN_UIDS` environment variable in your `.env` file, with UIDs separated by commas.
 
 The admin panel allows:
--   Managing game items (from Firestore).
--   Viewing user data.
--   Reviewing tier configurations.
--   Pushing local item data from `constants.ts` to Firestore.
+-   **Items Management**: View, create, edit, and delete game items (crops) and fertilizers directly in Firestore.
+-   **Users & Tiers Management**:
+    -   View a list of registered users, their basic game state, and status (active/banned_chat).
+    -   View and edit tier configurations (name, icon, color, buff percentages) stored in Firestore.
+-   **Mail & Bonus Management**:
+    -   Compose and send mail to all users or specific users, with optional item/currency rewards.
+    -   Use predefined mail templates to quickly draft messages.
+    -   View, create, edit, and delete bonus configurations (e.g., first login bonus, tier-up rewards).
+-   **System Configuration**:
+    -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, and `gameMailTemplates`. Use this section to ensure Firestore has the latest static game data.
+
+## Game Data Management
+
+Core static game data such as crop details, fertilizer properties, tier progression, bonus rules, and mail templates are defined in TypeScript files within the `src/lib/` directory (e.g., `crop-data.ts`, `tier-data.ts`, `bonus-configurations.ts`, `mail-templates.ts`).
+
+To populate or update your Firestore database with this data:
+1.  Navigate to the **Admin Panel**.
+2.  Go to the **"Cấu hình Hệ thống" (System Configuration)** page.
+3.  Use the respective "Đồng Bộ" (Sync) buttons to push the local constant data to the corresponding Firestore collections. This ensures your game uses the most up-to-date definitions.
 
 ## Important: Firestore Security Rules
 
 For a production environment, **it is crucial to set up robust Firestore Security Rules** to protect your game data and prevent cheating. The client-side logic currently has a high degree of trust, and security rules are the primary way to enforce game logic and permissions on the server side. Ensure that:
--   Users can only write to their own game state.
+-   Users can only write to their own game state (`/users/{userId}/gameState/data`).
 -   Data modifications are validated (e.g., gold cannot increase arbitrarily, XP and level progression is valid).
--   `gameItems` collection is not writable by clients.
+-   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, and `gameMailTemplates` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
+-   Mail subcollections (`/users/{userId}/mail`) are writable by admin-privileged functions for sending mail and readable by the recipient user. Users should only be able to update `isRead` and `isClaimed` fields on their own mail.
+-   Chat messages in Realtime Database (`/messages`) should also have appropriate rules (e.g., authenticated users can write, all can read).
 
 Happy farming!
