@@ -225,7 +225,7 @@ export default function AdminItemsManagementPage() {
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="crops" className="flex-1 flex flex-col min-h-0">
+            <TabsContent value="crops" className="flex-1 flex flex-col min-h-0 mt-0">
               <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openCropModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Cây Trồng Mới
@@ -299,7 +299,7 @@ export default function AdminItemsManagementPage() {
               )}
             </TabsContent>
             
-            <TabsContent value="fertilizers" className="flex-1 flex flex-col min-h-0">
+            <TabsContent value="fertilizers" className="flex-1 flex flex-col min-h-0 mt-0">
               <div className="flex justify-end mb-4 shrink-0">
                 <Button onClick={() => openFertilizerModal('create')} className="bg-accent hover:bg-accent/90">
                   <PlusCircle className="mr-2 h-5 w-5" /> Tạo Phân Bón Mới
@@ -383,3 +383,4 @@ export default function AdminItemsManagementPage() {
     </>
   );
 }
+
