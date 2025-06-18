@@ -182,7 +182,7 @@ export const BonusActionModal: FC<BonusModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-lg"> {/* Changed from sm:max-w-xl */}
         <DialogHeader>
           <DialogTitle>{titleText}</DialogTitle>
           <DialogDescription>{descriptionText}</DialogDescription>
@@ -245,7 +245,7 @@ export const BonusActionModal: FC<BonusModalProps> = ({
           
           {/* Rewards Section */}
           {!isReadOnly && (
-            <div className="col-span-4 border-t pt-4 mt-4">
+            <div className="border-t pt-4 mt-4"> {/* Removed col-span-4 */}
                 <Label className="text-lg font-semibold mb-2 block">Quản Lý Phần Thưởng</Label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-3">
                     <div className="space-y-1">
@@ -285,7 +285,7 @@ export const BonusActionModal: FC<BonusModalProps> = ({
           )}
 
             {formData.rewards.length > 0 && (
-                <div className="col-span-4 mt-3 border-t pt-3">
+                <div className="mt-3 border-t pt-3"> {/* Removed col-span-4 */}
                     <Label className="font-semibold mb-1 block">Danh sách phần thưởng đã thêm:</Label>
                     <div className="max-h-32 overflow-y-auto space-y-1 pr-2">
                         {formData.rewards.map((reward, index) => (
