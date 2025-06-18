@@ -201,7 +201,7 @@ export default function AdminUsersPage() {
                           </TableCell>
                           <TableCell className="text-center">
                               Cấp {user.level} <br/>
-                              <Badge variant="outline" className={cn("text-xs mt-1 px-2 py-0.5 font-semibold", tierInfo.colorClass)}>
+                              <Badge variant="outline" className={cn("text-xs mt-1 px-2 py-0.5 font-semibold border-current", tierInfo.colorClass)}>
                                   <span className="mr-1 text-sm">{tierInfo.icon}</span>
                                   {tierInfo.tierName}
                               </Badge>

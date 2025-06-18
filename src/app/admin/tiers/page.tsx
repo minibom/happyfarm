@@ -87,7 +87,7 @@ export default function AdminTiersPage() {
               tierData.map((tier) => (
                 <TableRow key={tier.tierNumber}>
                   <TableCell className="text-center">
-                    <Badge variant="outline" className={cn("text-sm px-3 py-1 font-semibold", tier.colorClass)}>
+                    <Badge variant="outline" className={cn("text-sm px-3 py-1 font-semibold border-current", tier.colorClass)}>
                       Bậc {tier.tierNumber}
                     </Badge>
                   </TableCell>

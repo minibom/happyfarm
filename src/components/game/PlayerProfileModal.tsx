@@ -75,7 +75,7 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
                 <ShieldHalf className="w-6 h-6 text-purple-500" />
                 <span className="font-medium">Bậc Hiện Tại:</span>
               </div>
-              <Badge className={cn("text-base px-3 py-1 font-semibold", playerTierInfo.colorClass)}>
+              <Badge variant="outline" className={cn("text-base px-3 py-1 font-semibold border-current", playerTierInfo.colorClass)}>
                 <span className="mr-1.5 text-lg">{playerTierInfo.icon}</span>
                 {playerTierInfo.tierName}
               </Badge>

@@ -16,6 +16,7 @@ import { Coins, Clock, TrendingUp, ShoppingBag, Sprout } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useGameLogic } from '@/hooks/useGameLogic'; // To potentially get live crop data
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Import cn
 
 const formatMillisecondsToTime = (ms: number): string => {
   if (isNaN(ms) || ms < 0) {
@@ -90,7 +91,7 @@ export default function CropsDisplay() {
                     <TableCell className="font-medium">{crop.name}</TableCell>
                     <TableCell className="text-center">
                       {tierInfo ? (
-                        <Badge className={`${tierInfo.colorClass} text-xs`}>
+                        <Badge variant="outline" className={cn("text-xs border-current", tierInfo.colorClass)}>
                           {tierInfo.icon} {tierInfo.name} (Bậc {crop.unlockTier})
                         </Badge>
                       ) : (
