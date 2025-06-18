@@ -52,7 +52,7 @@ export interface MailMessage {
   id: string; // Firestore Document ID
   senderType: MailSenderType;
   senderName: string; // e.g., "System", "Game Master", "Tomato Festival"
-  recipientUid: string; // Player's Firebase UID
+  // recipientUid is implicit via path users/{userId}/mail/{mailId}
   subject: string;
   body: string;
   rewards: RewardItem[];

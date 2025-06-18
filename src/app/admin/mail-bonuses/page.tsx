@@ -27,14 +27,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
 import { BonusActionModal } from '@/components/admin/BonusActionModal';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/hooks/useAuth';
 
 type ActiveView = 'mail' | 'bonuses';
 type ActiveMailSubView = 'compose' | 'history';
 
 // --- Start of Mail Management Specific Logic ---
 const MailManagementView = () => {
-  const { user } = useAuth(); // Get current admin user
+  const { user } = useAuth();
   const [activeMailSubView, setActiveMailSubView] = useState<ActiveMailSubView>('compose');
   const [targetAudience, setTargetAudience] = useState<'all' | 'specific'>('all');
   const [specificUids, setSpecificUids] = useState('');
@@ -61,7 +61,7 @@ const MailManagementView = () => {
     setIsLoadingHistory(true);
     try {
       const logCollectionRef = collection(db, 'adminMailLog');
-      const q = query(logCollectionRef, orderBy('sentAt', 'desc'), limit(50)); // Get last 50 logs
+      const q = query(logCollectionRef, orderBy('sentAt', 'desc'), limit(50));
       const snapshot = await getDocs(q);
       const logs: AdminMailLogEntry[] = [];
       snapshot.forEach(docSnap => {
@@ -143,7 +143,9 @@ const MailManagementView = () => {
 
     if (targetAudience === 'all') {
       try {
-        const usersSnapshot = await getDocs(collection(db, 'users'));
+        // Fetching only UIDs from the 'users' collection (not full GameState)
+        const usersCollectionRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(query(usersCollectionRef)); // No need to order or fetch full data
         usersSnapshot.forEach(userDoc => uidsToSend.push(userDoc.id));
       } catch (error) {
         console.error("Error fetching all users for mail:", error);
@@ -163,8 +165,8 @@ const MailManagementView = () => {
 
     try {
       uidsToSend.forEach(uid => {
-        const mailRef = doc(collection(db, 'users', uid, 'mail'));
-        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = {
+        const mailRef = doc(collection(db, 'users', uid, 'mail')); // New mail document in subcollection
+        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = { // recipientUid is implicit
           senderType: 'admin',
           senderName: user.displayName || user.email || 'Quản Trị Viên HappyFarm',
           subject: mailSubject,
@@ -173,13 +175,13 @@ const MailManagementView = () => {
           isRead: false,
           isClaimed: false,
           createdAt: serverTimestamp(),
+          // bonusId could be added here if this mail is tied to a specific bonus config ID
         };
         batch.set(mailRef, newMail);
       });
 
       await batch.commit();
       
-      // Log to adminMailLog
       const logEntry: AdminMailLogEntry = {
         sentAt: serverTimestamp(),
         mailSubject: mailSubject,
@@ -199,7 +201,6 @@ const MailManagementView = () => {
         description: `Đã gửi thư đến ${uidsToSend.length} người dùng.`,
         className: "bg-green-500 text-white"
       });
-      // Reset form
       setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids('');
     } catch (error) {
       console.error("Error sending mail:", error);
@@ -218,10 +219,10 @@ const MailManagementView = () => {
 
   const formatTimestamp = (timestamp: any): string => {
     if (!timestamp) return 'N/A';
-    if (timestamp.seconds) { // Firestore Timestamp object
+    if (timestamp.seconds) {
       return new Date(timestamp.seconds * 1000).toLocaleString('vi-VN');
     }
-    if (typeof timestamp === 'number') { // Milliseconds from toMillis()
+    if (typeof timestamp === 'number') {
       return new Date(timestamp).toLocaleString('vi-VN');
     }
     return 'Không rõ ngày';

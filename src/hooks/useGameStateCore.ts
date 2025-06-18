@@ -50,18 +50,16 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          // Ensure only properties defined in GameState type are saved
           const { ...stateToSaveRest } = gameStateRef.current;
           const finalStateToSave: GameState = {
             ...stateToSaveRest
           };
 
-          // Ensure fields that might be undefined are handled or omitted if necessary
           if (finalStateToSave.email === undefined) delete (finalStateToSave as any).email;
           if (finalStateToSave.displayName === undefined) delete (finalStateToSave as any).displayName;
           
           await setDoc(gameDocRef, JSON.parse(JSON.stringify(finalStateToSave, (key, value) => {
-             return value === undefined ? null : value; // Convert undefined to null for Firestore
+             return value === undefined ? null : value; 
           })));
         } catch (error) {
           console.error("Failed to save game state:", error);
@@ -95,10 +93,10 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       unsubscribe = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
         if (docSnap.exists()) {
-          const firestoreData = docSnap.data() as Partial<GameState>; // Use Partial to handle potentially missing fields
+          const firestoreData = docSnap.data() as Partial<GameState>; 
           let loadedState: GameState = { 
-            ...INITIAL_GAME_STATE, // Start with defaults
-            ...firestoreData, // Override with Firestore data
+            ...INITIAL_GAME_STATE, 
+            ...firestoreData, 
           };
 
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
@@ -184,7 +182,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
         if (unsubscribe) unsubscribe();
       };
     }
-  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast]);
+  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded]); // Added gameDataLoaded to dependencies
 
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
@@ -195,19 +193,6 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       
       if (newTierInfo.tier > oldTierInfo.tier) {
         toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
-        
-        // Client-side mail generation for tier-up is REMOVED.
-        // This will be handled by a Cloud Function listening to GameState changes
-        // and checking `bonusConfigurations` in Firestore.
-        // The Cloud Function will then write to the user's mail subcollection.
-        // The `claimedBonuses` field in GameState will be checked by the Cloud Function.
-        // Example:
-        // const bonusKey = `tierUp_${newTierInfo.tier}`;
-        // if (!gameStateRef.current.claimedBonuses[bonusKey]) {
-        //    // Cloud Function would trigger, find 'tierUp_2' in bonusConfigurations,
-        //    // create mail in users/{userId}/mail/{newMailId}
-        //    // and potentially update claimedBonuses via a transaction or another function.
-        // }
       }
     }
     if (gameDataLoaded) {

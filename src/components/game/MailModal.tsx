@@ -64,22 +64,22 @@ const MailModal: FC<MailModalProps> = ({
     if (reward.type === 'xp') return <Star className="w-4 h-4 text-yellow-400" />;
     if (reward.type === 'item' && reward.itemId) {
         const cropDetail = CROP_DATA[reward.itemId as keyof typeof CROP_DATA];
-        if (cropDetail) return <span className="text-lg">{cropDetail.icon}</span>;
+        if (cropDetail && cropDetail.icon) return <span className="text-lg">{cropDetail.icon}</span>;
         const fertilizerDetail = FERTILIZER_DATA[reward.itemId as keyof typeof FERTILIZER_DATA];
-        if (fertilizerDetail) return <span className="text-lg">{fertilizerDetail.icon}</span>;
+        if (fertilizerDetail && fertilizerDetail.icon) return <span className="text-lg">{fertilizerDetail.icon}</span>;
         return <Package className="w-4 h-4 text-muted-foreground" />;
     }
     return <Package className="w-4 h-4 text-muted-foreground" />;
   }
 
-  // Mail messages are already sorted by createdAt desc in GamePage.tsx
   const sortedMailMessages = mailMessages; 
 
   const formatTimestamp = (timestamp: any): string => {
-    if (timestamp instanceof Timestamp) {
-      return timestamp.toDate().toLocaleString('vi-VN');
+    if (!timestamp) return 'N/A';
+    if (timestamp.seconds) { // Firestore Timestamp object
+      return new Date(timestamp.seconds * 1000).toLocaleString('vi-VN');
     }
-    if (typeof timestamp === 'number') {
+    if (typeof timestamp === 'number') { // Milliseconds from toMillis()
       return new Date(timestamp).toLocaleString('vi-VN');
     }
     return 'Không rõ ngày';

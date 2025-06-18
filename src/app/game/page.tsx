@@ -29,7 +29,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const {
     gameState,
-    setGameState, // Still needed for applying rewards from mail
+    setGameState, 
     plantCrop,
     harvestCrop,
     buyItem,
@@ -40,7 +40,7 @@ export default function GamePage() {
     isInitialized,
     playerTierInfo,
     cropData,
-    fertilizerData, // Make sure fertilizerData is available from useGameLogic
+    fertilizerData, 
   } = useGameLogic();
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
@@ -252,7 +252,7 @@ export default function GamePage() {
   };
 
   const handleClaimMailRewards = async (mailId: string) => {
-    if (!userId) return;
+    if (!userId || !gameState) return; // Ensure gameState is available
     const mailToClaim = mailMessages.find(m => m.id === mailId);
     if (!mailToClaim) {
       toast({ title: "Lỗi", description: "Không tìm thấy thư để nhận.", variant: "destructive" });
@@ -262,9 +262,16 @@ export default function GamePage() {
       toast({ title: "Đã Nhận", description: "Bạn đã nhận quà từ thư này rồi.", variant: "default" });
       return;
     }
+     if (mailToClaim.bonusId && gameState.claimedBonuses[mailToClaim.bonusId]) {
+      toast({ title: "Bonus Đã Nhận", description: "Bạn đã nhận phần thưởng bonus này rồi.", variant: "default" });
+      // Optionally also mark mail as claimed if bonus already claimed through other means
+      const mailRef = doc(db, 'users', userId, 'mail', mailId);
+      try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { console.error("Error updating mail for already claimed bonus:", e);}
+      return;
+    }
+
     if (mailToClaim.rewards.length === 0) {
       toast({ title: "Không Có Quà", description: "Thư này không có vật phẩm đính kèm.", variant: "default" });
-      // Mark as claimed and read even if no rewards to prevent re-processing
       const mailRef = doc(db, 'users', userId, 'mail', mailId);
       try {
         await updateDoc(mailRef, { isClaimed: true, isRead: true });
@@ -275,6 +282,7 @@ export default function GamePage() {
     }
 
     setGameState(prev => {
+      if (!prev) return INITIAL_GAME_STATE; // Should not happen if isInitialized
       const newState = { ...prev };
       let goldReward = 0;
       let xpReward = 0;
@@ -294,7 +302,7 @@ export default function GamePage() {
       let currentXp = newState.xp + xpReward;
       let currentLevel = newState.level;
       let xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
-      while (currentXp >= xpToNext) {
+      while (currentXp >= xpToNext && xpToNext > 0) { // Added xpToNext > 0 to prevent infinite loop if threshold is 0
         currentXp -= xpToNext;
         currentLevel += 1;
         xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
@@ -311,7 +319,6 @@ export default function GamePage() {
       return newState;
     });
 
-    // Update Firestore for the mail item
     const mailRef = doc(db, 'users', userId, 'mail', mailId);
     try {
       await updateDoc(mailRef, { isClaimed: true, isRead: true });
@@ -319,8 +326,6 @@ export default function GamePage() {
     } catch (error) {
       console.error("Error claiming rewards in Firestore:", error);
       toast({ title: "Lỗi Nhận Quà", description: "Không thể cập nhật trạng thái thư. Vui lòng thử lại.", variant: "destructive"});
-      // Potentially revert client-side GameState changes if critical, though setGameState is optimistic here.
-      // For simplicity, we'll rely on the next Firestore sync to correct if needed, or user retries.
     }
   };
 
@@ -330,7 +335,6 @@ export default function GamePage() {
     try {
       await deleteDoc(mailRef);
       toast({ title: "Đã Xóa Thư", description: "Thư đã được xóa." });
-      // Local state update is handled by onSnapshot
     } catch (error) {
       console.error("Error deleting mail:", error);
       toast({ title: "Lỗi", description: "Không thể xóa thư.", variant: "destructive"});
@@ -368,7 +372,7 @@ export default function GamePage() {
         availableFertilizersForPopover={availableFertilizersForSelection}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
-        fertilizeFromPlotPopover={fertilizeFromPlotPopover}
+        fertilizeFromPlotPopover={fertilizeFromPlotPopover} // Pass down
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
