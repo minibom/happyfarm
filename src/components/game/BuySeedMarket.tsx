@@ -21,19 +21,25 @@ interface BuySeedMarketProps {
   setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
 }
 
-const formatMilliseconds = (ms: number) => {
-  if (ms <= 0) return "0s";
+const formatMillisecondsToTime = (ms: number): string => {
+  if (isNaN(ms) || ms <= 0) {
+    return '0s';
+  }
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   let formattedTime = "";
-  if (minutes > 0) {
-    formattedTime += `${minutes}m `;
+
+  if (hours > 0) {
+    formattedTime += `${String(hours).padStart(2, '0')}h `;
   }
-  if (seconds > 0 || minutes === 0) {
-    formattedTime += `${seconds}s`;
+  if (hours > 0 || minutes > 0) {
+    formattedTime += `${String(minutes).padStart(2, '0')}m `;
   }
-  return formattedTime.trim() || "0s";
+  formattedTime += `${String(seconds).padStart(2, '0')}s`;
+  
+  return formattedTime.trim();
 };
 
 const BuySeedMarket: FC<BuySeedMarketProps> = ({
@@ -58,7 +64,7 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
           const itemIcon = item.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
           const cropDetail = cropData[item.id.replace('Seed', '') as CropId];
           const totalHarvestTime = cropDetail ? cropDetail.timeToGrowing + cropDetail.timeToReady : 0;
-          const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
+          const formattedHarvestTime = formatMillisecondsToTime(totalHarvestTime);
 
           return (
             <Card key={item.id} className={cn("overflow-hidden shadow-md flex flex-col", isLockedForPurchase && "bg-muted/60 opacity-70")}>

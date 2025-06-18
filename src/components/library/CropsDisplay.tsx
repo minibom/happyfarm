@@ -19,21 +19,25 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils'; // Import cn
 
 const formatMillisecondsToTime = (ms: number): string => {
-  if (isNaN(ms) || ms < 0) {
+  if (isNaN(ms) || ms <= 0) {
     return '00:00';
   }
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  } else {
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
 };
 
 export default function CropsDisplay() {
-  // Use cropData from useGameLogic to ensure it's the same data source as the game,
-  // including potential live updates if admin changes item data.
   const { cropData: liveCropData, isInitialized } = useGameLogic();
 
-  const cropDataToDisplay = liveCropData || CROP_DATA; // Fallback to constants if live data not yet available
+  const cropDataToDisplay = liveCropData || CROP_DATA; 
 
   const sortedCrops = Object.entries(cropDataToDisplay)
     .map(([id, details]) => ({ id: id as CropId, ...details }))
@@ -66,7 +70,7 @@ export default function CropsDisplay() {
       </CardHeader>
       
       <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
-        <ScrollArea className="h-[calc(100vh-250px)]"> {/* Adjust height as needed */}
+        <ScrollArea className="h-[calc(100vh-250px)]"> 
           <Table className="relative border-separate border-spacing-0">
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
@@ -95,7 +99,7 @@ export default function CropsDisplay() {
                           {tierInfo.icon} Bậc {crop.unlockTier}
                         </Badge>
                       ) : (
-                        <Badge variant="secondary">Bậc {crop.unlockTier}</Badge>
+                        <Badge variant="secondary" className="border-current">Bậc {crop.unlockTier}</Badge>
                       )}
                     </TableCell>
                     <TableCell>{formatMillisecondsToTime(crop.timeToGrowing)}</TableCell>
@@ -113,4 +117,3 @@ export default function CropsDisplay() {
     </Card>
   );
 }
-

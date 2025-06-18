@@ -21,10 +21,10 @@ interface FarmPlotProps {
   isSelected?: boolean;
   cropData: Record<CropId, CropDetails>;
   playerTier: number;
-  isLocked: boolean; // New: indicates if the plot is locked
-  unlockCost: number; // New: cost to unlock (relevant if it's the next plot)
-  onUnlockPlot: () => void; // New: function to call when trying to unlock
-  unlockedPlotsCount: number; // New: total unlocked plots
+  isLocked: boolean; 
+  unlockCost: number; 
+  onUnlockPlot: () => void; 
+  unlockedPlotsCount: number; 
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -71,9 +71,14 @@ const FarmPlot: FC<FarmPlotProps> = ({
           setTimeLeftDisplay("00:00");
         } else {
           const totalSeconds = Math.floor(remaining / 1000);
-          const minutes = Math.floor(totalSeconds / 60);
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
           const seconds = totalSeconds % 60;
-          setTimeLeftDisplay(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+          if (hours > 0) {
+            setTimeLeftDisplay(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+          } else {
+            setTimeLeftDisplay(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+          }
         }
       };
 
@@ -151,7 +156,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   const handlePlotGUIClick = () => {
     if (isLocked) {
       if (plot.id === unlockedPlotsCount && unlockedPlotsCount < TOTAL_PLOTS) {
-        onUnlockPlot(); // Attempt to unlock
+        onUnlockPlot(); 
       } else if (unlockedPlotsCount < TOTAL_PLOTS) {
         toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất trước đó theo thứ tự.", variant: "destructive" });
       } else {

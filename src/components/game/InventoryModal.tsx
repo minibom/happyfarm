@@ -32,19 +32,22 @@ interface InventoryModalProps {
   allCropIds: CropId[];
 }
 
-const formatMilliseconds = (ms: number) => {
-  if (ms <= 0) return "0s";
+const formatMillisecondsToTime = (ms: number): string => {
+  if (isNaN(ms) || ms <= 0) {
+    return '0s'; // Return '0s' for very short or zero durations
+  }
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  let formattedTime = "";
-  if (minutes > 0) {
-    formattedTime += `${minutes}m `;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  } else if (minutes > 0) {
+    return `${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
+  } else {
+    return `${String(seconds)}s`;
   }
-  if (seconds > 0 || minutes === 0) {
-    formattedTime += `${seconds}s`;
-  }
-  return formattedTime.trim() || "0s";
 };
 
 const InventoryModal: FC<InventoryModalProps> = ({
@@ -90,7 +93,7 @@ const InventoryModal: FC<InventoryModalProps> = ({
         if (!itemDetails) return null;
 
         const totalHarvestTime = itemDetails.timeToGrowing + itemDetails.timeToReady;
-        const formattedHarvestTime = formatMilliseconds(totalHarvestTime);
+        const formattedHarvestTime = formatMillisecondsToTime(totalHarvestTime);
 
         return (
           <TooltipProvider key={itemId} delayDuration={100}>
@@ -185,4 +188,3 @@ const InventoryModal: FC<InventoryModalProps> = ({
 };
 
 export default InventoryModal;
-

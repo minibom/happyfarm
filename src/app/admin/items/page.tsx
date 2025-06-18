@@ -23,13 +23,19 @@ import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, orderBy
 type ItemDataForTable = CropDetails & { id: CropId };
 
 const formatMillisecondsToTime = (ms: number): string => {
-  if (isNaN(ms) || ms < 0) {
+  if (isNaN(ms) || ms <= 0) {
     return '00:00';
   }
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  } else {
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
 };
 
 export default function AdminItemsPage() {
@@ -158,8 +164,8 @@ export default function AdminItemsPage() {
                   <TableHead>Tên (ID)</TableHead>
                   <TableHead>Hạt Giống</TableHead>
                   <TableHead className="w-[100px] text-center">Bậc Mở</TableHead>
-                  <TableHead className="w-[120px]">TG Lớn (mm:ss)</TableHead>
-                  <TableHead className="w-[120px]">TG Sẵn (mm:ss)</TableHead>
+                  <TableHead className="w-[120px]">TG Lớn</TableHead>
+                  <TableHead className="w-[120px]">TG Sẵn</TableHead>
                   <TableHead className="w-[80px] text-center">S.Lượng</TableHead>
                   <TableHead className="w-[100px]">Giá Hạt</TableHead>
                   <TableHead className="w-[100px]">Giá N.Sản</TableHead>
@@ -185,7 +191,7 @@ export default function AdminItemsPage() {
                         <Badge variant="secondary" className="text-xs">{item.seedName.replace(' Hạt Giống', '')}</Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className="bg-purple-500 hover:bg-purple-600 text-white">Bậc {item.unlockTier}</Badge>
+                        <Badge className="bg-purple-500 hover:bg-purple-600 text-white border-current">Bậc {item.unlockTier}</Badge>
                       </TableCell>
                       <TableCell>{formatMillisecondsToTime(item.timeToGrowing)}</TableCell>
                       <TableCell>{formatMillisecondsToTime(item.timeToReady)}</TableCell>
