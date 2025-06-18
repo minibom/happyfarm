@@ -92,7 +92,7 @@ export default function CropsDisplay() {
                     <TableCell className="text-center">
                       {tierInfo ? (
                         <Badge variant="outline" className={cn("text-xs border-current", tierInfo.colorClass)}>
-                          {tierInfo.icon} {tierInfo.name} (Bậc {crop.unlockTier})
+                          {tierInfo.icon} Bậc {crop.unlockTier}
                         </Badge>
                       ) : (
                         <Badge variant="secondary">Bậc {crop.unlockTier}</Badge>
@@ -113,3 +113,4 @@ export default function CropsDisplay() {
     </Card>
   );
 }
+
