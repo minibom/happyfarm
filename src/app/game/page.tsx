@@ -13,12 +13,11 @@ import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import type { SeedId, CropId } from '@/types';
-import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, getPlotUnlockCost, INITIAL_UNLOCKED_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
+import type { SeedId, CropId, FertilizerId, FertilizerDetails } from '@/types';
+import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent } from '@/components/ui/dialog'; // Removed DialogHeader, DialogTitle
-
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
@@ -31,11 +30,12 @@ export default function GamePage() {
     buyItem,
     sellItem,
     unlockPlot,
-    updateDisplayName, // Added
+    updateDisplayName,
+    applyFertilizer, // Ensure this is available
     isInitialized,
     playerTierInfo,
-    // marketItems, // This is now part of useMarket hook or derived differently
-    cropData,
+    cropData, // This is from useGameLogic, primarily for plot rendering
+    // fertilizerData is now directly imported from constants for BottomNavBar
   } = useGameLogic();
 
   const [showMarket, setShowMarket] = useState(false);
@@ -44,8 +44,9 @@ export default function GamePage() {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
 
-  const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
+  const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
+  const [selectedFertilizerId, setSelectedFertilizerId] = useState<FertilizerId | undefined>(undefined);
 
   useEffect(() => {
     if (!authLoading && !user && isInitialized) {
@@ -79,6 +80,12 @@ export default function GamePage() {
       if (plot.state === 'ready_to_harvest') {
         harvestCrop(plotId);
       }
+    } else if (currentAction === 'fertilizing' && selectedFertilizerId) {
+      if (plot.state === 'planted' || plot.state === 'growing') {
+        applyFertilizer(plotId, selectedFertilizerId);
+      } else {
+        toast({ title: "Không Thể Bón Phân", description: "Chỉ có thể bón phân cho cây đang trồng hoặc đang lớn.", variant: "default"});
+      }
     }
   };
 
@@ -104,6 +111,7 @@ export default function GamePage() {
       toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để chọn hạt giống ${seedCropDetail.name}.`, variant: "destructive" });
       setCurrentAction('none');
       setSelectedSeedToPlant(undefined);
+      setSelectedFertilizerId(undefined);
       return;
     }
 
@@ -113,6 +121,7 @@ export default function GamePage() {
     } else {
       setCurrentAction('planting');
       setSelectedSeedToPlant(seedId);
+      setSelectedFertilizerId(undefined);
     }
   };
 
@@ -122,13 +131,37 @@ export default function GamePage() {
     } else {
       setCurrentAction('harvesting');
       setSelectedSeedToPlant(undefined);
+      setSelectedFertilizerId(undefined);
+    }
+  };
+
+  const handleSetFertilizeMode = (fertilizerId: FertilizerId) => {
+    if (!FERTILIZER_DATA[fertilizerId]) return; // Basic check
+    const fertilizerDetail = FERTILIZER_DATA[fertilizerId];
+
+    if (playerTierInfo.tier < fertilizerDetail.unlockTier) {
+        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (fertilizerDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${fertilizerDetail.unlockTier}) để chọn phân bón ${fertilizerDetail.name}.`, variant: "destructive" });
+        setCurrentAction('none');
+        setSelectedFertilizerId(undefined);
+        setSelectedSeedToPlant(undefined);
+        return;
+    }
+
+    if (currentAction === 'fertilizing' && selectedFertilizerId === fertilizerId) {
+        setCurrentAction('none');
+        setSelectedFertilizerId(undefined);
+    } else {
+        setCurrentAction('fertilizing');
+        setSelectedFertilizerId(fertilizerId);
+        setSelectedSeedToPlant(undefined);
     }
   };
 
   const handleClearAction = () => {
     setCurrentAction('none');
     setSelectedSeedToPlant(undefined);
-  }
+    setSelectedFertilizerId(undefined);
+  };
 
   const availableSeedsForPlanting = ALL_SEED_IDS
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
@@ -140,6 +173,10 @@ export default function GamePage() {
 
   const allAvailableSeedsInInventory = ALL_SEED_IDS
     .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
+
+  const availableFertilizersForSelection = ALL_FERTILIZER_IDS
+    .map(id => FERTILIZER_DATA[id])
+    .filter(fert => fert && (gameState.inventory[fert.id] || 0) > 0 && playerTierInfo.tier >= fert.unlockTier) as FertilizerDetails[];
 
 
   if (authLoading || !isInitialized || !user || !cropData || !gameState) {
@@ -161,6 +198,7 @@ export default function GamePage() {
         playerTierInfo={playerTierInfo}
         currentAction={currentAction}
         selectedSeedToPlant={selectedSeedToPlant}
+        selectedFertilizerId={selectedFertilizerId} // Pass to GameArea for cursor
         availableSeedsForPlanting={availableSeedsForPlanting}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
@@ -176,12 +214,16 @@ export default function GamePage() {
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
+        onSetFertilizeMode={handleSetFertilizeMode} // Pass handler
         onClearAction={handleClearAction}
         currentAction={currentAction}
         selectedSeed={selectedSeedToPlant}
+        selectedFertilizerId={selectedFertilizerId} // Pass selected ID
         availableSeeds={allAvailableSeedsInInventory}
+        availableFertilizers={availableFertilizersForSelection} // Pass available fertilizers
         inventory={gameState.inventory}
         cropData={cropData}
+        fertilizerData={FERTILIZER_DATA} // Pass all fertilizer static data
         playerTier={playerTierInfo.tier}
       />
 
@@ -199,9 +241,6 @@ export default function GamePage() {
         isOpen={showInventoryModal}
         onClose={() => setShowInventoryModal(false)}
         inventory={gameState.inventory}
-        cropData={cropData}
-        allSeedIds={ALL_SEED_IDS}
-        allCropIds={ALL_CROP_IDS}
       />
       <PlayerProfileModal
         isOpen={showProfileModal}
@@ -212,7 +251,7 @@ export default function GamePage() {
         playerXP={gameState.xp}
         xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
         playerTierInfo={playerTierInfo}
-        currentDisplayName={gameState.displayName} // Pass current display name
+        currentDisplayName={gameState.displayName}
       />
       
       <LeaderboardModal
@@ -223,7 +262,6 @@ export default function GamePage() {
 
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
-          {/* ChatPanel now gets gameState from useGameLogic, so userStatus prop is enough */}
           <ChatPanel isModalMode userStatus={gameState.status} />
         </DialogContent>
       </Dialog>

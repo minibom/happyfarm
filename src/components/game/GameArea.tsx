@@ -5,14 +5,16 @@ import type { FC } from 'react';
 import { useRef, useEffect } from 'react';
 import FarmGrid from '@/components/game/FarmGrid';
 import ChatPanel from '@/components/game/ChatPanel';
-import type { GameState, SeedId, CropId, CropDetails, TierInfo } from '@/types';
+import type { GameState, SeedId, CropId, CropDetails, TierInfo, FertilizerId } from '@/types';
+import { FERTILIZER_DATA } from '@/lib/constants'; // Import FERTILIZER_DATA
 
 interface GameAreaProps {
   gameState: GameState;
   cropData: Record<CropId, CropDetails>;
   playerTierInfo: TierInfo;
-  currentAction: 'none' | 'planting' | 'harvesting';
-  selectedSeedToPlant?: SeedId; // Added prop
+  currentAction: 'none' | 'planting' | 'harvesting' | 'fertilizing'; // Updated
+  selectedSeedToPlant?: SeedId;
+  selectedFertilizerId?: FertilizerId; // Added prop for fertilizing
   availableSeedsForPlanting: SeedId[];
   handlePlotClick: (plotId: number) => void;
   plantSeedFromPlotPopover: (plotId: number, seedId: SeedId) => void;
@@ -25,7 +27,8 @@ const GameArea: FC<GameAreaProps> = ({
   cropData,
   playerTierInfo,
   currentAction,
-  selectedSeedToPlant, // Destructure prop
+  selectedSeedToPlant,
+  selectedFertilizerId, // Destructure prop
   availableSeedsForPlanting,
   handlePlotClick,
   plantSeedFromPlotPopover,
@@ -38,7 +41,7 @@ const GameArea: FC<GameAreaProps> = ({
     const element = gameAreaRef.current;
     if (!element) return;
 
-    if (!cropData) {
+    if (!cropData || !FERTILIZER_DATA) { // Also check FERTILIZER_DATA
       element.style.cursor = 'default';
       return;
     }
@@ -52,12 +55,20 @@ const GameArea: FC<GameAreaProps> = ({
         const encodedIcon = encodeURIComponent(cropDetail.icon);
         element.style.cursor = `url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><text x='2' y='22' font-size='20'>${encodedIcon}</text></svg>") 14 14, auto`;
       } else {
-        element.style.cursor = 'crosshair'; // Fallback if no icon
+        element.style.cursor = 'crosshair';
+      }
+    } else if (currentAction === 'fertilizing' && selectedFertilizerId) {
+      const fertilizerDetail = FERTILIZER_DATA[selectedFertilizerId];
+      if (fertilizerDetail && fertilizerDetail.icon) {
+        const encodedIcon = encodeURIComponent(fertilizerDetail.icon);
+        element.style.cursor = `url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'><text x='2' y='22' font-size='20'>${encodedIcon}</text></svg>") 14 14, auto`;
+      } else {
+        element.style.cursor = 'crosshair'; // Fallback for fertilizer
       }
     } else {
       element.style.cursor = 'default';
     }
-  }, [currentAction, selectedSeedToPlant, cropData]);
+  }, [currentAction, selectedSeedToPlant, selectedFertilizerId, cropData]); // Add selectedFertilizerId
 
   return (
     <main ref={gameAreaRef} className="flex flex-col items-center w-full max-w-7xl mt-4">
@@ -70,6 +81,7 @@ const GameArea: FC<GameAreaProps> = ({
             onPlantFromPopover={plantSeedFromPlotPopover}
             isGloballyPlanting={currentAction === 'planting'}
             isGloballyHarvesting={currentAction === 'harvesting'}
+            isGloballyFertilizing={currentAction === 'fertilizing'} // Pass fertilizing state
             cropData={cropData}
             playerTier={playerTierInfo.tier}
             unlockedPlotsCount={gameState.unlockedPlotsCount}

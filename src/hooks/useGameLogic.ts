@@ -173,7 +173,7 @@ export const useGameLogic = () => {
             : INITIAL_GAME_STATE.plots.map((p, i) => ({ ...p, id: i }));
           loadedState.plots = plots;
 
-          const validatedInventory: Inventory = {};
+          const validatedInventory: GameState['inventory'] = {};
           ALL_SEED_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
           ALL_CROP_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
           ALL_FERTILIZER_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0); 
@@ -288,6 +288,12 @@ export const useGameLogic = () => {
 
   const logMarketActivity = async (logData: Omit<MarketActivityLog, 'timestamp' | 'logId' | 'userId'>) => {
     if (!userId) return;
+    // In a real app, this would write to Firestore:
+    // await addDoc(collection(db, 'marketActivityLogs'), {
+    //   ...logData,
+    //   userId,
+    //   timestamp: serverTimestamp(),
+    // });
     console.log("Market Activity (simulated log):", { ...logData, userId, timestamp: Date.now() });
   };
 
@@ -394,13 +400,11 @@ export const useGameLogic = () => {
     let itemDetails;
     let itemName;
     let itemUnlockTier;
-    let isFertilizer = false;
 
     if (ALL_FERTILIZER_IDS.includes(itemId as FertilizerId) && fertilizerData) {
         itemDetails = fertilizerData[itemId as FertilizerId];
         itemName = itemDetails?.name;
         itemUnlockTier = itemDetails?.unlockTier;
-        isFertilizer = true;
     } else if (cropData) {
         const baseCropId = itemId.endsWith('Seed') ? itemId.replace('Seed', '') as CropId : itemId as CropId;
         itemDetails = cropData[baseCropId];
@@ -530,7 +534,7 @@ export const useGameLogic = () => {
     }
 
     if (currentTierInfo.tier < fertilizerDetail.unlockTier) {
-      toast({ title: "Bậc Chưa Đủ", description: `Cần Bậc ${fertilizerDetail.unlockTier} để dùng ${fertilizerDetail.name}.`, variant: "destructive" });
+      toast({ title: "Bậc Chưa Đủ", description: `Cần Bậc ${getPlayerTierInfo( (fertilizerDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${fertilizerDetail.unlockTier}) để dùng ${fertilizerDetail.name}.`, variant: "destructive" });
       return;
     }
 
@@ -562,11 +566,32 @@ export const useGameLogic = () => {
     }
     
     const tierGrowthReduction = currentTierInfo.growthTimeReductionPercent;
-    const originalTotalGrowTime = cropDetail.timeToGrowing + cropDetail.timeToReady;
-    const tierAdjustedTotalGrowTime = originalTotalGrowTime * (1 - tierGrowthReduction);
+    
+    // Calculate total original growth time for the crop on this plot
+    const baseTimeToGrowing = cropDetail.timeToGrowing;
+    const baseTimeToReady = cropDetail.timeToReady;
+
+    // Calculate effective growth time considering tier bonus
+    const effectiveTimeToGrowing = baseTimeToGrowing * (1 - tierGrowthReduction);
+    const effectiveTimeToReady = baseTimeToReady * (1 - tierGrowthReduction);
+
+    // Determine total time required based on current plot state
+    let totalTimeRequiredForCurrentStage;
+    if (plot.state === 'planted') {
+        totalTimeRequiredForCurrentStage = effectiveTimeToGrowing;
+    } else { // growing
+        totalTimeRequiredForCurrentStage = effectiveTimeToReady; // This is total time from planting to harvest ready
+    }
     
     const elapsedTime = Date.now() - plot.plantedAt;
-    let remainingTime = tierAdjustedTotalGrowTime - elapsedTime;
+    let remainingTime;
+
+    if (plot.state === 'planted') {
+        remainingTime = (plot.plantedAt + effectiveTimeToGrowing) - Date.now();
+    } else { // 'growing'
+        remainingTime = (plot.plantedAt + effectiveTimeToReady) - Date.now();
+    }
+
 
     if (remainingTime <= 0) {
       toast({ title: "Cây Sẵn Sàng", description: "Cây đã sẵn sàng hoặc đã thu hoạch, không cần bón phân.", variant: "default" });

@@ -1,7 +1,7 @@
 
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { Sprout, Gift, Lock, Coins } from 'lucide-react'; // Added Lock and Coins
+import { Sprout, Gift, Lock, Coins, Zap as FertilizerIcon } from 'lucide-react'; // Added FertilizerIcon
 import { LeafIcon } from '@/components/icons/LeafIcon';
 import type { Plot, SeedId, CropId, CropDetails } from '@/types';
 import { cn } from '@/lib/utils';
@@ -18,13 +18,14 @@ interface FarmPlotProps {
   onPlantFromPopover: (seedId: SeedId) => void;
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
+  isGloballyFertilizing: boolean; // New prop
   isSelected?: boolean;
   cropData: Record<CropId, CropDetails>;
   playerTier: number;
-  isLocked: boolean; 
-  unlockCost: number; 
-  onUnlockPlot: () => void; 
-  unlockedPlotsCount: number; 
+  isLocked: boolean;
+  unlockCost: number;
+  onUnlockPlot: () => void;
+  unlockedPlotsCount: number;
 }
 
 const FarmPlot: FC<FarmPlotProps> = ({
@@ -34,6 +35,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onPlantFromPopover,
   isGloballyPlanting,
   isGloballyHarvesting,
+  isGloballyFertilizing, // Destructure new prop
   isSelected,
   cropData,
   playerTier,
@@ -156,7 +158,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   const handlePlotGUIClick = () => {
     if (isLocked) {
       if (plot.id === unlockedPlotsCount && unlockedPlotsCount < TOTAL_PLOTS) {
-        onUnlockPlot(); 
+        onUnlockPlot();
       } else if (unlockedPlotsCount < TOTAL_PLOTS) {
         toast({ title: "Đất Bị Khóa", description: "Bạn cần mở khóa ô đất trước đó theo thứ tự.", variant: "destructive" });
       } else {
@@ -165,12 +167,12 @@ const FarmPlot: FC<FarmPlotProps> = ({
       return;
     }
 
-    if (isGloballyPlanting || isGloballyHarvesting) {
+    if (isGloballyPlanting || isGloballyHarvesting || isGloballyFertilizing) { // Check fertilizing mode
       onClick();
     } else if (plot.state === 'empty') {
       setIsSeedSelectorOpen(true);
     } else {
-      onClick();
+      onClick(); // Default click action if not in global mode and not empty (e.g., to open popover for grown plant)
     }
   };
 
@@ -193,6 +195,9 @@ const FarmPlot: FC<FarmPlotProps> = ({
     if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
       actionableClass = 'ring-4 ring-yellow-400 ring-offset-2';
     }
+    if (isGloballyFertilizing && (plot.state === 'planted' || plot.state === 'growing')) { // Highlight for fertilizing
+      actionableClass = 'ring-4 ring-blue-500 ring-offset-2';
+    }
   }
   if (isSelected && !isLocked) {
      actionableClass = cn(actionableClass, 'ring-4 ring-primary ring-offset-2');
@@ -212,7 +217,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
     <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Popover open={isSeedSelectorOpen && !isLocked} onOpenChange={setIsSeedSelectorOpen}>
+          <Popover open={isSeedSelectorOpen && !isLocked && !isGloballyPlanting && !isGloballyHarvesting && !isGloballyFertilizing} onOpenChange={setIsSeedSelectorOpen}>
             <PopoverTrigger asChild>
               <div
                 onClick={handlePlotGUIClick}
@@ -236,7 +241,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
                 )}
               </div>
             </PopoverTrigger>
-            {!isLocked && plot.state === 'empty' && !isGloballyPlanting && !isGloballyHarvesting && cropData && (
+            {!isLocked && plot.state === 'empty' && !isGloballyPlanting && !isGloballyHarvesting && !isGloballyFertilizing && cropData && (
               <PopoverContent className="w-auto p-2" side="bottom" align="center">
                 <div className="flex flex-col gap-1">
                   <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
