@@ -14,12 +14,11 @@ import {
   LogOut,
   ShieldCheck,
   UserCircle2,
-  Lock,
   MessageSquare,
   Library,
   ListOrdered,
   ClipboardList,
-  Zap, 
+  Zap,
   ChevronDown,
   Menu,
   Mail as MailIcon,
@@ -45,7 +44,6 @@ import type { SeedId, Inventory, CropId, CropDetails, FertilizerId, FertilizerDe
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { getPlayerTierInfo } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 
 interface BottomNavBarProps {
@@ -119,7 +117,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   const selectedFertilizerInfo = selectedFertilizerId && currentAction === 'fertilizing' ? getFertilizerInfo(selectedFertilizerId) : null;
 
   const handleAdminNavigation = () => {
-    router.push('/admin/items-management'); // Updated link
+    router.push('/admin/items-management');
   };
 
   const handleLogout = async () => {
@@ -134,7 +132,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   };
 
   if (!cropData || !fertilizerData) {
-    return null; 
+    return null;
   }
 
   const buttonBaseClass = "p-2 h-auto w-[72px] rounded-lg shadow-md flex flex-col items-center justify-center gap-1 relative";
@@ -166,14 +164,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
   const ownedAvailableFertilizers = availableFertilizers.filter(fert => (inventory[fert.id] || 0) > 0);
 
-  const UnreadBadge = ({ on }: { on: 'more' | 'settings' }) => (
+  const UnreadMailBadge = () => (
     unreadMailCount > 0 ? (
-      <Badge className={cn(
-          "absolute -top-1 -right-1 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10",
-           // Adjust position slightly if needed based on button
-          on === 'more' && "", 
-          on === 'settings' && "" 
-      )}>
+      <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
         {unreadMailCount > 9 ? '9+' : unreadMailCount}
       </Badge>
     ) : null
@@ -182,27 +175,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   return (
     <TooltipProvider>
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
-        <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg">
+        <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg items-center">
 
-          <div className="block md:hidden">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                <Button
-                    onClick={onOpenChatModal}
-                    variant="outline"
-                    className={cn(buttonBaseClass)}
-                    aria-label="Mở Trò Chuyện"
-                >
-                    <MessageSquare className={iconClass} />
-                    <span className={labelClass}>Chat</span>
-                </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                <p>Mở Trò Chuyện</p>
-                </TooltipContent>
-            </Tooltip>
-           </div>
-          
+          {/* Always Visible Core Buttons */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -324,10 +299,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          {/* Desktop: Settings Dropdown */}
+          {/* ---- Desktop Specific Buttons ---- */}
           <div className="hidden md:flex items-center gap-2">
             <Tooltip>
-              <TooltipTrigger asChild>
+                <TooltipTrigger asChild>
                 <Button
                     onClick={onOpenProfile}
                     variant="outline"
@@ -343,6 +318,24 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
 
+            <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                      onClick={onOpenMailModal}
+                      variant="outline"
+                      className={cn(buttonBaseClass, "relative")}
+                      aria-label="Hộp thư"
+                  >
+                      <MailIcon className={iconClass} />
+                      <span className={labelClass}>Thư</span>
+                      <UnreadMailBadge />
+                  </Button>
+                </TooltipTrigger>
+              <TooltipContent side="top">
+                  <p>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount} chưa đọc)`}</p>
+              </TooltipContent>
+            </Tooltip>
+
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -353,20 +346,15 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                           aria-label="Cài Đặt & Khác"
                       >
                           <Settings className={iconClass} />
-                          <span className={labelClass}>Khác</span>
-                          <UnreadBadge on="settings" />
+                          <span className={labelClass}>Cài Đặt</span>
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="top">
-                  <p>Cài Đặt, Thư & Khác</p>
+                  <p>Cài Đặt & Khác</p>
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                  <DropdownMenuItem onSelect={onOpenMailModal}>
-                      <MailIcon className="mr-2 h-4 w-4" />
-                      <span>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount})`}</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onOpenLeaderboard}>
                       <ListOrdered className="mr-2 h-4 w-4" />
                       <span>Bảng Xếp Hạng</span>
@@ -395,20 +383,42 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </DropdownMenu>
           </div>
 
-          {/* Mobile: More Dropdown */}
+          {/* ---- Mobile Specific Buttons ---- */}
           <div className="block md:hidden">
+            <Tooltip>
+                <TooltipTrigger asChild>
+                <Button
+                    onClick={onOpenChatModal}
+                    variant="outline"
+                    className={cn(buttonBaseClass)}
+                    aria-label="Mở Trò Chuyện"
+                >
+                    <MessageSquare className={iconClass} />
+                    <span className={labelClass}>Chat</span>
+                </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                <p>Mở Trò Chuyện</p>
+                </TooltipContent>
+            </Tooltip>
+
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                       <Button
                           variant="outline"
-                          className={cn(buttonBaseClass)}
+                          className={cn(buttonBaseClass, "relative")}
                           aria-label="Thêm tùy chọn"
                       >
                           <Menu className={iconClass} />
                           <span className={labelClass}>Thêm</span>
-                          <UnreadBadge on="more" />
+                          {/* Badge on "More" if Mail has unread items */}
+                          {unreadMailCount > 0 && (
+                            <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
+                                {unreadMailCount > 9 ? '9+' : unreadMailCount}
+                            </Badge>
+                          )}
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -417,13 +427,13 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                <DropdownMenuItem onSelect={onOpenMailModal}>
-                    <MailIcon className="mr-2 h-4 w-4" />
-                    <span>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount})`}</span>
-                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onOpenProfile}>
                     <UserCircle2 className="mr-2 h-4 w-4" />
                     <span>Hồ Sơ</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={onOpenMailModal}>
+                    <MailIcon className="mr-2 h-4 w-4" />
+                    <span>Hộp Thư {unreadMailCount > 0 && `(${unreadMailCount})`}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onOpenLeaderboard}>
                     <ListOrdered className="mr-2 h-4 w-4" />
@@ -459,4 +469,3 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
-
