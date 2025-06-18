@@ -71,7 +71,7 @@ export const useGameLogic = () => {
   }, [toast]);
 
   useEffect(() => {
-    setFertilizerData(FALLBACK_FERTILIZER_DATA); 
+    setFertilizerData(FALLBACK_FERTILIZER_DATA);
     setFertilizerDataLoaded(true);
   }, []);
 
@@ -176,7 +176,7 @@ export const useGameLogic = () => {
           const validatedInventory: GameState['inventory'] = {};
           ALL_SEED_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
           ALL_CROP_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
-          ALL_FERTILIZER_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0); 
+          ALL_FERTILIZER_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
 
           if (firestoreData.inventory && typeof firestoreData.inventory === 'object') {
             for (const key in firestoreData.inventory) {
@@ -564,34 +564,19 @@ export const useGameLogic = () => {
       toast({ title: "Lỗi Dữ Liệu Cây Trồng", description: "Không tìm thấy chi tiết cây trồng.", variant: "destructive" });
       return;
     }
-    
+
     const tierGrowthReduction = currentTierInfo.growthTimeReductionPercent;
-    
-    // Calculate total original growth time for the crop on this plot
-    const baseTimeToGrowing = cropDetail.timeToGrowing;
-    const baseTimeToReady = cropDetail.timeToReady;
 
     // Calculate effective growth time considering tier bonus
-    const effectiveTimeToGrowing = baseTimeToGrowing * (1 - tierGrowthReduction);
-    const effectiveTimeToReady = baseTimeToReady * (1 - tierGrowthReduction);
+    const effectiveTimeToGrowing = cropDetail.timeToGrowing * (1 - tierGrowthReduction);
+    const effectiveTimeToReady = cropDetail.timeToReady * (1 - tierGrowthReduction);
 
-    // Determine total time required based on current plot state
-    let totalTimeRequiredForCurrentStage;
-    if (plot.state === 'planted') {
-        totalTimeRequiredForCurrentStage = effectiveTimeToGrowing;
-    } else { // growing
-        totalTimeRequiredForCurrentStage = effectiveTimeToReady; // This is total time from planting to harvest ready
-    }
-    
-    const elapsedTime = Date.now() - plot.plantedAt;
     let remainingTime;
-
     if (plot.state === 'planted') {
         remainingTime = (plot.plantedAt + effectiveTimeToGrowing) - Date.now();
     } else { // 'growing'
         remainingTime = (plot.plantedAt + effectiveTimeToReady) - Date.now();
     }
-
 
     if (remainingTime <= 0) {
       toast({ title: "Cây Sẵn Sàng", description: "Cây đã sẵn sàng hoặc đã thu hoạch, không cần bón phân.", variant: "default" });
@@ -602,8 +587,9 @@ export const useGameLogic = () => {
 
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
-        if (p.id === plotId && p.plantedAt) { 
-          return { ...p, plantedAt: p.plantedAt + timeReductionAmount }; 
+        if (p.id === plotId && p.plantedAt) {
+          // Subtracting timeReductionAmount makes the plant effectively "older"
+          return { ...p, plantedAt: p.plantedAt - timeReductionAmount };
         }
         return p;
       });
@@ -624,10 +610,12 @@ export const useGameLogic = () => {
     sellItem,
     unlockPlot,
     updateDisplayName,
-    applyFertilizer, 
+    applyFertilizer,
     isInitialized,
     playerTierInfo,
     cropData,
-    fertilizerData, 
+    fertilizerData,
   };
 };
+
+    
