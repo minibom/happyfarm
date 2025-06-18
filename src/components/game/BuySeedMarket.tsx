@@ -10,15 +10,15 @@ import type { MarketItem, InventoryItem, CropId, CropDetails, MarketPriceData, M
 import { getPlayerTierInfo } from '@/lib/constants';
 
 interface BuySeedMarketProps {
-  seedsToDisplay: MarketItem[]; // This now includes dynamic price from MarketModal
+  seedsToDisplay: MarketItem[];
   playerGold: number;
-  onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
-  cropData: Record<CropId, CropDetails> | null; // For detailed info not in MarketItem
+  onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void; // Still needed for parent's transaction logic
+  cropData: Record<CropId, CropDetails> | null;
   playerTier: number;
   quantities: Record<InventoryItem, number>;
   onQuantityButtonClick: (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => void;
   onQuantityInputChange: (itemId: InventoryItem, value: string, type: 'seed' | 'crop', itemUnlockTier: number) => void;
-  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
+  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>; // To clear after transaction by parent
   marketPrices: MarketPriceData;
   priceChanges: MarketPriceChange;
   marketEvent: MarketEventData | null;
@@ -42,7 +42,7 @@ const formatMillisecondsToTime = (ms: number): string => {
     formattedTime += `${String(minutes).padStart(2, '0')}m `;
   }
   formattedTime += `${String(seconds).padStart(2, '0')}s`;
-  
+
   return formattedTime.trim();
 };
 
@@ -50,12 +50,12 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
   seedsToDisplay,
   playerGold,
   onBuyItem,
-  cropData, // Now primarily for non-price details
+  cropData,
   playerTier,
   quantities,
   onQuantityButtonClick,
   onQuantityInputChange,
-  setQuantities,
+  setQuantities, // Keep setQuantities for potential direct manipulation if needed, though parent handles clearing now
   marketPrices,
   priceChanges,
   marketEvent,
@@ -68,8 +68,8 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
           const quantity = quantities[item.id] || 0;
           const isLockedForPurchase = playerTier < item.unlockTier;
           const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
-          
-          const itemDetails = getItemDetails(item.id); // Get base details
+
+          const itemDetails = getItemDetails(item.id);
           if (!itemDetails || !cropData) return null;
 
           const currentPrice = marketPrices[item.id] ?? itemDetails.basePrice;
@@ -79,11 +79,9 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
           }
           const finalPrice = eventAdjustedPrice;
 
-
           const priceChangePercent = priceChanges[item.id] || 0;
-
           const itemIcon = itemDetails.icon || <Wheat className="w-8 h-8 text-yellow-600"/>;
-          const cropDetailFromData = cropData[item.id.replace('Seed', '') as CropId]; // For timeToGrow etc.
+          const cropDetailFromData = cropData[item.id.replace('Seed', '') as CropId];
           const totalHarvestTime = cropDetailFromData ? cropDetailFromData.timeToGrowing + cropDetailFromData.timeToReady : 0;
           const formattedHarvestTime = formatMillisecondsToTime(totalHarvestTime);
 
@@ -135,17 +133,7 @@ const BuySeedMarket: FC<BuySeedMarketProps> = ({
                   </Button>
                 </div>
               </CardContent>
-              <Button
-                size="sm"
-                onClick={() => {
-                  onBuyItem(item.id, quantity, finalPrice); // Use finalPrice for transaction
-                  setQuantities(prev => ({ ...prev, [item.id]: 0 }));
-                }}
-                disabled={isLockedForPurchase || quantity === 0 || playerGold < finalPrice * quantity}
-                className="w-full rounded-t-none bg-accent hover:bg-accent/90 text-xs py-1 h-auto"
-              >
-                Mua
-              </Button>
+              {/* Individual Buy Button Removed */}
             </Card>
           );
         })}

@@ -13,12 +13,12 @@ import { Badge } from '@/components/ui/badge';
 interface BuyFertilizerMarketProps {
   fertilizersToDisplay: FertilizerDetails[];
   playerGold: number;
-  onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void;
+  onBuyItem: (itemId: InventoryItem, quantity: number, price: number) => void; // Still needed for parent's transaction logic
   playerTier: number;
   quantities: Record<InventoryItem, number>;
   onQuantityButtonClick: (itemId: InventoryItem, delta: number, type: 'fertilizer', itemUnlockTier: number) => void;
   onQuantityInputChange: (itemId: InventoryItem, value: string, type: 'fertilizer', itemUnlockTier: number) => void;
-  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
+  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>; // To clear after transaction by parent
 }
 
 const BuyFertilizerMarket: FC<BuyFertilizerMarketProps> = ({
@@ -29,7 +29,7 @@ const BuyFertilizerMarket: FC<BuyFertilizerMarketProps> = ({
   quantities,
   onQuantityButtonClick,
   onQuantityInputChange,
-  setQuantities,
+  setQuantities, // Keep for consistency, parent handles clearing
 }) => {
   return (
     <TooltipProvider>
@@ -38,7 +38,7 @@ const BuyFertilizerMarket: FC<BuyFertilizerMarketProps> = ({
           const quantity = quantities[item.id] || 0;
           const isLockedForPurchase = playerTier < item.unlockTier;
           const requiredTierInfo = isLockedForPurchase ? getPlayerTierInfo( (item.unlockTier-1) * 10 +1 ) : null;
-          const finalPrice = item.price; // Static price for fertilizers
+          const finalPrice = item.price;
 
           return (
             <Card key={item.id} className={cn("overflow-hidden shadow-md flex flex-col", isLockedForPurchase && "bg-muted/60 opacity-70")}>
@@ -92,17 +92,7 @@ const BuyFertilizerMarket: FC<BuyFertilizerMarketProps> = ({
                   </Button>
                 </div>
               </CardContent>
-              <Button
-                size="sm"
-                onClick={() => {
-                  onBuyItem(item.id, quantity, finalPrice);
-                  setQuantities(prev => ({ ...prev, [item.id]: 0 }));
-                }}
-                disabled={isLockedForPurchase || quantity === 0 || playerGold < finalPrice * quantity}
-                className="w-full rounded-t-none bg-blue-500 hover:bg-blue-600 text-xs py-1 h-auto text-white"
-              >
-                Mua
-              </Button>
+              {/* Individual Buy Button Removed */}
             </Card>
           );
         })}

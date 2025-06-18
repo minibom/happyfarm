@@ -8,14 +8,14 @@ import type { MarketItem, InventoryItem, CropId, CropDetails, MarketPriceData, M
 import { cn } from '@/lib/utils';
 
 interface SellCropMarketProps {
-  cropsToSell: MarketItem[]; // Includes dynamic price from MarketModal
+  cropsToSell: MarketItem[];
   playerInventory: Record<InventoryItem, number>;
-  onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void;
+  onSellItem: (itemId: InventoryItem, quantity: number, price: number) => void; // Still needed for parent's transaction logic
   cropData: Record<CropId, CropDetails> | null;
   quantities: Record<InventoryItem, number>;
   onQuantityButtonClick: (itemId: InventoryItem, delta: number, type: 'seed' | 'crop', itemUnlockTier: number) => void;
   onQuantityInputChange: (itemId: InventoryItem, value: string, type: 'seed' | 'crop', itemUnlockTier: number) => void;
-  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>;
+  setQuantities: React.Dispatch<React.SetStateAction<Record<InventoryItem, number>>>; // To clear after transaction by parent
   marketPrices: MarketPriceData;
   priceChanges: MarketPriceChange;
   marketEvent: MarketEventData | null;
@@ -30,7 +30,7 @@ const SellCropMarket: FC<SellCropMarketProps> = ({
   quantities,
   onQuantityButtonClick,
   onQuantityInputChange,
-  setQuantities,
+  setQuantities, // Keep for consistency, parent handles clearing
   marketPrices,
   priceChanges,
   marketEvent,
@@ -86,17 +86,7 @@ const SellCropMarket: FC<SellCropMarketProps> = ({
                     <PlusCircle className="w-5 h-5" />
                   </Button>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    onSellItem(item.id, quantity, finalPrice); // Use finalPrice for transaction
-                    setQuantities(prev => ({ ...prev, [item.id]: 0 }));
-                  }}
-                  disabled={quantity === 0 || (playerInventory[item.id] || 0) < quantity}
-                  className='bg-blue-500 hover:bg-blue-500/90'
-                >
-                  Bán
-                </Button>
+                {/* Individual Sell Button Removed */}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Bạn có: {playerInventory[item.id] || 0}</p>
             </CardContent>
