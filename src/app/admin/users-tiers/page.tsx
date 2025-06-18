@@ -1,15 +1,16 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { AdminUserView, GameState } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardHeader, CardTitle, CardDescription
+import { useState, useEffect, useCallback } from 'react';
+import type { AdminUserView, GameState, TierDataFromFirestore } from '@/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart3, DollarSign, TrendingUp, Zap } from 'lucide-react'; // Added DollarSign, TrendingUp, Zap
+import { Loader2, Users, BarChart3, DollarSign, TrendingUp, Zap, Eye, Edit } from 'lucide-react';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
+import { TierActionModal } from '@/components/admin/TierActionModal'; // Import TierActionModal
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore'; // Added setDoc
 import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import {
@@ -22,23 +23,22 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getPlayerTierInfo } from '@/lib/constants';
-import { Eye } from 'lucide-react'; // Explicitly import Eye if it was missing
 
 type ActiveView = 'users' | 'tiers';
 
 const maskEmail = (email?: string): string => {
   if (!email) return 'N/A';
   const [localPart, domain] = email.split('@');
-  if (!domain || localPart.length === 0) return email; 
+  if (!domain || localPart.length === 0) return email;
   const maskedLocal = localPart.length > 3 ? `${localPart.substring(0, 3)}***` : `${localPart[0]}***`;
   return `${maskedLocal}@${domain}`;
 };
 
 const UsersManagementView = () => {
-  const [allUsers, setAllUsers] = useState<AdminUserView[]>([]); // Store all fetched users
-  const [filteredUsers, setFilteredUsers] = useState<AdminUserView[]>([]); // Store users after filtering
+  const [allUsers, setAllUsers] = useState<AdminUserView[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<AdminUserView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserView | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'banned_chat'>('all');
@@ -46,15 +46,13 @@ const UsersManagementView = () => {
 
   useEffect(() => {
     const usersCollectionRef = collection(db, 'users');
-    // Querying by lastLogin on the top-level 'users' collection.
-    // Ensure 'lastLogin' field exists and is indexed on 'users/{uid}' documents.
     const q = query(usersCollectionRef, orderBy('lastLogin', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedUsersList: AdminUserView[] = [];
       for (const userDoc of snapshot.docs) {
         const uid = userDoc.id;
-        const baseUserData = userDoc.data(); // Data from users/{uid}
+        const baseUserData = userDoc.data();
 
         const gameStateRef = doc(db, 'users', uid, 'gameState', 'data');
         const gameStateSnap = await getDoc(gameStateRef);
@@ -65,20 +63,18 @@ const UsersManagementView = () => {
           const gameState = gameStateSnap.data() as GameState;
           userView = {
             uid,
-            email: gameState.email || baseUserData.email, 
+            email: gameState.email || baseUserData.email,
             displayName: gameState.displayName || baseUserData.displayName,
-            ...gameState, 
-            // Ensure lastLogin from top-level is used for consistency if available and more recent
+            ...gameState,
             lastLogin: baseUserData.lastLogin?.toMillis?.() || gameState.lastLogin,
           };
         } else {
-           // Fallback if gameState subcollection doesn't exist
            userView = {
             uid,
             email: baseUserData.email || undefined,
             displayName: baseUserData.displayName || undefined,
-            ...INITIAL_GAME_STATE, 
-            level: baseUserData.level || INITIAL_GAME_STATE.level, // Prioritize baseUserData if available
+            ...INITIAL_GAME_STATE,
+            level: baseUserData.level || INITIAL_GAME_STATE.level,
             gold: baseUserData.gold || INITIAL_GAME_STATE.gold,
             xp: baseUserData.xp || INITIAL_GAME_STATE.xp,
             lastLogin: baseUserData.lastLogin?.toMillis?.() || INITIAL_GAME_STATE.lastLogin,
@@ -89,7 +85,7 @@ const UsersManagementView = () => {
         fetchedUsersList.push(userView);
       }
       setAllUsers(fetchedUsersList);
-      setIsLoading(false); 
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Lỗi Tải Người Dùng", description: "Không thể tải danh sách người dùng.", variant: "destructive" });
@@ -101,7 +97,6 @@ const UsersManagementView = () => {
   }, [toast]);
 
   useEffect(() => {
-    // Apply filters whenever allUsers, searchTerm, or filterStatus changes
     let currentFilteredUsers = allUsers;
     if (searchTerm) {
       currentFilteredUsers = currentFilteredUsers.filter(user =>
@@ -119,7 +114,7 @@ const UsersManagementView = () => {
 
   const handleViewDetails = (user: AdminUserView) => {
     setSelectedUser(user);
-    setIsModalOpen(true);
+    setIsUserModalOpen(true);
   };
 
   const handleUserAction = async (userId: string, action: 'delete' | 'toggle_ban_chat' | 'view_game_state' | 'reset_progress' | 'grant_items') => {
@@ -129,7 +124,6 @@ const UsersManagementView = () => {
     if (action === 'toggle_ban_chat') {
       const newStatus = userToUpdate.status === 'active' ? 'banned_chat' : 'active';
       try {
-        // Update status in both top-level user doc and gameState subcollection for consistency
         const userDocRef = doc(db, 'users', userId);
         await updateDoc(userDocRef, { status: newStatus });
         
@@ -144,7 +138,7 @@ const UsersManagementView = () => {
           description: `Người dùng ${userToUpdate.displayName || userToUpdate.email} đã được ${newStatus === 'active' ? 'bỏ cấm chat' : 'cấm chat'}.`,
           className: "bg-green-500 text-white"
         });
-        setIsModalOpen(false); 
+        setIsUserModalOpen(false);
       } catch (err) {
         console.error("Error updating user status:", err);
         toast({ title: "Lỗi", description: "Không thể cập nhật trạng thái người dùng.", variant: "destructive"});
@@ -157,13 +151,13 @@ const UsersManagementView = () => {
   };
 
   const getEmptyStateMessage = () => {
-    if (allUsers.length === 0) {
+    if (allUsers.length === 0 && !isLoading) {
       return "Hệ thống chưa có người dùng nào.";
     }
-    if (filteredUsers.length === 0) {
+    if (filteredUsers.length === 0 && !isLoading) {
       return "Không tìm thấy người dùng nào khớp với bộ lọc của bạn.";
     }
-    return "Không tìm thấy người dùng nào khớp."; // Fallback, should not be reached if logic is correct
+    return "Không tìm thấy người dùng nào khớp.";
   };
 
   return (
@@ -245,8 +239,8 @@ const UsersManagementView = () => {
       )}
       {selectedUser && (
         <UserDetailModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          isOpen={isUserModalOpen}
+          onClose={() => setIsUserModalOpen(false)}
           userData={selectedUser}
           onAction={handleUserAction}
         />
@@ -258,34 +252,139 @@ const UsersManagementView = () => {
 interface TierDisplayData extends TierDetail {
   tierNumber: number;
   levelRange: string;
+  id: string; // Firestore document ID like "tier_1"
 }
 
 const TiersManagementView = () => {
-  const tierData: TierDisplayData[] = TIER_DATA.map((tierDetail, index) => {
-    const tierNumber = index + 1;
-    const startLevel = tierDetail.levelStart;
-    let endLevelText;
-    if (tierNumber < TIER_DATA.length) {
-      endLevelText = TIER_DATA[tierNumber].levelStart - 1;
-    } else {
-      endLevelText = "trở lên";
-    }
-    
-    let levelRange = `Cấp ${startLevel}`;
-    if (typeof endLevelText === 'number') {
-        if (endLevelText >= startLevel) {
-             levelRange += ` - ${endLevelText}`;
-        }
-    } else {
-        levelRange += ` ${endLevelText}`;
-    }
+  const [tiersFromFirestore, setTiersFromFirestore] = useState<TierDisplayData[]>([]);
+  const [isLoadingTiers, setIsLoadingTiers] = useState(true);
+  const [isTierModalOpen, setIsTierModalOpen] = useState(false);
+  const [tierModalProps, setTierModalProps] = useState<React.ComponentProps<typeof TierActionModal> | null>(null);
+  const { toast } = useToast();
 
-    return {
-      ...tierDetail,
-      tierNumber,
-      levelRange,
-    };
-  });
+  useEffect(() => {
+    const tiersCollectionRef = collection(db, 'gameTiers');
+    const unsubscribe = onSnapshot(tiersCollectionRef, (snapshot) => {
+      const fetchedTiers: Partial<Record<string, TierDataFromFirestore>> = {};
+      snapshot.forEach(docSnap => {
+        fetchedTiers[docSnap.id] = docSnap.data() as TierDataFromFirestore;
+      });
+
+      // Combine with TIER_DATA from constants to ensure all tiers are represented
+      // and to get levelStart for range calculation.
+      const combinedTierData = TIER_DATA.map((constantTier, index) => {
+        const tierId = `tier_${index + 1}`;
+        const firestoreData = fetchedTiers[tierId] || {};
+        return {
+          id: tierId,
+          tierNumber: index + 1,
+          name: firestoreData.name || constantTier.name,
+          icon: firestoreData.icon || constantTier.icon,
+          colorClass: firestoreData.colorClass || constantTier.colorClass,
+          levelStart: constantTier.levelStart, // Base levelStart from constant
+          xpBoostPercent: firestoreData.xpBoostPercent !== undefined ? firestoreData.xpBoostPercent : constantTier.xpBoostPercent,
+          sellPriceBoostPercent: firestoreData.sellPriceBoostPercent !== undefined ? firestoreData.sellPriceBoostPercent : constantTier.sellPriceBoostPercent,
+          growthTimeReductionPercent: firestoreData.growthTimeReductionPercent !== undefined ? firestoreData.growthTimeReductionPercent : constantTier.growthTimeReductionPercent,
+        };
+      });
+
+      // Calculate levelRange after combining and sorting
+      const finalTierDisplayData = combinedTierData
+        .sort((a,b) => a.levelStart - b.levelStart) // Ensure sorted by levelStart
+        .map((tier, index, allTiers) => {
+          let endLevelText;
+          if (index < allTiers.length - 1) {
+            endLevelText = allTiers[index + 1].levelStart - 1;
+          } else {
+            endLevelText = "trở lên";
+          }
+          let levelRange = `Cấp ${tier.levelStart}`;
+          if (typeof endLevelText === 'number') {
+            if (endLevelText >= tier.levelStart) {
+                levelRange += ` - ${endLevelText}`;
+            }
+          } else {
+            levelRange += ` ${endLevelText}`;
+          }
+          return { ...tier, levelRange };
+      });
+
+      setTiersFromFirestore(finalTierDisplayData);
+      setIsLoadingTiers(false);
+    }, (error) => {
+      console.error("Error fetching tiers from Firestore:", error);
+      toast({ title: "Lỗi Tải Dữ Liệu Bậc", description: "Không thể tải dữ liệu cấp bậc. Hiển thị dữ liệu mặc định.", variant: "destructive" });
+      // Fallback to display TIER_DATA from constants if Firestore fails
+      const constantDisplayData = TIER_DATA.map((tierDetail, index) => {
+          const tierNumber = index + 1;
+          const startLevel = tierDetail.levelStart;
+          let endLevelText;
+          if (tierNumber < TIER_DATA.length) {
+            endLevelText = TIER_DATA[tierNumber].levelStart - 1;
+          } else {
+            endLevelText = "trở lên";
+          }
+          let levelRange = `Cấp ${startLevel}`;
+          if (typeof endLevelText === 'number') {
+              if (endLevelText >= startLevel) { levelRange += ` - ${endLevelText}`; }
+          } else { levelRange += ` ${endLevelText}`; }
+          return { ...tierDetail, tierNumber, levelRange, id: `tier_${tierNumber}` };
+      });
+      setTiersFromFirestore(constantDisplayData);
+      setIsLoadingTiers(false);
+    });
+    return () => unsubscribe();
+  }, [toast]);
+
+
+  const openTierModal = (mode: 'view' | 'edit', tier: TierDisplayData) => {
+    setTierModalProps({
+      isOpen: true,
+      onClose: () => setIsTierModalOpen(false),
+      mode,
+      tierData: tier, // Pass the full tier data which includes potentially modified fields
+      tierId: tier.id,
+      onSave: handleTierSaveChanges,
+    });
+    setIsTierModalOpen(true);
+  };
+
+  const handleTierSaveChanges = async (data: TierDataFromFirestore, idToSave: string) => {
+    try {
+      const tierRef = doc(db, 'gameTiers', idToSave);
+      // Firestore expects plain objects, ensure data doesn't have extra derived fields if any
+      const dataToSave: Partial<TierDataFromFirestore> = {
+        name: data.name,
+        icon: data.icon,
+        colorClass: data.colorClass,
+        xpBoostPercent: data.xpBoostPercent,
+        sellPriceBoostPercent: data.sellPriceBoostPercent,
+        growthTimeReductionPercent: data.growthTimeReductionPercent,
+        // levelStart is not saved from modal as it's fixed by TIER_DATA for ID mapping
+      };
+
+      await setDoc(tierRef, dataToSave, { merge: true }); // Use merge to only update provided fields
+      toast({
+        title: "Thành Công!",
+        description: `Đã cập nhật thông tin cho ${data.name}.`,
+        className: "bg-green-500 text-white"
+      });
+    } catch (error) {
+      console.error("Error saving tier data:", error);
+      toast({ title: "Lỗi Lưu Trữ", description: "Không thể lưu thay đổi cho bậc.", variant: "destructive" });
+    }
+    setIsTierModalOpen(false);
+  };
+
+
+  if (isLoadingTiers) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-xl">Đang tải danh sách cấp bậc...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -297,11 +396,12 @@ const TiersManagementView = () => {
             <TableHead>Tên Bậc</TableHead>
             <TableHead className="w-[150px]">Cấp Độ Yêu Cầu</TableHead>
             <TableHead className="w-[250px]">Lợi Ích (Buff)</TableHead>
+            <TableHead className="text-center w-[80px]">Hành động</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tierData.map((tier) => (
-            <TableRow key={tier.tierNumber}>
+          {tiersFromFirestore.map((tier) => (
+            <TableRow key={tier.id}>
               <TableCell className="text-center">
                 <Badge variant="outline" className={cn("text-sm px-2 py-1 font-semibold", tier.colorClass, "border-current")}>
                   {tier.tierNumber}
@@ -332,10 +432,18 @@ const TiersManagementView = () => {
                   )}
                 </div>
               </TableCell>
+              <TableCell className="text-center">
+                <Button variant="ghost" size="icon" onClick={() => openTierModal('edit', tier)} className="hover:text-blue-600" title="Chỉnh sửa Bậc">
+                  <Edit className="h-5 w-5" />
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+      {isTierModalOpen && tierModalProps && (
+        <TierActionModal {...tierModalProps} />
+      )}
     </div>
   );
 };
@@ -346,17 +454,7 @@ export default function AdminUsersTiersPage() {
 
   return (
     <Card className="shadow-xl flex flex-col flex-1 min-h-0">
-      <CardHeader className="p-6 pb-4"> {/* Keep CardHeader for overall page title if desired, or remove if title is in AdminLayout */}
-          <CardTitle className="text-2xl font-bold text-primary">
-            {activeView === 'users' ? 'Quản Lý Người Dùng' : 'Quản Lý Cấp Bậc'}
-          </CardTitle>
-          <CardDescription>
-            {activeView === 'users' 
-              ? 'Xem, tìm kiếm và quản lý người dùng trong hệ thống.' 
-              : 'Xem lại thông tin chi tiết về các cấp bậc trong game.'}
-          </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0"> {/* Ensure CardContent allows flex grow */}
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6">
         <div className="flex border-b mb-4 shrink-0">
           <Button
             variant="ghost"
@@ -386,4 +484,4 @@ export default function AdminUsersTiersPage() {
     </Card>
   );
 }
-
+    
