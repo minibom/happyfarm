@@ -56,6 +56,35 @@ const eventTypes: GameEventType[] = [
 //     'ALL_CROPS', 'ALL_SEEDS', 'ALL_FERTILIZERS'
 // ];
 
+const formatTimestampForDisplay = (timestamp: any): string => {
+    if (!timestamp) return 'N/A';
+    if (timestamp.toDate) { // Check if it's a Firestore Timestamp
+      return format(timestamp.toDate(), "HH:mm 'ngày' dd/MM/yyyy");
+    }
+    try {
+      return format(new Date(timestamp), "HH:mm 'ngày' dd/MM/yyyy");
+    } catch (e) {
+      return 'Ngày không hợp lệ';
+    }
+  };
+
+const formatEffectsForMail = (effects: GameEventEffect[]): string => {
+    if (!effects || effects.length === 0) return "Không có hiệu ứng đặc biệt.";
+    return effects.map(eff => {
+        let target = "Tất cả";
+        if (Array.isArray(eff.affectedItemIds)) target = eff.affectedItemIds.join(', ');
+        else if (eff.affectedItemIds) target = eff.affectedItemIds.replace('ALL_', '').toLowerCase();
+
+        let effectDesc = eff.type.replace(/_/g, ' ').toLowerCase();
+        if (eff.type.includes('PRICE_MODIFIER')) {
+            effectDesc += ` (${((eff.value - 1) * 100).toFixed(0)}%)`;
+        } else { // for time reduction
+            effectDesc += ` (${(eff.value * 100).toFixed(0)}%)`;
+        }
+        return `- ${effectDesc} cho ${target}`;
+    }).join('\n');
+  };
+
 export const EventActionModal: FC<EventModalProps> = ({
     isOpen,
     onClose,
@@ -72,7 +101,7 @@ export const EventActionModal: FC<EventModalProps> = ({
   const [currentEffectType, setCurrentEffectType] = useState<GameEventType>(eventTypes[0]);
   const [currentEffectValue, setCurrentEffectValue] = useState<number>(0.1);
   const [currentAffectedItems, setCurrentAffectedItems] = useState<string>('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('__clear_event_template__');
 
 
   const { toast } = useToast();
@@ -80,17 +109,17 @@ export const EventActionModal: FC<EventModalProps> = ({
   useEffect(() => {
     setFormData(initialEventData);
     setCurrentEventId(mode === 'create' ? initialEventData.id : initialEventId);
-    setSelectedTemplateId('');
+    setSelectedTemplateId('__clear_event_template__');
   }, [initialEventData, initialEventId, mode]);
 
   const handleTemplateChange = (templateIdValue: string) => {
     if (templateIdValue === "__clear_event_template__") {
-        setSelectedTemplateId('');
+        setSelectedTemplateId('__clear_event_template__');
         const now = Timestamp.now();
         const oneDayLater = Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000);
         setFormData(prev => ({
             ...prev,
-            id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`,
+            id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`, // Reset ID if not creating
             name: 'Sự Kiện Mới',
             description: 'Mô tả sự kiện...',
             effects: [],
@@ -113,9 +142,9 @@ export const EventActionModal: FC<EventModalProps> = ({
             id: newEventId || `event_tpl_${template.id}_${Date.now().toString().slice(-4)}`,
             name: template.templateName,
             description: template.description,
-            effects: template.defaultEffects.map(eff => ({...eff})),
-            startTime: formData.startTime || now,
-            endTime: formData.endTime || Timestamp.fromMillis((formData.startTime || now).toMillis() + durationMillis),
+            effects: template.defaultEffects.map(eff => ({...eff})), // Deep copy effects
+            startTime: prev.startTime || now, // Preserve existing times if editing, else use now
+            endTime: prev.endTime || Timestamp.fromMillis((prev.startTime || now).toMillis() + durationMillis),
             configId: template.id,
             isActive: prev.isActive !== undefined ? prev.isActive : true,
         }));
@@ -208,44 +237,34 @@ export const EventActionModal: FC<EventModalProps> = ({
     onClose();
   };
   
-  const formatTimestampForDisplay = (timestamp: any): string => {
-    if (!timestamp) return 'N/A';
-    if (timestamp.toDate) { // Check if it's a Firestore Timestamp
-      return format(timestamp.toDate(), "dd/MM/yyyy HH:mm");
-    }
-    try {
-      return format(new Date(timestamp), "dd/MM/yyyy HH:mm");
-    } catch (e) {
-      return 'Ngày không hợp lệ';
-    }
-  };
-
-  const getEffectSummaryForMail = (effects: GameEventEffect[]): string => {
-    if (!effects || effects.length === 0) return "Không có hiệu ứng đặc biệt.";
-    return effects.map(eff => {
-        let target = "Tất cả";
-        if (Array.isArray(eff.affectedItemIds)) target = eff.affectedItemIds.join(', ');
-        else if (eff.affectedItemIds) target = eff.affectedItemIds.replace('ALL_', '').toLowerCase();
-
-        let effectDesc = eff.type.replace(/_/g, ' ').toLowerCase();
-        if (eff.type.includes('PRICE_MODIFIER')) {
-            effectDesc += ` (${((eff.value - 1) * 100).toFixed(0)}%)`;
-        } else { // for time reduction
-            effectDesc += ` (${(eff.value * 100).toFixed(0)}%)`;
-        }
-        return `- ${effectDesc} cho ${target}`;
-    }).join('\n');
-  };
-
-
   const handleSendNotificationMail = () => {
-    const subject = `Thông Báo Sự Kiện: ${formData.name}`;
-    const body = `Chào các Nông Dân,\n\nSự kiện "${formData.name}" sẽ diễn ra!\n\n${formData.description}\n\nThời gian:\n- Bắt đầu: ${formatTimestampForDisplay(formData.startTime)}\n- Kết thúc: ${formatTimestampForDisplay(formData.endTime)}\n\nHiệu ứng chính:\n${getEffectSummaryForMail(formData.effects)}\n\nHãy tham gia và nhận những phần quà hấp dẫn nhé!\n\nTrân trọng,\nBQT Happy Farm`;
+    let baseSubject = "Thông Báo Sự Kiện Đặc Biệt!";
+    let baseBody = "Chào các Nông Dân,\n\nMột sự kiện mới vừa được triển khai:\n\nTên sự kiện: {{eventName}}\n\nMô tả: {{eventDescription}}\n\nThời gian:\n- Bắt đầu: {{startTime}}\n- Kết thúc: {{endTime}}\n\nHiệu ứng chính:\n{{effectsSummary}}\n\nHãy tham gia và nhận những phần quà hấp dẫn nhé!";
 
-    localStorage.setItem('happyFarmAdminMailDraftFromEvent', JSON.stringify({ subject, body }));
-    localStorage.setItem('happyFarmAdminMailDraftSource', 'event'); // Flag to switch tab
+    if (formData.configId) {
+        const template = eventTemplates.find(t => t.id === formData.configId);
+        if (template && template.defaultMailSubject && template.defaultMailBody) {
+            baseSubject = template.defaultMailSubject;
+            baseBody = template.defaultMailBody;
+        }
+    }
+
+    // Replace placeholders
+    let finalSubject = baseSubject.replace(/{{eventName}}/g, formData.name);
+    
+    let finalBody = baseBody
+        .replace(/{{eventName}}/g, formData.name)
+        .replace(/{{eventDescription}}/g, formData.description)
+        .replace(/{{startTime}}/g, formatTimestampForDisplay(formData.startTime))
+        .replace(/{{endTime}}/g, formatTimestampForDisplay(formData.endTime))
+        .replace(/{{effectsSummary}}/g, formatEffectsForMail(formData.effects));
+
+    finalBody += "\n\nTrân trọng,\nBQT Happy Farm";
+
+    localStorage.setItem('happyFarmAdminMailDraftFromEvent', JSON.stringify({ subject: finalSubject, body: finalBody }));
+    localStorage.setItem('happyFarmAdminMailDraftSource', 'event');
     router.push('/admin/mail-bonuses');
-    onClose(); // Close the event modal
+    onClose();
   };
 
   const titleText = mode === 'create' ? 'Tạo Sự Kiện Mới' : mode === 'edit' ? `Chỉnh Sửa: ${initialEventData.name}` : `Chi Tiết: ${initialEventData.name}`;
@@ -317,7 +336,7 @@ export const EventActionModal: FC<EventModalProps> = ({
                         disabled={isReadOnly}
                     >
                         <Calendar className="mr-2 h-4 w-4" />
-                        {formData.startTime ? format(formData.startTime.toDate(), "dd/MM/yyyy HH:mm") : <span>Chọn ngày giờ</span>}
+                        {formData.startTime ? formatTimestampForDisplay(formData.startTime) : <span>Chọn ngày giờ</span>}
                     </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -348,7 +367,7 @@ export const EventActionModal: FC<EventModalProps> = ({
                         disabled={isReadOnly}
                     >
                         <Calendar className="mr-2 h-4 w-4" />
-                        {formData.endTime ? format(formData.endTime.toDate(), "dd/MM/yyyy HH:mm") : <span>Chọn ngày giờ</span>}
+                        {formData.endTime ? formatTimestampForDisplay(formData.endTime) : <span>Chọn ngày giờ</span>}
                     </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -373,12 +392,14 @@ export const EventActionModal: FC<EventModalProps> = ({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="isActive" className="text-right">Kích hoạt</Label>
-            <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} disabled={isReadOnly} />
-            {(mode === 'edit' || mode === 'view') && !isReadOnly && (
-                <Button onClick={handleSendNotificationMail} variant="outline" className="col-span-2 col-start-3 bg-teal-500 hover:bg-teal-600 text-white">
-                    <Mail className="mr-2 h-4 w-4" /> Gửi Mail Thông Báo
-                </Button>
-            )}
+            <div className="col-span-3 flex items-center gap-2">
+              <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} disabled={isReadOnly} />
+              {(mode === 'edit' || mode === 'view') && (
+                  <Button onClick={handleSendNotificationMail} variant="outline" className="bg-teal-500 hover:bg-teal-600 text-white ml-auto">
+                      <Mail className="mr-2 h-4 w-4" /> Gửi Mail Thông Báo
+                  </Button>
+              )}
+            </div>
           </div>
 
 
@@ -450,5 +471,3 @@ export const EventActionModal: FC<EventModalProps> = ({
     </Dialog>
   );
 };
-
-    

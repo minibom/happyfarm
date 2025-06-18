@@ -12,8 +12,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "⏱️",
-    defaultMailSubject: "Sự Kiện: Tăng Trưởng Nhanh!",
-    defaultMailBody: "Chào Nông Dân! Trong 24 giờ tới, tất cả cây trồng sẽ phát triển nhanh hơn 10%! Hãy tận dụng cơ hội này nhé!",
+    defaultMailSubject: "Sự Kiện: {{eventName}} Bắt Đầu!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nHãy tận dụng cơ hội này nhé!",
   },
   {
     id: "crop_growth_boost_major_weekend",
@@ -24,8 +24,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 48,
     icon: "🚀",
-    defaultMailSubject: "Cuối Tuần Bùng Nổ Tăng Trưởng!",
-    defaultMailBody: "Cuối tuần này, tất cả cây trồng sẽ lớn nhanh hơn 25%! Thời gian vàng để thu hoạch bội thu!",
+    defaultMailSubject: "Sự Kiện: {{eventName}} Bắt Đầu!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nThời gian vàng để thu hoạch bội thu!",
   },
   {
     id: "crop_growth_specific_tomato",
@@ -36,6 +36,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 72,
     icon: "🍅",
+    defaultMailSubject: "Sự Kiện: {{eventName}} Bắt Đầu!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nTrồng cà chua ngay nào!",
   },
   // --- Item Purchase Price Modifier (Reduction) ---
   {
@@ -47,6 +49,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "💰",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nMua hạt giống giá hời!",
   },
   {
     id: "seed_discount_tier1",
@@ -57,6 +61,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 48,
     icon: "💸",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nNhanh tay mua sắm!",
   },
   {
     id: "fertilizer_sale_basic",
@@ -67,6 +73,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 36,
     icon: "🛍️",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nĐừng bỏ lỡ!",
   },
   // --- Item Sell Price Modifier (Increase) ---
   {
@@ -78,6 +86,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "📈",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nCơ hội làm giàu!",
   },
   {
     id: "crop_sell_bonus_corn",
@@ -88,6 +98,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 72,
     icon: "🌽",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nNgô được giá, mau bán thôi!",
   },
   {
     id: "crop_sell_bonus_berries",
@@ -98,6 +110,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 48,
     icon: "🍓",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nDâu và việt quất đang có giá tốt!",
   },
   // --- Mixed Effects (Example) ---
   {
@@ -110,6 +124,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 72,
     icon: "🎉",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nCùng tham gia lễ hội nào!",
   },
   // --- More Examples ---
   {
@@ -122,6 +138,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 7 * 24, // 1 week
     icon: "🌸",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nMùa xuân đến rồi, gieo hạt thôi!",
   },
   {
     id: "fertilizer_tech_breakthrough",
@@ -132,6 +150,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 12,
     icon: "🧪",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nCơ hội vàng để tích trữ phân bón!",
   },
   {
     id: "market_demand_roots",
@@ -142,6 +162,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 36,
     icon: "🥔",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nCà rốt, khoai tây được giá!",
   },
   {
     id: "quick_grow_herbs",
@@ -152,6 +174,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "🌿",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nThu hoạch thảo dược siêu tốc!",
   },
   {
     id: "premium_fruit_market",
@@ -162,6 +186,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 48,
     icon: "🍎",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nTrái cây cao cấp giá tốt!",
   },
   {
     id: "exotic_crop_boost",
@@ -173,6 +199,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 72,
     icon: "🍍",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nDứa và dừa đang hot!",
   },
   {
     id: "flash_sale_seeds_tier3",
@@ -183,6 +211,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 6,
     icon: "⚡",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nSăn sale hạt giống bậc 3!",
   },
   {
     id: "bumper_harvest_vegetables",
@@ -193,6 +223,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "🧺",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nRau củ được mùa, được giá!",
   },
   {
     id: "rapid_growth_all_day",
@@ -203,6 +235,8 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 24,
     icon: "💨",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nCây lớn nhanh như thổi!",
   },
   {
     id: "end_of_season_clearance",
@@ -213,5 +247,7 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     ],
     defaultDurationHours: 12,
     icon: "📉",
+    defaultMailSubject: "Sự Kiện: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nXả kho hạt giống, giá cực rẻ!",
   },
 ];
