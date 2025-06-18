@@ -3,6 +3,7 @@
 export * from './game-config';
 export * from './tier-data';
 export * from './crop-data';
+export * from './fertilizer-data'; // Added export for fertilizer data
 export * from './initial-states';
 
 // Type re-exports are primarily handled by types/index.ts

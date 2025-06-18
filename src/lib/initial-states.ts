@@ -2,6 +2,7 @@
 import type { GameState, Plot, MarketState, SeedId, CropId } from '@/types';
 import { TOTAL_PLOTS, INITIAL_GOLD, INITIAL_XP, INITIAL_LEVEL, INITIAL_UNLOCKED_PLOTS } from './game-config';
 import { CROP_DATA, ALL_CROP_IDS, ALL_SEED_IDS } from './crop-data';
+import { ALL_FERTILIZER_IDS } from './fertilizer-data'; // Import fertilizer IDs
 
 // Initial game state structures
 export const INITIAL_PLOTS: Plot[] = Array.from({ length: TOTAL_PLOTS }, (_, i) => ({
@@ -18,6 +19,9 @@ ALL_SEED_IDS.forEach(seedId => {
 });
 ALL_CROP_IDS.forEach(cropId => {
   INITIAL_INVENTORY[cropId] = 0;
+});
+ALL_FERTILIZER_IDS.forEach(fertilizerId => { // Initialize fertilizers in inventory
+  INITIAL_INVENTORY[fertilizerId] = 0; // Start with 0 of each fertilizer
 });
 
 
@@ -48,6 +52,9 @@ ALL_CROP_IDS.forEach(cropId => {
     initialMarketPriceChanges[cropId] = 0;
   }
 });
+// Note: Fertilizers are not added to initial market prices here,
+// as they are "temp" and not immediately buyable via the market.
+// If they become buyable, their base prices from FERTILIZER_DATA would be added here.
 
 export const INITIAL_MARKET_STATE: MarketState = {
   prices: initialMarketPrices,

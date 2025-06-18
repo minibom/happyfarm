@@ -3,6 +3,7 @@ export type PlotState = 'empty' | 'planted' | 'growing' | 'ready_to_harvest' | '
 
 export type CropId = string;
 export type SeedId = `${string}Seed`;
+export type FertilizerId = string;
 
 export interface CropDetails {
   name: string;
@@ -11,9 +12,19 @@ export interface CropDetails {
   timeToGrowing: number;
   timeToReady: number;
   harvestYield: number;
-  seedPrice: number; // This will become the base/default price
-  cropPrice: number;  // This will become the base/default price
+  seedPrice: number;
+  cropPrice: number;
   unlockTier: number;
+}
+
+export interface FertilizerDetails {
+  id: FertilizerId;
+  name: string;
+  icon: string;
+  description: string;
+  unlockTier: number;
+  timeReductionPercent: number; // e.g., 0.1 for 10% of *remaining* time
+  price: number; // Placeholder for now
 }
 
 export interface Plot {
@@ -21,9 +32,10 @@ export interface Plot {
   state: PlotState;
   cropId?: CropId;
   plantedAt?: number;
+  // lastFertilizedAt?: number; // Could be used to prevent re-fertilizing too soon if needed
 }
 
-export type InventoryItem = CropId | SeedId;
+export type InventoryItem = CropId | SeedId | FertilizerId;
 export type Inventory = Record<InventoryItem, number>;
 
 export interface GameState {
@@ -64,40 +76,50 @@ export interface AdminUserView extends GameState {
 }
 
 // Types for Dynamic Market System
-export type MarketItemId = CropId | SeedId;
+export type MarketItemId = CropId | SeedId; // Fertilizers could be added here later if made buyable
 
 export interface MarketPriceData {
-  [itemId: string]: number; // Current price for the item
+  [itemId: string]: number;
 }
 
 export interface MarketPriceChange {
-  [itemId: string]: number; // Percentage change (e.g., 0.05 for +5%, -0.1 for -10%)
+  [itemId:string]: number;
 }
 
 export interface MarketEventData {
   isActive: boolean;
   eventName: string;
   description: string;
-  itemId?: MarketItemId; // Optional: event might affect a specific item or be general
-  priceModifier?: number; // e.g., 1.2 for +20% price, 0.8 for -20%
-  effectDescription?: string; // e.g. "Giá bán cà chua tăng 20%"
-  expiresAt?: number; // Timestamp for when the event ends
+  itemId?: MarketItemId;
+  priceModifier?: number;
+  effectDescription?: string;
+  expiresAt?: number;
 }
 
 export interface MarketState {
   prices: MarketPriceData;
-  priceChanges: MarketPriceChange; // To show up/down arrows
+  priceChanges: MarketPriceChange;
   currentEvent: MarketEventData | null;
-  lastUpdated: number; // Timestamp of the last price update
+  lastUpdated: number;
 }
 
 export interface MarketActivityLog {
   logId?: string;
   itemId: MarketItemId;
   quantity: number;
-  pricePerUnit: number; // Price at which the transaction occurred
+  pricePerUnit: number;
   totalPrice: number;
   type: 'buy' | 'sell';
   userId: string;
-  timestamp: number; // Firestore server timestamp
+  timestamp: number;
+}
+
+// Used by MarketModal to prepare items for display
+export interface MarketItem {
+  id: InventoryItem;
+  name: string;
+  price: number;
+  type: 'seed' | 'crop'; // Could be expanded for fertilizer
+  unlockTier: number;
+  icon: string;
 }

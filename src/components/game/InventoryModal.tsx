@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Inventory, SeedId, CropId, CropDetails } from '@/types';
-import { PackageSearch, Wheat, Sprout, Clock, Coins } from 'lucide-react';
+import type { Inventory, SeedId, CropId, CropDetails, FertilizerId, FertilizerDetails } from '@/types';
+import { PackageSearch, Wheat, Sprout, Clock, Coins, Zap as FertilizerIcon } from 'lucide-react'; // Added FertilizerIcon
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,19 +22,23 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CROP_DATA, FERTILIZER_DATA, ALL_SEED_IDS, ALL_CROP_IDS, ALL_FERTILIZER_IDS } from '@/lib/constants'; // Ensure FERTILIZER_DATA and ALL_FERTILIZER_IDS are imported
 
 interface InventoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   inventory: Inventory;
-  cropData: Record<CropId, CropDetails> | null;
-  allSeedIds: SeedId[];
-  allCropIds: CropId[];
+  // cropData and fertilizerData are now sourced from constants directly
+  // cropData: Record<CropId, CropDetails> | null; // No longer needed as prop
+  // fertilizerData: Record<FertilizerId, FertilizerDetails> | null; // No longer needed as prop
+  // allSeedIds: SeedId[]; // No longer needed as prop
+  // allCropIds: CropId[]; // No longer needed as prop
+  // allFertilizerIds: FertilizerId[]; // No longer needed as prop
 }
 
 const formatMillisecondsToTime = (ms: number): string => {
   if (isNaN(ms) || ms <= 0) {
-    return '0s'; // Return '0s' for very short or zero durations
+    return '0s';
   }
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -54,11 +58,12 @@ const InventoryModal: FC<InventoryModalProps> = ({
     isOpen,
     onClose,
     inventory,
-    cropData,
-    allSeedIds,
-    allCropIds
 }) => {
-  if (!cropData) {
+  // Data is now sourced from constants
+  const cropData = CROP_DATA;
+  const fertilizerData = FERTILIZER_DATA;
+
+  if (!cropData || !fertilizerData) { // Should ideally always be available from constants
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-lg md:max-w-xl">
@@ -77,23 +82,33 @@ const InventoryModal: FC<InventoryModalProps> = ({
     );
   }
 
-  const seedsInInventory = allSeedIds.filter(id => (inventory[id] || 0) > 0);
-  const cropsInInventory = allCropIds.filter(id => (inventory[id] || 0) > 0);
+  const seedsInInventory = ALL_SEED_IDS.filter(id => (inventory[id] || 0) > 0);
+  const cropsInInventory = ALL_CROP_IDS.filter(id => (inventory[id] || 0) > 0);
+  const fertilizersInInventory = ALL_FERTILIZER_IDS.filter(id => (inventory[id] || 0) > 0);
 
-  const renderItemGrid = (items: Array<SeedId | CropId>, type: 'seed' | 'crop') => (
+  const renderItemGrid = (items: Array<SeedId | CropId | FertilizerId>, type: 'seed' | 'crop' | 'fertilizer') => (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-1">
       {items.map((itemId) => {
-        const itemDetails = type === 'seed'
-          ? cropData[itemId.replace('Seed', '') as CropId]
-          : cropData[itemId as CropId];
-        const displayName = type === 'seed' ? `${itemDetails?.name} (Hạt)` : itemDetails?.name;
-        const itemIcon = itemDetails?.icon || (type === 'seed' ? '🌱' : '❓');
+        let itemDetails: CropDetails | FertilizerDetails | undefined;
+        let displayName: string | undefined;
+        let itemIcon: string | undefined;
+
+        if (type === 'seed') {
+          itemDetails = cropData[itemId.replace('Seed', '') as CropId];
+          displayName = itemDetails ? `${itemDetails.name} (Hạt)` : 'Hạt Giống Lỗi';
+          itemIcon = itemDetails?.icon || '🌱';
+        } else if (type === 'crop') {
+          itemDetails = cropData[itemId as CropId];
+          displayName = itemDetails?.name || 'Nông Sản Lỗi';
+          itemIcon = itemDetails?.icon || '❓';
+        } else { // fertilizer
+          itemDetails = fertilizerData[itemId as FertilizerId];
+          displayName = itemDetails?.name || 'Phân Bón Lỗi';
+          itemIcon = itemDetails?.icon || '🧪';
+        }
+        
         const quantity = inventory[itemId] || 0;
-
         if (!itemDetails) return null;
-
-        const totalHarvestTime = itemDetails.timeToGrowing + itemDetails.timeToReady;
-        const formattedHarvestTime = formatMillisecondsToTime(totalHarvestTime);
 
         return (
           <TooltipProvider key={itemId} delayDuration={100}>
@@ -111,27 +126,41 @@ const InventoryModal: FC<InventoryModalProps> = ({
               </TooltipTrigger>
               <TooltipContent className="text-sm p-2 shadow-lg rounded-md bg-background border border-border">
                 <div className="font-bold text-primary mb-1">{displayName}</div>
-                {type === 'seed' && (
+                {type === 'seed' && (itemDetails as CropDetails) && (
                   <div className="space-y-0.5 text-xs">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span>TG Thu Hoạch: {formattedHarvestTime}</span>
+                      <span>TG Thu Hoạch: {formatMillisecondsToTime((itemDetails as CropDetails).timeToGrowing + (itemDetails as CropDetails).timeToReady)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Coins className="w-3.5 h-3.5 text-yellow-500" />
-                      <span>Giá Mua (Hạt): {itemDetails.seedPrice}</span>
+                      <span>Giá Mua (Hạt): {(itemDetails as CropDetails).seedPrice}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Coins className="w-3.5 h-3.5 text-green-500" />
-                      <span>Giá Bán (Nông Sản): {itemDetails.cropPrice}</span>
+                      <span>Giá Bán (Nông Sản): {(itemDetails as CropDetails).cropPrice}</span>
+                    </div>
+                     <div className="flex items-center gap-1">
+                       <Badge variant="outline" className="text-xs">Bậc {(itemDetails as CropDetails).unlockTier}</Badge>
                     </div>
                   </div>
                 )}
-                {type === 'crop' && (
+                {type === 'crop' && (itemDetails as CropDetails) && (
                   <div className="space-y-0.5 text-xs">
                     <div className="flex items-center gap-1">
                       <Coins className="w-3.5 h-3.5 text-green-500" />
-                      <span>Giá Bán: {itemDetails.cropPrice}</span>
+                      <span>Giá Bán: {(itemDetails as CropDetails).cropPrice}</span>
+                    </div>
+                     <div className="flex items-center gap-1">
+                       <Badge variant="outline" className="text-xs">Bậc {(itemDetails as CropDetails).unlockTier}</Badge>
+                    </div>
+                  </div>
+                )}
+                {type === 'fertilizer' && (itemDetails as FertilizerDetails) && (
+                  <div className="space-y-0.5 text-xs">
+                     <p>{(itemDetails as FertilizerDetails).description}</p>
+                     <div className="flex items-center gap-1">
+                       <Badge variant="outline" className="text-xs">Bậc {(itemDetails as FertilizerDetails).unlockTier}</Badge>
                     </div>
                   </div>
                 )}
@@ -146,7 +175,7 @@ const InventoryModal: FC<InventoryModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl">
+      <DialogContent className="sm:max-w-lg md:max-w-xl lg:max-w-2xl"> {/* Increased width for more items */}
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-headline">
             <PackageSearch className="w-7 h-7 text-primary" />
@@ -157,7 +186,7 @@ const InventoryModal: FC<InventoryModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] my-4 pr-1">
-          {(seedsInInventory.length === 0 && cropsInInventory.length === 0) && (
+          {(seedsInInventory.length === 0 && cropsInInventory.length === 0 && fertilizersInInventory.length === 0) && (
             <p className="text-muted-foreground text-center py-6">Kho đồ của bạn trống rỗng.</p>
           )}
 
@@ -171,11 +200,20 @@ const InventoryModal: FC<InventoryModalProps> = ({
           )}
 
           {cropsInInventory.length > 0 && (
-            <div>
+            <div className="mb-6">
               <h3 className="text-lg font-semibold mb-2 flex items-center gap-1.5 sticky top-0 bg-background/95 py-2 z-10 px-2 -mx-2 border-b">
                 <Wheat className="w-5 h-5 text-yellow-600" />Nông Sản
                 </h3>
               {renderItemGrid(cropsInInventory, 'crop')}
+            </div>
+          )}
+
+          {fertilizersInInventory.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-1.5 sticky top-0 bg-background/95 py-2 z-10 px-2 -mx-2 border-b">
+                <FertilizerIcon className="w-5 h-5 text-blue-500" />Phân Bón
+                </h3>
+              {renderItemGrid(fertilizersInInventory, 'fertilizer')}
             </div>
           )}
         </ScrollArea>
