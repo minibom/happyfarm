@@ -52,7 +52,7 @@ const MarketModal: FC<MarketModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setQuantities({}); // Reset quantities when modal opens or prices change (prices from market hook)
+      setQuantities({});
     }
   }, [isOpen, market.prices]);
 
@@ -274,7 +274,7 @@ const MarketModal: FC<MarketModalProps> = ({
       } else if (failedTransactions > 0) {
          toast({ title: "Giao Dịch Thất Bại", description: `Tất cả ${failedTransactions} giao dịch vật phẩm đã chọn đều thất bại.`, variant: "destructive" });
       }
-      setQuantities({}); // Reset quantities after attempting transactions
+      setQuantities({});
     } else {
       toast({ title: "Không Có Gì Để Giao Dịch", description: "Vui lòng chọn số lượng cho vật phẩm bạn muốn.", variant: "default" });
     }
@@ -361,10 +361,10 @@ const MarketModal: FC<MarketModalProps> = ({
         <Tabs defaultValue="buy_seed" className="w-full flex-grow flex flex-col min-h-0" onValueChange={(value) => setActiveTab(value as ActiveMarketTab)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="buy_seed">Mua Hạt Giống</TabsTrigger>
-            <TabsTrigger value="sell_crop">Bán Nông Sản</TabsTrigger>
             <TabsTrigger value="buy_fertilizer">
               <FertilizerIcon className="mr-1 h-4 w-4" /> Mua Phân Bón
             </TabsTrigger>
+            <TabsTrigger value="sell_crop">Bán Nông Sản</TabsTrigger>
           </TabsList>
           <TabsContent value="buy_seed" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
             <BuySeedMarket
@@ -376,11 +376,23 @@ const MarketModal: FC<MarketModalProps> = ({
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
               onQuantityInputChange={handleQuantityInputChange}
-              setQuantities={setQuantities} // No longer needed directly for button
+              setQuantities={setQuantities}
               marketPrices={market.prices}
               priceChanges={market.priceChanges}
               marketEvent={market.currentEvent}
               getItemDetails={market.getItemDetails}
+            />
+          </TabsContent>
+           <TabsContent value="buy_fertilizer" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
+            <BuyFertilizerMarket
+              fertilizersToDisplay={fertilizersToDisplay}
+              playerGold={playerGold}
+              onBuyItem={onBuyItem}
+              playerTier={playerTier}
+              quantities={quantities}
+              onQuantityButtonClick={handleQuantityButtonClick}
+              onQuantityInputChange={handleQuantityInputChange}
+              setQuantities={setQuantities}
             />
           </TabsContent>
           <TabsContent value="sell_crop" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
@@ -392,28 +404,15 @@ const MarketModal: FC<MarketModalProps> = ({
               quantities={quantities}
               onQuantityButtonClick={handleQuantityButtonClick}
               onQuantityInputChange={handleQuantityInputChange}
-              setQuantities={setQuantities} // No longer needed directly for button
+              setQuantities={setQuantities}
               marketPrices={market.prices}
               priceChanges={market.priceChanges}
               marketEvent={market.currentEvent}
               getItemDetails={market.getItemDetails}
             />
           </TabsContent>
-          <TabsContent value="buy_fertilizer" className="mt-2 flex-1 overflow-y-auto pr-1 pb-1">
-            <BuyFertilizerMarket
-              fertilizersToDisplay={fertilizersToDisplay}
-              playerGold={playerGold}
-              onBuyItem={onBuyItem}
-              playerTier={playerTier}
-              quantities={quantities}
-              onQuantityButtonClick={handleQuantityButtonClick}
-              onQuantityInputChange={handleQuantityInputChange}
-              setQuantities={setQuantities} // No longer needed directly for button
-            />
-          </TabsContent>
         </Tabs>
 
-        {/* Centralized Action Footer */}
         <div className="mt-4 pt-4 border-t flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <Button 
