@@ -12,7 +12,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import type { GameState } from '@/types';
 import { INITIAL_GAME_STATE } from '@/lib/constants';
 import { generateDisplayName } from '@/ai/flows/generate-display-name';
@@ -49,6 +49,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(firebaseUser);
         setUserId(firebaseUser.uid);
         setError(null);
+
+        // Update lastLogin for the top-level user document
+        try {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+        } catch (e) {
+          console.error("Failed to update lastLogin for user:", e);
+          // Non-critical error, app can continue
+        }
+
         if (pathname === '/login' || pathname === '/register') {
           router.push('/game');
         }
@@ -87,13 +97,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const uid = userCredential.user.uid;
       const userEmail = userCredential.user.email;
 
+      // Create GameState in subcollection
       const initialGs: GameState = {
         ...INITIAL_GAME_STATE,
-        inventory: { ...INITIAL_GAME_STATE.inventory }, // Deep copy inventory
-        plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })), // Deep copy plots
+        inventory: { ...INITIAL_GAME_STATE.inventory }, 
+        plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })), 
         email: userEmail || undefined,
         displayName: finalDisplayName,
-        lastLogin: Date.now(),
+        lastLogin: Date.now(), // Use client-side timestamp for initial GameState consistency
         lastUpdate: Date.now(),
         status: 'active',
         unlockedPlotsCount: INITIAL_GAME_STATE.unlockedPlotsCount,
@@ -101,7 +112,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       const gameDocRef = doc(db, 'users', uid, 'gameState', 'data');
       await setDoc(gameDocRef, initialGs);
-      // onAuthStateChanged will handle user state and redirect
+
+      // Create top-level user document for admin querying
+      const userDocRef = doc(db, 'users', uid);
+      await setDoc(userDocRef, {
+        email: userEmail,
+        displayName: finalDisplayName,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(), 
+        uid: uid, // Often useful to have uid also in the document
+      });
 
     } catch (e) {
       setError(e as AuthError);
@@ -114,6 +134,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
+      // onAuthStateChanged will handle updating lastLogin for the top-level doc
       await signInWithEmailAndPassword(auth, email, password);
     } catch (e) {
       setError(e as AuthError);

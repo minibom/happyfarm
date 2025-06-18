@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import type { AdminUserView, GameState } from '@/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Added CardHeader, CardTitle, CardDescription
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart3, Trash2, Eye, Edit, ShieldCheck, MessageSquareOff, ShieldX, TrendingUp, DollarSign, Zap } from 'lucide-react';
+import { Loader2, Users, BarChart3, DollarSign, TrendingUp, Zap } from 'lucide-react'; // Added DollarSign, TrendingUp, Zap
 import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getPlayerTierInfo } from '@/lib/constants';
+import { Eye } from 'lucide-react'; // Explicitly import Eye if it was missing
 
 type ActiveView = 'users' | 'tiers';
 
@@ -34,7 +35,8 @@ const maskEmail = (email?: string): string => {
 };
 
 const UsersManagementView = () => {
-  const [users, setUsers] = useState<AdminUserView[]>([]);
+  const [allUsers, setAllUsers] = useState<AdminUserView[]>([]); // Store all fetched users
+  const [filteredUsers, setFilteredUsers] = useState<AdminUserView[]>([]); // Store users after filtering
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserView | null>(null);
@@ -44,50 +46,75 @@ const UsersManagementView = () => {
 
   useEffect(() => {
     const usersCollectionRef = collection(db, 'users');
+    // Querying by lastLogin on the top-level 'users' collection.
+    // Ensure 'lastLogin' field exists and is indexed on 'users/{uid}' documents.
     const q = query(usersCollectionRef, orderBy('lastLogin', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const fetchedUsers: AdminUserView[] = [];
+      const fetchedUsersList: AdminUserView[] = [];
       for (const userDoc of snapshot.docs) {
         const uid = userDoc.id;
-        const baseUserData = userDoc.data();
+        const baseUserData = userDoc.data(); // Data from users/{uid}
 
         const gameStateRef = doc(db, 'users', uid, 'gameState', 'data');
         const gameStateSnap = await getDoc(gameStateRef);
 
+        let userView: AdminUserView;
+
         if (gameStateSnap.exists()) {
           const gameState = gameStateSnap.data() as GameState;
-          fetchedUsers.push({
+          userView = {
             uid,
-            email: gameState.email, 
-            displayName: gameState.displayName,
+            email: gameState.email || baseUserData.email, 
+            displayName: gameState.displayName || baseUserData.displayName,
             ...gameState, 
-          });
+            // Ensure lastLogin from top-level is used for consistency if available and more recent
+            lastLogin: baseUserData.lastLogin?.toMillis?.() || gameState.lastLogin,
+          };
         } else {
-           fetchedUsers.push({
+           // Fallback if gameState subcollection doesn't exist
+           userView = {
             uid,
             email: baseUserData.email || undefined,
             displayName: baseUserData.displayName || undefined,
             ...INITIAL_GAME_STATE, 
-            level: baseUserData.level || INITIAL_GAME_STATE.level,
+            level: baseUserData.level || INITIAL_GAME_STATE.level, // Prioritize baseUserData if available
             gold: baseUserData.gold || INITIAL_GAME_STATE.gold,
             xp: baseUserData.xp || INITIAL_GAME_STATE.xp,
-            lastLogin: baseUserData.lastLogin || 0,
-            status: baseUserData.status || 'active',
+            lastLogin: baseUserData.lastLogin?.toMillis?.() || INITIAL_GAME_STATE.lastLogin,
+            status: baseUserData.status || INITIAL_GAME_STATE.status,
             unlockedPlotsCount: baseUserData.unlockedPlotsCount || INITIAL_GAME_STATE.unlockedPlotsCount,
-          });
+          };
         }
+        fetchedUsersList.push(userView);
       }
-      setUsers(fetchedUsers);
-      setIsLoading(false);
+      setAllUsers(fetchedUsersList);
+      setIsLoading(false); 
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Lỗi Tải Người Dùng", description: "Không thể tải danh sách người dùng.", variant: "destructive" });
+      setAllUsers([]);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, [toast]);
+
+  useEffect(() => {
+    // Apply filters whenever allUsers, searchTerm, or filterStatus changes
+    let currentFilteredUsers = allUsers;
+    if (searchTerm) {
+      currentFilteredUsers = currentFilteredUsers.filter(user =>
+        (user.displayName && user.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        user.uid.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    if (filterStatus !== 'all') {
+      currentFilteredUsers = currentFilteredUsers.filter(user => user.status === filterStatus);
+    }
+    setFilteredUsers(currentFilteredUsers);
+  }, [allUsers, searchTerm, filterStatus]);
 
 
   const handleViewDetails = (user: AdminUserView) => {
@@ -96,14 +123,22 @@ const UsersManagementView = () => {
   };
 
   const handleUserAction = async (userId: string, action: 'delete' | 'toggle_ban_chat' | 'view_game_state' | 'reset_progress' | 'grant_items') => {
-    const userToUpdate = users.find(u => u.uid === userId);
+    const userToUpdate = allUsers.find(u => u.uid === userId);
     if (!userToUpdate) return;
 
     if (action === 'toggle_ban_chat') {
       const newStatus = userToUpdate.status === 'active' ? 'banned_chat' : 'active';
       try {
+        // Update status in both top-level user doc and gameState subcollection for consistency
+        const userDocRef = doc(db, 'users', userId);
+        await updateDoc(userDocRef, { status: newStatus });
+        
         const userGameStateRef = doc(db, 'users', userId, 'gameState', 'data');
-        await updateDoc(userGameStateRef, { status: newStatus });
+        const gameStateSnap = await getDoc(userGameStateRef);
+        if (gameStateSnap.exists()) {
+            await updateDoc(userGameStateRef, { status: newStatus });
+        }
+
         toast({
           title: `Cập Nhật Thành Công`,
           description: `Người dùng ${userToUpdate.displayName || userToUpdate.email} đã được ${newStatus === 'active' ? 'bỏ cấm chat' : 'cấm chat'}.`,
@@ -121,14 +156,15 @@ const UsersManagementView = () => {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearchTerm = searchTerm === '' ||
-                              (user.displayName && user.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                              (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                              user.uid.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    return matchesSearchTerm && matchesStatus;
-  });
+  const getEmptyStateMessage = () => {
+    if (allUsers.length === 0) {
+      return "Hệ thống chưa có người dùng nào.";
+    }
+    if (filteredUsers.length === 0) {
+      return "Không tìm thấy người dùng nào khớp với bộ lọc của bạn.";
+    }
+    return "Không tìm thấy người dùng nào khớp."; // Fallback, should not be reached if logic is correct
+  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -170,10 +206,10 @@ const UsersManagementView = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.length === 0 ? (
+              {filteredUsers.length === 0 && !isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    Không tìm thấy người dùng nào khớp.
+                    {getEmptyStateMessage()}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -188,7 +224,7 @@ const UsersManagementView = () => {
                       <Badge variant="secondary">{user.level}</Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={user.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}>
+                      <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={cn(user.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600", "text-white")}>
                         {user.status === 'active' ? 'Hoạt động' : 'Cấm Chat'}
                       </Badge>
                     </TableCell>
@@ -310,7 +346,17 @@ export default function AdminUsersTiersPage() {
 
   return (
     <Card className="shadow-xl flex flex-col flex-1 min-h-0">
-      <CardContent className="flex-1 flex flex-col min-h-0 p-6">
+      <CardHeader className="p-6 pb-4"> {/* Keep CardHeader for overall page title if desired, or remove if title is in AdminLayout */}
+          <CardTitle className="text-2xl font-bold text-primary">
+            {activeView === 'users' ? 'Quản Lý Người Dùng' : 'Quản Lý Cấp Bậc'}
+          </CardTitle>
+          <CardDescription>
+            {activeView === 'users' 
+              ? 'Xem, tìm kiếm và quản lý người dùng trong hệ thống.' 
+              : 'Xem lại thông tin chi tiết về các cấp bậc trong game.'}
+          </CardDescription>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0"> {/* Ensure CardContent allows flex grow */}
         <div className="flex border-b mb-4 shrink-0">
           <Button
             variant="ghost"
@@ -340,3 +386,4 @@ export default function AdminUsersTiersPage() {
     </Card>
   );
 }
+
