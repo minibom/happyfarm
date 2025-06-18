@@ -31,10 +31,10 @@ export default function GamePage() {
     sellItem,
     unlockPlot,
     updateDisplayName,
-    applyFertilizer, // Ensure this is available
+    applyFertilizer,
     isInitialized,
     playerTierInfo,
-    cropData, // This is from useGameLogic, primarily for plot rendering
+    cropData,
     // fertilizerData is now directly imported from constants for BottomNavBar
   } = useGameLogic();
 
@@ -104,6 +104,19 @@ export default function GamePage() {
      }
   };
 
+  const fertilizeFromPlotPopover = (plotId: number, fertilizerId: FertilizerId) => {
+    if (!FERTILIZER_DATA[fertilizerId] || !gameState.plots.find(p => p.id === plotId)) return;
+    
+    const plot = gameState.plots.find(p => p.id === plotId);
+    if (!plot) return;
+
+    if (plot.state === 'planted' || plot.state === 'growing') {
+      applyFertilizer(plotId, fertilizerId);
+    } else {
+      toast({ title: "Không Thể Bón Phân", description: "Ô đất này không phù hợp để bón phân.", variant: "default"});
+    }
+  };
+
   const handleSetPlantMode = (seedId: SeedId) => {
     if (!cropData) return;
     const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
@@ -136,7 +149,7 @@ export default function GamePage() {
   };
 
   const handleSetFertilizeMode = (fertilizerId: FertilizerId) => {
-    if (!FERTILIZER_DATA[fertilizerId]) return; // Basic check
+    if (!FERTILIZER_DATA[fertilizerId]) return; 
     const fertilizerDetail = FERTILIZER_DATA[fertilizerId];
 
     if (playerTierInfo.tier < fertilizerDetail.unlockTier) {
@@ -179,7 +192,7 @@ export default function GamePage() {
     .filter(fert => fert && (gameState.inventory[fert.id] || 0) > 0 && playerTierInfo.tier >= fert.unlockTier) as FertilizerDetails[];
 
 
-  if (authLoading || !isInitialized || !user || !cropData || !gameState) {
+  if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
@@ -190,7 +203,12 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4 pb-24">
-      <ResourceBar gold={gameState.gold} xp={gameState.xp} level={gameState.level} />
+      <ResourceBar 
+        gold={gameState.gold} 
+        xp={gameState.xp} 
+        level={gameState.level} 
+        playerTierInfo={playerTierInfo}
+      />
 
       <GameArea
         gameState={gameState}
@@ -198,10 +216,12 @@ export default function GamePage() {
         playerTierInfo={playerTierInfo}
         currentAction={currentAction}
         selectedSeedToPlant={selectedSeedToPlant}
-        selectedFertilizerId={selectedFertilizerId} // Pass to GameArea for cursor
+        selectedFertilizerId={selectedFertilizerId} 
         availableSeedsForPlanting={availableSeedsForPlanting}
+        availableFertilizersForPopover={availableFertilizersForSelection}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
+        fertilizeFromPlotPopover={fertilizeFromPlotPopover}
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
@@ -214,16 +234,16 @@ export default function GamePage() {
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
-        onSetFertilizeMode={handleSetFertilizeMode} // Pass handler
+        onSetFertilizeMode={handleSetFertilizeMode} 
         onClearAction={handleClearAction}
         currentAction={currentAction}
         selectedSeed={selectedSeedToPlant}
-        selectedFertilizerId={selectedFertilizerId} // Pass selected ID
+        selectedFertilizerId={selectedFertilizerId} 
         availableSeeds={allAvailableSeedsInInventory}
-        availableFertilizers={availableFertilizersForSelection} // Pass available fertilizers
+        availableFertilizers={availableFertilizersForSelection} 
         inventory={gameState.inventory}
         cropData={cropData}
-        fertilizerData={FERTILIZER_DATA} // Pass all fertilizer static data
+        fertilizerData={FERTILIZER_DATA} 
         playerTier={playerTierInfo.tier}
       />
 
