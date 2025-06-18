@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
-import { BonusActionModal } from '@/components/admin/BonusActionModals';
+import { BonusActionModal } from '@/components/admin/BonusActionModal';
 
 type ActiveView = 'mail' | 'bonuses';
 type ActiveMailSubView = 'compose' | 'history';
