@@ -82,20 +82,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return null;
   }
 
-  const getCurrentPageLabel = () => {
-    const currentItem = menuItems.find(item => pathname.startsWith(item.href));
-    if (currentItem) return currentItem.label;
-
-    // Handle sub-views or default title
-    if (pathname.startsWith('/admin/items-management')) return 'Quản Lý Vật Phẩm';
-    if (pathname.startsWith('/admin/users-tiers')) return 'Người Dùng & Cấp Bậc';
-    if (pathname.startsWith('/admin/mail-bonuses')) return 'Thư & Bonus';
-    if (pathname.startsWith('/admin/config')) return 'Cấu hình Hệ thống';
-    
-    return 'Bảng điều khiển Admin';
-  };
-
-
   return (
     <SidebarProvider defaultOpen style={{ '--sidebar-width': '20%' }}>
       <Sidebar collapsible="icon" side="left" variant="sidebar" className="border-r border-sidebar-border">
@@ -144,12 +130,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <SidebarInset className="bg-muted/30 flex flex-col h-screen">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 shrink-0">
             <SidebarTrigger className="md:hidden" />
-            <div className="flex items-center gap-2">
-              <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
-              <h1 className="text-lg font-semibold text-foreground">
-                {getCurrentPageLabel()}
-              </h1>
-            </div>
+            {/* The page title div has been removed from here */}
         </header>
         <main className="flex-1 overflow-y-auto flex flex-col gap-4 p-4 sm:p-6">
             {children}
