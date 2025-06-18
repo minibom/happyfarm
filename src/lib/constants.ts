@@ -6,7 +6,7 @@ export * from './crop-data';
 export * from './fertilizer-data';
 export * from './initial-states';
 export * from './bonus-configurations';
-export * from './mail-templates'; // Added export for mail templates
+export * from './mail-templates'; // Corrected export statement
 
 // Type re-exports are primarily handled by types/index.ts
 // but if specific types were defined ONLY in the old constants.ts and used elsewhere,

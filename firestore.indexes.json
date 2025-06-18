@@ -44,16 +44,6 @@
       ]
     },
     {
-      "collectionGroup": "mail",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "missions",
       "queryScope": "COLLECTION",
       "fields": [
