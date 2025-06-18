@@ -3,12 +3,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail } from 'lucide-react';
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog } from 'lucide-react'; // Added CalendarCog
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA, MAIL_TEMPLATES_DATA } from '@/lib/constants';
+import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA, MAIL_TEMPLATES_DATA, GAME_EVENT_TEMPLATES_DATA } from '@/lib/constants'; // Added GAME_EVENT_TEMPLATES_DATA
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
-import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore } from '@/types';
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig } from '@/types'; // Added GameEventConfig
 import type { TierDetail } from '@/lib/tier-data';
 import type { MailTemplate } from '@/lib/mail-templates';
 
@@ -167,6 +167,40 @@ export default function AdminConfigPage() {
     }
   };
 
+  const handlePushEventTemplates = async () => {
+    toast({
+      title: "Đang Xử Lý...",
+      description: "Bắt đầu đẩy Mẫu Sự Kiện Game lên Firestore...",
+      duration: 3000,
+    });
+    try {
+      const batch = writeBatch(db);
+      let templateCount = 0;
+
+      for (const template of GAME_EVENT_TEMPLATES_DATA) {
+        const templateRef = doc(db, 'gameEventTemplates', template.id); // Store in 'gameEventTemplates' collection
+        batch.set(templateRef, template);
+        templateCount++;
+      }
+      
+      await batch.commit();
+      toast({
+        title: "Thành Công!",
+        description: `Đã đẩy ${templateCount} mẫu sự kiện từ 'event-templates.ts' lên Firestore collection 'gameEventTemplates'.`,
+        duration: 7000,
+        className: "bg-green-500 text-white"
+      });
+
+    } catch (error) {
+      console.error("Error pushing event templates to Firestore:", error);
+       toast({
+        title: "Lỗi Đẩy Mẫu Sự Kiện",
+        description: `Không thể đẩy dữ liệu mẫu sự kiện. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -271,15 +305,22 @@ export default function AdminConfigPage() {
             <Card className="border-blue-500/50">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                    <BarChartHorizontalBig className="h-6 w-6 text-blue-500" />
-                    <CardTitle className="text-xl">Quản Lý Sự Kiện Game (Placeholder)</CardTitle>
+                    <CalendarCog className="h-6 w-6 text-blue-500" /> {/* Changed Icon */}
+                    <CardTitle className="text-xl">Đồng Bộ Mẫu Sự Kiện</CardTitle> {/* Changed Title */}
                 </div>
                 <CardDescription>
-                  Khu vực này có thể chứa các cài đặt cho sự kiện trong game. (Sắp có)
+                  Đẩy TOÀN BỘ Mẫu Sự Kiện từ <code>event-templates.ts</code>
+                  lên collection <code>gameEventTemplates</code> trong Firestore.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" disabled className="mt-2">Thiết Lập Sự Kiện Mới</Button>
+                <Button onClick={handlePushEventTemplates} className="bg-blue-500 hover:bg-blue-600 text-white"> {/* Made button active */}
+                    <UploadCloud className="mr-2 h-5 w-5" />
+                    Đồng Bộ Mẫu Sự Kiện
+                </Button>
+                 <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên <code>gameEventTemplates</code>.
+                </p>
               </CardContent>
             </Card>
             
@@ -304,6 +345,4 @@ export default function AdminConfigPage() {
     </div>
   );
 }
-
-
     

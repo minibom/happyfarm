@@ -14,6 +14,7 @@ In Happy Farm, players can:
 - Compete on the leaderboard.
 - Customize their display name.
 - Receive in-game mail with potential rewards.
+- Experience dynamic game events affecting gameplay (e.g., price changes, growth boosts).
 
 ## Technology Stack
 
@@ -105,6 +106,7 @@ In Happy Farm, players can:
     -   `src/lib/tier-data.ts`: Tier definitions and logic.
     -   `src/lib/bonus-configurations.ts`: Definitions for automatic bonus rewards.
     -   `src/lib/mail-templates.ts`: Predefined mail templates for admin use.
+    -   `src/lib/event-templates.ts`: Predefined game event templates.
     -   `src/lib/game-config.ts`: Core game numerical configurations.
     -   `src/lib/initial-states.ts`: Initial game state and market state.
     -   `src/lib/firebase.ts`: Firebase app initialization.
@@ -126,12 +128,16 @@ The admin panel allows:
     -   Compose and send mail to all users or specific users, with optional item/currency rewards.
     -   Use predefined mail templates to quickly draft messages.
     -   View, create, edit, and delete bonus configurations (e.g., first login bonus, tier-up rewards).
+-   **Events Management**:
+    -   View, create, edit, and delete active/scheduled game events.
+    -   Base new events on predefined templates (synced from `event-templates.ts`).
+    -   Define event types (e.g., crop growth boost, item price changes), duration, and affected items.
 -   **System Configuration**:
-    -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, and `gameMailTemplates`. Use this section to ensure Firestore has the latest static game data.
+    -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, and `gameEventTemplates`. Use this section to ensure Firestore has the latest static game data.
 
 ## Game Data Management
 
-Core static game data such as crop details, fertilizer properties, tier progression, bonus rules, and mail templates are defined in TypeScript files within the `src/lib/` directory (e.g., `crop-data.ts`, `tier-data.ts`, `bonus-configurations.ts`, `mail-templates.ts`).
+Core static game data such as crop details, fertilizer properties, tier progression, bonus rules, mail templates, and event templates are defined in TypeScript files within the `src/lib/` directory (e.g., `crop-data.ts`, `tier-data.ts`, `bonus-configurations.ts`, `mail-templates.ts`, `event-templates.ts`).
 
 To populate or update your Firestore database with this data:
 1.  Navigate to the **Admin Panel**.
@@ -143,7 +149,8 @@ To populate or update your Firestore database with this data:
 For a production environment, **it is crucial to set up robust Firestore Security Rules** to protect your game data and prevent cheating. The client-side logic currently has a high degree of trust, and security rules are the primary way to enforce game logic and permissions on the server side. Ensure that:
 -   Users can only write to their own game state (`/users/{userId}/gameState/data`).
 -   Data modifications are validated (e.g., gold cannot increase arbitrarily, XP and level progression is valid).
--   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, and `gameMailTemplates` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
+-   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, and `gameEventTemplates` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
+-   The `activeGameEvents` collection should be read-only for clients and writable only by admin-privileged functions.
 -   Mail subcollections (`/users/{userId}/mail`) are writable by admin-privileged functions for sending mail and readable by the recipient user. Users should only be able to update `isRead` and `isClaimed` fields on their own mail.
 -   Chat messages in Realtime Database (`/messages`) should also have appropriate rules (e.g., authenticated users can write, all can read).
 

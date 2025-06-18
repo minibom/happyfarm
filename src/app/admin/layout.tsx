@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react';
+import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift, CalendarDays } from 'lucide-react'; // Added CalendarDays
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +34,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package },
     { href: '/admin/users-tiers', label: 'Người Dùng & Bậc', icon: Users },
     { href: '/admin/mail-bonuses', label: 'Thư & Bonus', icon: Mail },
+    { href: '/admin/events', label: 'QL Sự Kiện', icon: CalendarDays }, // New Event Management Link
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
@@ -73,10 +74,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const currentItem = menuItems.find(item => pathname.startsWith(item.href));
     if (currentItem) return currentItem.label;
 
-    // Fallback for specific paths if needed, though menuItems should cover main sections
+    // Fallback for specific paths if needed
     if (pathname.startsWith('/admin/items-management')) return 'Quản Lý Vật Phẩm';
     if (pathname.startsWith('/admin/users-tiers')) return 'Người Dùng & Cấp Bậc';
     if (pathname.startsWith('/admin/mail-bonuses')) return 'Thư & Bonus';
+    if (pathname.startsWith('/admin/events')) return 'Quản Lý Sự Kiện'; // New
     if (pathname.startsWith('/admin/config')) return 'Cấu hình Hệ thống';
     
     return 'Bảng điều khiển Admin';

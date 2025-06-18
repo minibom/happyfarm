@@ -94,7 +94,44 @@ export interface AdminMailLogEntry {
   sentByName: string; // Admin's display name or email
 }
 
-// --- End Mail & Reward Types ---
+// --- Game Event Types ---
+export type GameEventType = 
+  | 'CROP_GROWTH_TIME_REDUCTION' // Percentage reduction for all or specific crops
+  | 'ITEM_PURCHASE_PRICE_MODIFIER' // Percentage modifier for specific buyable items (seeds, fertilizers)
+  | 'ITEM_SELL_PRICE_MODIFIER'; // Percentage modifier for specific sellable items (crops)
+
+export interface GameEventEffect {
+  type: GameEventType;
+  value: number; // e.g., 0.1 for 10% reduction/increase. For price modifiers, >1 for increase, <1 for decrease.
+  affectedItemIds?: InventoryItem[] | 'ALL_CROPS' | 'ALL_SEEDS' | 'ALL_FERTILIZERS'; // Specific items or categories
+  // additionalParams?: Record<string, any>; // For more complex effects
+}
+
+export interface GameEventConfig { // For templates / definitions
+  id: string; // Unique ID for the template, e.g., "weekendHarvestBoom"
+  templateName: string; // Admin-facing name for the template
+  description: string; // Admin-facing description of what the event does
+  defaultEffects: GameEventEffect[];
+  defaultDurationHours: number; // Suggested duration in hours
+  // Suggested mail/notification text could also be here
+  defaultMailSubject?: string;
+  defaultMailBody?: string;
+  icon?: string; // Optional icon for the event type
+}
+
+export interface ActiveGameEvent { // For Firestore `activeGameEvents` collection
+  id: string; // Firestore document ID for the active event
+  configId?: string; // ID of the GameEventConfig it was based on, if any
+  name: string; // Player-facing event name
+  description: string; // Player-facing event description
+  effects: GameEventEffect[];
+  startTime: any; // Firestore Timestamp
+  endTime: any; // Firestore Timestamp
+  isActive: boolean; // Calculated or manually set
+  // notificationSent?: boolean; // To track if start/end notifications were sent
+}
+// --- End Game Event Types ---
+
 
 export interface GameState {
   gold: number;
@@ -144,7 +181,7 @@ export interface MarketPriceChange {
   [itemId:string]: number;
 }
 
-export interface MarketEventData {
+export interface MarketEventData { // This existing one might be simplified or integrated with ActiveGameEvent
   isActive: boolean;
   eventName: string;
   description: string;
@@ -152,12 +189,13 @@ export interface MarketEventData {
   priceModifier?: number;
   effectDescription?: string;
   expiresAt?: number;
+  durationHours?: number; // This was added previously for the AI flow
 }
 
 export interface MarketState {
   prices: MarketPriceData;
   priceChanges: MarketPriceChange;
-  currentEvent: MarketEventData | null;
+  currentEvent: MarketEventData | null; // This might become an ActiveGameEvent focused on market prices
   lastUpdated: number;
 }
 
@@ -193,3 +231,4 @@ export interface TierDataFromFirestore {
   sellPriceBoostPercent: number;
   growthTimeReductionPercent: number;
 }
+

@@ -44,6 +44,30 @@
       ]
     },
     {
+      "collectionGroup": "activeGameEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "endTime",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+     {
+      "collectionGroup": "activeGameEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "startTime",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "missions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -120,5 +144,4 @@
   ],
   "fieldOverrides": []
 }
-
     
