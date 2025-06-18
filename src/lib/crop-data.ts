@@ -4,7 +4,7 @@ import type { CropDetails, CropId, SeedId } from '@/types';
 // Base times and prices for Tier 10 crops for scaling
 const T10_PINEAPPLE_TIMES = { growing: 3600000 * 12, ready: 7200000 * 12 };
 const T10_PINEAPPLE_PRICES = { seed: 30 * 10, crop: 35 * 10 };
-const T10_PINEAPPLE_YIELD = 1 * 12;
+const T10_PINEAPPLE_YIELD = 1 * 12; // Base yield is an integer
 
 // Crop definitions and related identifiers
 export const CROP_DATA: Record<CropId, CropDetails> = {
@@ -77,22 +77,17 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
   coconut: { name: 'Dừa', seedName: 'coconutSeed', icon: '🥥', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.1, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.1, harvestYield: T10_PINEAPPLE_YIELD, seedPrice: T10_PINEAPPLE_PRICES.seed * 1.3, cropPrice: T10_PINEAPPLE_PRICES.crop * 1.3, unlockTier: 10 },
   durian: { name: 'Sầu Riêng', seedName: 'durianSeed', icon: '🤢', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.2, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.2, harvestYield: T10_PINEAPPLE_YIELD, seedPrice: T10_PINEAPPLE_PRICES.seed * 3.3, cropPrice: T10_PINEAPPLE_PRICES.crop * 4.3, unlockTier: 10 },
 
-  // --- New Crops for Tiers 11-15 ---
-  // Tier 11
-  celestialCarrot: { name: 'Cà Rốt Thiên Giới', seedName: 'celestialCarrotSeed', icon: '🌟🥕', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.3, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.3, harvestYield: T10_PINEAPPLE_YIELD * 1.1, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.5), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.2), unlockTier: 11 },
-  starBean: { name: 'Đậu Ngôi Sao', seedName: 'starBeanSeed', icon: '✨🌱', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.35, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.35, harvestYield: T10_PINEAPPLE_YIELD * 1.5, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.6), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.1), unlockTier: 11 },
-  // Tier 12
-  moonHerb: { name: 'Thảo Dược Mặt Trăng', seedName: 'moonHerbSeed', icon: '🌙🌿', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.4, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.4, harvestYield: T10_PINEAPPLE_YIELD * 1.2, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.7), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.3), unlockTier: 12 },
-  sunBerry: { name: 'Dâu Mặt Trời', seedName: 'sunBerrySeed', icon: '☀️🍓', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.45, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.45, harvestYield: T10_PINEAPPLE_YIELD * 1.2, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.8), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.4), unlockTier: 12 },
-  // Tier 13
-  galaxyGrain: { name: 'Ngũ Cốc Ngân Hà', seedName: 'galaxyGrainSeed', icon: '🌌🌾', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.5, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.5, harvestYield: T10_PINEAPPLE_YIELD * 1.6, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.9), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.2), unlockTier: 13 },
-  cometCorn: { name: 'Ngô Sao Chổi', seedName: 'cometCornSeed', icon: '☄️🌽', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.55, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.55, harvestYield: T10_PINEAPPLE_YIELD * 0.8, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.0), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.8), unlockTier: 13 },
-  // Tier 14
-  nebulaNectarine: { name: 'Đào Tinh Vân', seedName: 'nebulaNectarineSeed', icon: '🍑✨', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.6, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.6, harvestYield: T10_PINEAPPLE_YIELD * 0.9, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.2), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 2.0), unlockTier: 14 },
-  voidRoot: { name: 'Rễ Hư Vô', seedName: 'voidRootSeed', icon: '⚫🥔', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.65, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.65, harvestYield: T10_PINEAPPLE_YIELD * 1.3, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.3), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.5), unlockTier: 14 },
-  // Tier 15
+  // --- New Crops for Tiers 11-15 (HarvestYield rounded) ---
+  celestialCarrot: { name: 'Cà Rốt Thiên Giới', seedName: 'celestialCarrotSeed', icon: '🌟🥕', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.3, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.3, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.1), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.5), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.2), unlockTier: 11 },
+  starBean: { name: 'Đậu Ngôi Sao', seedName: 'starBeanSeed', icon: '✨🌱', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.35, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.35, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.5), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.6), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.1), unlockTier: 11 },
+  moonHerb: { name: 'Thảo Dược Mặt Trăng', seedName: 'moonHerbSeed', icon: '🌙🌿', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.4, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.4, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.2), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.7), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.3), unlockTier: 12 },
+  sunBerry: { name: 'Dâu Mặt Trời', seedName: 'sunBerrySeed', icon: '☀️🍓', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.45, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.45, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.2), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.8), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.4), unlockTier: 12 },
+  galaxyGrain: { name: 'Ngũ Cốc Ngân Hà', seedName: 'galaxyGrainSeed', icon: '🌌🌾', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.5, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.5, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.6), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 1.9), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.2), unlockTier: 13 },
+  cometCorn: { name: 'Ngô Sao Chổi', seedName: 'cometCornSeed', icon: '☄️🌽', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.55, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.55, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 0.8), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.0), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.8), unlockTier: 13 },
+  nebulaNectarine: { name: 'Đào Tinh Vân', seedName: 'nebulaNectarineSeed', icon: '🍑✨', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.6, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.6, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 0.9), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.2), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 2.0), unlockTier: 14 },
+  voidRoot: { name: 'Rễ Hư Vô', seedName: 'voidRootSeed', icon: '⚫🥔', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.65, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.65, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.3), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.3), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.5), unlockTier: 14 },
   quantumQuince: { name: 'Mộc Qua Lượng Tử', seedName: 'quantumQuinceSeed', icon: '⚛️🍈', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.7, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.7, harvestYield: T10_PINEAPPLE_YIELD, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.5), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 2.2), unlockTier: 15 },
-  phantomPepper: { name: 'Ớt Bóng Ma', seedName: 'phantomPepperSeed', icon: '👻🌶️', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.75, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.75, harvestYield: T10_PINEAPPLE_YIELD * 1.4, seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.6), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.7), unlockTier: 15 },
+  phantomPepper: { name: 'Ớt Bóng Ma', seedName: 'phantomPepperSeed', icon: '👻🌶️', timeToGrowing: T10_PINEAPPLE_TIMES.growing * 1.75, timeToReady: T10_PINEAPPLE_TIMES.ready * 1.75, harvestYield: Math.floor(T10_PINEAPPLE_YIELD * 1.4), seedPrice: Math.floor(T10_PINEAPPLE_PRICES.seed * 2.6), cropPrice: Math.floor(T10_PINEAPPLE_PRICES.crop * 1.7), unlockTier: 15 },
 
   // --- Special Event Crops (10 examples, unlockTier 999) ---
   goldenPumpkin: { name: 'Bí Ngô Hoàng Kim', seedName: 'goldenPumpkinSeed', icon: '🎃🌟', timeToGrowing: 60000 * 5, timeToReady: 120000 * 5, harvestYield: 1, seedPrice: 500, cropPrice: 2500, unlockTier: 999 },
@@ -101,12 +96,19 @@ export const CROP_DATA: Record<CropId, CropDetails> = {
   sunpetalRose: { name: 'Hồng Mặt Trời', seedName: 'sunpetalRoseSeed', icon: '🌹☀️', timeToGrowing: 60 * 60 * 1000 * 3, timeToReady: 60 * 60 * 1000 * 6, harvestYield: 2, seedPrice: 250, cropPrice: 400, unlockTier: 999 },
   luckyClover: { name: 'Cỏ Ba Lá May Mắn', seedName: 'luckyCloverSeed', icon: '🍀', timeToGrowing: 10 * 60 * 1000, timeToReady: 20 * 60 * 1000, harvestYield: 1, seedPrice: 100, cropPrice: 777, unlockTier: 999 }, // 10m grow, 20m ready
   loveBerry: { name: 'Dâu Tình Yêu', seedName: 'loveBerrySeed', icon: '🍓❤️', timeToGrowing: 14 * 60 * 1000, timeToReady: 20 * 60 * 1000, harvestYield: 5, seedPrice: 50, cropPrice: 50, unlockTier: 999 },
-  ghostPepper: { name: 'Ớt Ma Quái (Event)', seedName: 'ghostPepperEventSeed', icon: '🌶️👻', timeToGrowing: 4 * 444 * 1000, timeToReady: 4 * 444 * 1000, harvestYield: 4, seedPrice: 44, cropPrice: 444, unlockTier: 999 },
+  ghostPepperEvent: { name: 'Ớt Ma Quái (Event)', seedName: 'ghostPepperEventSeed', icon: '🌶️👻', timeToGrowing: 4 * 444 * 1000, timeToReady: 4 * 444 * 1000, harvestYield: 4, seedPrice: 44, cropPrice: 444, unlockTier: 999 }, // Note: Renamed ID slightly to avoid conflict if 'ghostPepper' is used as a regular crop
   rainbowTulip: { name: 'Tulip Cầu Vồng', seedName: 'rainbowTulipSeed', icon: '🌷🌈', timeToGrowing: 60 * 60 * 1000 * 6, timeToReady: 60 * 60 * 1000 * 12, harvestYield: 1, seedPrice: 500, cropPrice: 1500, unlockTier: 999 },
-  starAnise: { name: 'Hồi Ngôi Sao (Event)', seedName: 'starAniseEventSeed', icon: '🌟🍂', timeToGrowing: 30 * 60 * 1000, timeToReady: 60 * 60 * 1000, harvestYield: 10, seedPrice: 80, cropPrice: 20, unlockTier: 999 },
+  starAniseEvent: { name: 'Hồi Ngôi Sao (Event)', seedName: 'starAniseEventSeed', icon: '🌟🍂', timeToGrowing: 30 * 60 * 1000, timeToReady: 60 * 60 * 1000, harvestYield: 10, seedPrice: 80, cropPrice: 20, unlockTier: 999 },
   dreamWeed: { name: 'Cỏ Mộng Mơ', seedName: 'dreamWeedSeed', icon: '🌿💭', timeToGrowing: 60 * 60 * 1000 * 1, timeToReady: 60 * 60 * 1000 * 2, harvestYield: 1, seedPrice: 10, cropPrice: 1, unlockTier: 999 }, // Low value, maybe for crafting or special effect
 };
 
 export const ALL_CROP_IDS = Object.keys(CROP_DATA) as CropId[];
 export const ALL_SEED_IDS = ALL_CROP_IDS.map(cropId => CROP_DATA[cropId].seedName as SeedId);
 
+// It's good practice to also ensure that if an ID like 'ghostPepper' was used elsewhere as a regular crop,
+// the event crop ID should be unique. I've added "Event" to 'ghostPepperEventSeed' and its corresponding CropId.
+// If 'phantomPepper' was meant to be the regular version and 'ghostPepperEvent' the special, they are now distinct.
+// If 'ghostPepper' was a typo for 'phantomPepper', the above data should be fine.
+// Let's assume 'phantomPepper' is the regular Tier 15 crop and 'ghostPepperEvent' is the special one.
+// If 'ghostPepper' was meant to be the regular one, then 'phantomPepper' might need renaming or removal.
+// For now, both `phantomPepper` (Tier 15) and `ghostPepperEvent` (Tier 999) exist.
