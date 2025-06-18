@@ -46,7 +46,6 @@ const formatMillisecondsToTime = (ms: number): string => {
 export default function AdminItemsManagementPage() {
   const [activeView, setActiveView] = useState<ActiveView>('crops');
 
-  // State for Crops
   const [cropItems, setCropItems] = useState<ItemDataForTable[]>([]);
   const [isCropLoading, setIsCropLoading] = useState(true);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
@@ -55,7 +54,6 @@ export default function AdminItemsManagementPage() {
     itemData: { name: '', seedName: '', icon: '', timeToGrowing: 0, timeToReady: 0, harvestYield: 0, seedPrice: 0, cropPrice: 0, unlockTier: 1 }
   });
 
-  // State for Fertilizers
   const [fertilizers, setFertilizers] = useState<FertilizerDataForTable[]>([]);
   const [isFertilizerLoading, setIsFertilizerLoading] = useState(true);
   const [isFertilizerModalOpen, setIsFertilizerModalOpen] = useState(false);
@@ -66,7 +64,6 @@ export default function AdminItemsManagementPage() {
 
   const { toast } = useToast();
 
-  // Effect for Crops
   useEffect(() => {
     const itemsCollectionRef = collection(db, 'gameItems');
     const q = query(itemsCollectionRef, orderBy("unlockTier"), orderBy("name"));
@@ -87,7 +84,6 @@ export default function AdminItemsManagementPage() {
     return () => unsubscribeCrops();
   }, [toast]);
 
-  // Effect for Fertilizers
   useEffect(() => {
     const fertilizersCollectionRef = collection(db, 'gameFertilizers');
     const q = query(fertilizersCollectionRef, orderBy("unlockTier"), orderBy("name"));
@@ -108,7 +104,6 @@ export default function AdminItemsManagementPage() {
     return () => unsubscribeFertilizers();
   }, [toast]);
 
-  // Handlers for Crops
   const openCropModal = (mode: 'view' | 'edit' | 'create', item?: ItemDataForTable) => {
     if (mode === 'create') {
       setCropModalProps({
@@ -157,7 +152,6 @@ export default function AdminItemsManagementPage() {
     }
   };
 
-  // Handlers for Fertilizers
   const openFertilizerModal = (mode: 'view' | 'edit' | 'create', fertilizer?: FertilizerDataForTable) => {
     if (mode === 'create') {
       setFertilizerModalProps({
@@ -208,16 +202,7 @@ export default function AdminItemsManagementPage() {
   return (
     <>
       <Card className="shadow-xl flex flex-col flex-1 min-h-0">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-            <Package className="h-7 w-7"/> Quản Lý Vật Phẩm
-          </CardTitle>
-          <CardDescription>
-            Quản lý cấu hình cây trồng và phân bón trực tiếp từ Firestore.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
-          {/* Custom Tab-like Buttons */}
+        <CardContent className="flex-1 flex flex-col min-h-0 p-6">
           <div className="flex border-b mb-4">
             <Button
               variant="ghost"
@@ -241,7 +226,6 @@ export default function AdminItemsManagementPage() {
             </Button>
           </div>
           
-          {/* Conditional Rendering for Crops View */}
           {activeView === 'crops' && (
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex justify-end mb-4 shrink-0">
@@ -318,7 +302,6 @@ export default function AdminItemsManagementPage() {
             </div>
           )}
           
-          {/* Conditional Rendering for Fertilizers View */}
           {activeView === 'fertilizers' && (
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex justify-end mb-4 shrink-0">
@@ -389,7 +372,6 @@ export default function AdminItemsManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Modals */}
       <ItemModal
         isOpen={isCropModalOpen}
         onClose={() => setIsCropModalOpen(false)}

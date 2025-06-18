@@ -2,14 +2,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { AdminUserView, GameState } from '@/types'; // Make sure GameState is imported if needed for UserActions
+import type { AdminUserView, GameState } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart3, Trash2, Eye, Edit, ShieldCheck, MessageSquareOff, ShieldX, TrendingUp, DollarSign, Zap } from 'lucide-react'; // Added TrendingUp, DollarSign, Zap
+import { Loader2, Users, BarChart3, Trash2, Eye, Edit, ShieldCheck, MessageSquareOff, ShieldX, TrendingUp, DollarSign, Zap } from 'lucide-react';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, where } from 'firebase/firestore'; // Added where
+import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import {
@@ -25,11 +25,10 @@ import { getPlayerTierInfo } from '@/lib/constants';
 
 type ActiveView = 'users' | 'tiers';
 
-// --- Start of User Management Specific Logic (adapted from old users/page.tsx) ---
 const maskEmail = (email?: string): string => {
   if (!email) return 'N/A';
   const [localPart, domain] = email.split('@');
-  if (!domain || localPart.length === 0) return email; // Not a valid email or no local part
+  if (!domain || localPart.length === 0) return email; 
   const maskedLocal = localPart.length > 3 ? `${localPart.substring(0, 3)}***` : `${localPart[0]}***`;
   return `${maskedLocal}@${domain}`;
 };
@@ -45,17 +44,14 @@ const UsersManagementView = () => {
 
   useEffect(() => {
     const usersCollectionRef = collection(db, 'users');
-    // Basic query without complex indexing for now. Filtering will be client-side.
-    // For production, consider server-side filtering or more robust querying if dataset is large.
     const q = query(usersCollectionRef, orderBy('lastLogin', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedUsers: AdminUserView[] = [];
       for (const userDoc of snapshot.docs) {
         const uid = userDoc.id;
-        const baseUserData = userDoc.data(); // This is the top-level user doc, may not have all GameState fields
+        const baseUserData = userDoc.data();
 
-        // Fetch GameState separately
         const gameStateRef = doc(db, 'users', uid, 'gameState', 'data');
         const gameStateSnap = await getDoc(gameStateRef);
 
@@ -63,18 +59,17 @@ const UsersManagementView = () => {
           const gameState = gameStateSnap.data() as GameState;
           fetchedUsers.push({
             uid,
-            email: gameState.email, // from GameState
-            displayName: gameState.displayName, // from GameState
-            ...gameState, // Spread all fields from GameState
+            email: gameState.email, 
+            displayName: gameState.displayName,
+            ...gameState, 
           });
         } else {
-          // Handle case where gameState might not exist for a user document (should be rare)
            fetchedUsers.push({
             uid,
-            email: baseUserData.email || undefined, // Fallback to top-level if available
-            displayName: baseUserData.displayName || undefined, // Fallback
-            ...INITIAL_GAME_STATE, // Use default initial game state
-            level: baseUserData.level || INITIAL_GAME_STATE.level, // Example: try to get from top-level if missing
+            email: baseUserData.email || undefined,
+            displayName: baseUserData.displayName || undefined,
+            ...INITIAL_GAME_STATE, 
+            level: baseUserData.level || INITIAL_GAME_STATE.level,
             gold: baseUserData.gold || INITIAL_GAME_STATE.gold,
             xp: baseUserData.xp || INITIAL_GAME_STATE.xp,
             lastLogin: baseUserData.lastLogin || 0,
@@ -114,7 +109,7 @@ const UsersManagementView = () => {
           description: `Người dùng ${userToUpdate.displayName || userToUpdate.email} đã được ${newStatus === 'active' ? 'bỏ cấm chat' : 'cấm chat'}.`,
           className: "bg-green-500 text-white"
         });
-        setIsModalOpen(false); // Close modal after action
+        setIsModalOpen(false); 
       } catch (err) {
         console.error("Error updating user status:", err);
         toast({ title: "Lỗi", description: "Không thể cập nhật trạng thái người dùng.", variant: "destructive"});
@@ -204,7 +199,6 @@ const UsersManagementView = () => {
                       <Button variant="ghost" size="icon" onClick={() => handleViewDetails(user)} className="hover:text-primary" title="Xem chi tiết">
                         <Eye className="h-5 w-5" />
                       </Button>
-                      {/* Edit might not be necessary if details are in modal */}
                     </TableCell>
                   </TableRow>
                 ))
@@ -224,9 +218,7 @@ const UsersManagementView = () => {
     </div>
   );
 };
-// --- End of User Management Specific Logic ---
 
-// --- Start of Tier Management Specific Logic (adapted from old tiers/page.tsx) ---
 interface TierDisplayData extends TierDetail {
   tierNumber: number;
   levelRange: string;
@@ -260,7 +252,7 @@ const TiersManagementView = () => {
   });
 
   return (
-    <div className="flex-1 overflow-y-auto"> {/* Simple scroll for tier list, no sticky header needed */}
+    <div className="flex-1 overflow-y-auto">
       <Table>
         <TableHeader className="sticky top-0 bg-card z-10">
           <TableRow>
@@ -311,7 +303,6 @@ const TiersManagementView = () => {
     </div>
   );
 };
-// --- End of Tier Management Specific Logic ---
 
 
 export default function AdminUsersTiersPage() {
@@ -319,16 +310,7 @@ export default function AdminUsersTiersPage() {
 
   return (
     <Card className="shadow-xl flex flex-col flex-1 min-h-0">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-          {activeView === 'users' ? <Users className="h-7 w-7"/> : <BarChart3 className="h-7 w-7"/>}
-          Quản Lý Người Dùng & Cấp Bậc
-        </CardTitle>
-        <CardDescription>
-          Xem và quản lý thông tin người dùng hoặc xem lại chi tiết các cấp bậc trong game.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6">
         <div className="flex border-b mb-4 shrink-0">
           <Button
             variant="ghost"

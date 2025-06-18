@@ -32,7 +32,6 @@ import { useAuth } from '@/hooks/useAuth';
 type ActiveView = 'mail' | 'bonuses';
 type ActiveMailSubView = 'compose' | 'history';
 
-// --- Start of Mail Management Specific Logic ---
 const MailManagementView = () => {
   const { user } = useAuth();
   const [activeMailSubView, setActiveMailSubView] = useState<ActiveMailSubView>('compose');
@@ -143,9 +142,8 @@ const MailManagementView = () => {
 
     if (targetAudience === 'all') {
       try {
-        // Fetching only UIDs from the 'users' collection (not full GameState)
         const usersCollectionRef = collection(db, 'users');
-        const usersSnapshot = await getDocs(query(usersCollectionRef)); // No need to order or fetch full data
+        const usersSnapshot = await getDocs(query(usersCollectionRef)); 
         usersSnapshot.forEach(userDoc => uidsToSend.push(userDoc.id));
       } catch (error) {
         console.error("Error fetching all users for mail:", error);
@@ -165,8 +163,8 @@ const MailManagementView = () => {
 
     try {
       uidsToSend.forEach(uid => {
-        const mailRef = doc(collection(db, 'users', uid, 'mail')); // New mail document in subcollection
-        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = { // recipientUid is implicit
+        const mailRef = doc(collection(db, 'users', uid, 'mail')); 
+        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = { 
           senderType: 'admin',
           senderName: user.displayName || user.email || 'Quản Trị Viên HappyFarm',
           subject: mailSubject,
@@ -175,7 +173,6 @@ const MailManagementView = () => {
           isRead: false,
           isClaimed: false,
           createdAt: serverTimestamp(),
-          // bonusId could be added here if this mail is tied to a specific bonus config ID
         };
         batch.set(mailRef, newMail);
       });
@@ -393,9 +390,7 @@ const MailManagementView = () => {
      </div>
   );
 };
-// --- End of Mail Management Specific Logic ---
 
-// --- Start of Bonus Management Specific Logic ---
 const BonusesManagementView = () => {
   const [bonusConfigs, setBonusConfigs] = useState<BonusConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -558,23 +553,13 @@ const BonusesManagementView = () => {
     </div>
   );
 };
-// --- End of Bonus Management Specific Logic ---
 
 export default function AdminMailBonusesPage() {
   const [activeView, setActiveView] = useState<ActiveView>('mail');
 
   return (
     <Card className="shadow-xl flex flex-col flex-1 min-h-0">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-          {activeView === 'mail' ? <Mail className="h-7 w-7"/> : <Gift className="h-7 w-7"/>}
-          Quản Lý Thư & Bonus
-        </CardTitle>
-        <CardDescription>
-          Soạn thư gửi người chơi hoặc quản lý các cấu hình bonus tự động trong game.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col min-h-0 p-6 pt-0">
+      <CardContent className="flex-1 flex flex-col min-h-0 p-6">
         <div className="flex border-b mb-4 shrink-0">
           <Button
             variant="ghost"

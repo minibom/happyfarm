@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react'; // BarChart3 for Tiers, Mail for Mail, Gift for Bonus
+import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -32,8 +32,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const menuItems = [
     { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package },
-    { href: '/admin/users-tiers', label: 'Người Dùng & Bậc', icon: Users }, // Combined
-    { href: '/admin/mail-bonuses', label: 'Thư & Bonus', icon: Mail },      // Combined
+    { href: '/admin/users-tiers', label: 'Người Dùng & Bậc', icon: Users },
+    { href: '/admin/mail-bonuses', label: 'Thư & Bonus', icon: Mail },
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
@@ -68,6 +68,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
     setIsCheckingPermissions(false);
   }, [user, authLoading, router, toast]);
+
+  const getCurrentPageLabel = () => {
+    const currentItem = menuItems.find(item => pathname.startsWith(item.href));
+    if (currentItem) return currentItem.label;
+
+    // Fallback for specific paths if needed, though menuItems should cover main sections
+    if (pathname.startsWith('/admin/items-management')) return 'Quản Lý Vật Phẩm';
+    if (pathname.startsWith('/admin/users-tiers')) return 'Người Dùng & Cấp Bậc';
+    if (pathname.startsWith('/admin/mail-bonuses')) return 'Thư & Bonus';
+    if (pathname.startsWith('/admin/config')) return 'Cấu hình Hệ thống';
+    
+    return 'Bảng điều khiển Admin';
+  };
 
   if (authLoading || isCheckingPermissions) {
     return (
@@ -130,7 +143,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <SidebarInset className="bg-muted/30 flex flex-col h-screen">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 shrink-0">
             <SidebarTrigger className="md:hidden" />
-            {/* The page title div has been removed from here */}
+            <div className="flex items-center gap-2">
+              <LayoutDashboard className="h-5 w-5 text-muted-foreground" />
+              <h1 className="text-lg font-semibold text-foreground">
+                {getCurrentPageLabel()}
+              </h1>
+            </div>
         </header>
         <main className="flex-1 overflow-y-auto flex flex-col gap-4 p-4 sm:p-6">
             {children}
@@ -139,5 +157,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    

@@ -3,13 +3,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3 } from 'lucide-react'; // Added BarChart3 for Tiers
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore } from '@/types';
-import type { TierDetail } from '@/lib/tier-data'; // For TIER_DATA type
+import type { TierDetail } from '@/lib/tier-data';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
@@ -107,8 +107,7 @@ export default function AdminConfigPage() {
       let tierCount = 0;
 
       TIER_DATA.forEach((tierDetail: TierDetail, index: number) => {
-        const tierId = `tier_${index + 1}`; // e.g., tier_1, tier_2
-        // Ensure data matches Firestore type if different from TierDetail
+        const tierId = `tier_${index + 1}`; 
         const dataToPush: TierDataFromFirestore = { ...tierDetail };
         const tierRef = doc(db, 'gameTiers', tierId);
         batch.set(tierRef, dataToPush);
@@ -137,15 +136,7 @@ export default function AdminConfigPage() {
   return (
     <div className="space-y-6">
       <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-            <ServerCog className="h-7 w-7"/> Cấu Hình Hệ Thống & Đồng Bộ Dữ Liệu
-          </CardTitle>
-          <CardDescription>
-            Các cài đặt và hành động quản trị cấp cao. Hãy cẩn thận khi thực hiện các thay đổi.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-6">
           <Card className="border-primary/50">
             <CardHeader>
               <div className="flex items-center gap-2">
