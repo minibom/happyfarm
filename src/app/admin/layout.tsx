@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingBasket, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift, Zap as FertilizerIcon } from 'lucide-react'; // Added FertilizerIcon
+import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift } from 'lucide-react'; // Changed ShoppingBasket to Package
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -31,8 +31,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   const menuItems = [
-    { href: '/admin/items', label: 'QL Cây Trồng', icon: ShoppingBasket },
-    { href: '/admin/fertilizers', label: 'QL Phân Bón', icon: FertilizerIcon },
+    { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package }, // Updated href and label
     { href: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { href: '/admin/tiers', label: 'Quản lý Bậc', icon: BarChart3 },
     { href: '/admin/mail', label: 'Quản lý Thư', icon: Mail },
