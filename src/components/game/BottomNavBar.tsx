@@ -119,7 +119,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   const selectedFertilizerInfo = selectedFertilizerId && currentAction === 'fertilizing' ? getFertilizerInfo(selectedFertilizerId) : null;
 
   const handleAdminNavigation = () => {
-    router.push('/admin/items');
+    router.push('/admin/items-management'); // Updated link
   };
 
   const handleLogout = async () => {
@@ -166,9 +166,14 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
   const ownedAvailableFertilizers = availableFertilizers.filter(fert => (inventory[fert.id] || 0) > 0);
 
-  const UnreadBadge = () => (
+  const UnreadBadge = ({ on }: { on: 'more' | 'settings' }) => (
     unreadMailCount > 0 ? (
-      <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
+      <Badge className={cn(
+          "absolute -top-1 -right-1 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10",
+           // Adjust position slightly if needed based on button
+          on === 'more' && "", 
+          on === 'settings' && "" 
+      )}>
         {unreadMailCount > 9 ? '9+' : unreadMailCount}
       </Badge>
     ) : null
@@ -349,7 +354,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       >
                           <Settings className={iconClass} />
                           <span className={labelClass}>Khác</span>
-                          <UnreadBadge />
+                          <UnreadBadge on="settings" />
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -403,7 +408,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       >
                           <Menu className={iconClass} />
                           <span className={labelClass}>Thêm</span>
-                          <UnreadBadge />
+                          <UnreadBadge on="more" />
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
