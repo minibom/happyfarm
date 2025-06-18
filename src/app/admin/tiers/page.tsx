@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
@@ -28,7 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
 
   const menuItems = [
     { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package },
@@ -158,5 +157,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
