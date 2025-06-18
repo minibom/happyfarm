@@ -3,12 +3,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift } from 'lucide-react';
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3 } from 'lucide-react'; // Added BarChart3 for Tiers
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA } from '@/lib/constants';
+import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch } from 'firebase/firestore';
-import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration } from '@/types';
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore } from '@/types';
+import type { TierDetail } from '@/lib/tier-data'; // For TIER_DATA type
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
@@ -95,6 +96,43 @@ export default function AdminConfigPage() {
     }
   };
 
+  const handlePushTierData = async () => {
+    toast({
+      title: "Đang Xử Lý...",
+      description: "Bắt đầu đẩy dữ liệu Cấp Bậc (Tiers) lên Firestore...",
+      duration: 3000,
+    });
+    try {
+      const batch = writeBatch(db);
+      let tierCount = 0;
+
+      TIER_DATA.forEach((tierDetail: TierDetail, index: number) => {
+        const tierId = `tier_${index + 1}`; // e.g., tier_1, tier_2
+        // Ensure data matches Firestore type if different from TierDetail
+        const dataToPush: TierDataFromFirestore = { ...tierDetail };
+        const tierRef = doc(db, 'gameTiers', tierId);
+        batch.set(tierRef, dataToPush);
+        tierCount++;
+      });
+      
+      await batch.commit();
+      toast({
+        title: "Thành Công!",
+        description: `Đã đẩy ${tierCount} cấp bậc từ 'constants.ts' lên Firestore collection 'gameTiers'.`,
+        duration: 7000,
+        className: "bg-green-500 text-white"
+      });
+
+    } catch (error) {
+      console.error("Error pushing tier data to Firestore:", error);
+       toast({
+        title: "Lỗi Đẩy Dữ Liệu Cấp Bậc",
+        description: `Không thể đẩy dữ liệu cấp bậc. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -112,7 +150,7 @@ export default function AdminConfigPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                   <DatabaseZap className="h-6 w-6 text-primary" />
-                  <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cây Trồng & Phân Bón</CardTitle>
+                  <CardTitle className="text-xl">Đồng Bộ Cây Trồng & Phân Bón</CardTitle>
               </div>
               <CardDescription>
                 Đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>constants.ts</code> lên <code>gameItems</code>
@@ -154,6 +192,29 @@ export default function AdminConfigPage() {
             </CardContent>
           </Card>
 
+          <Card className="border-sky-500/50">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                  <BarChart3 className="h-6 w-6 text-sky-500" />
+                  <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cấp Bậc (Tiers)</CardTitle>
+              </div>
+              <CardDescription>
+                Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code> 
+                lên collection <code>gameTiers</code> trong Firestore.
+                Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu cấp bậc trên database.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handlePushTierData} className="bg-sky-500 hover:bg-sky-600 text-white">
+                <UploadCloud className="mr-2 h-5 w-5" />
+                Đẩy Dữ Liệu Cấp Bậc
+              </Button>
+              <p className="mt-2 text-sm text-muted-foreground">
+                GHI ĐÈ dữ liệu trên <code>gameTiers</code>.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card className="border-blue-500/50">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -186,5 +247,3 @@ export default function AdminConfigPage() {
     </div>
   );
 }
-
-    

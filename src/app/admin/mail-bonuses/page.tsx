@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { MailMessage, RewardItem, RewardItemType, InventoryItem, AdminUserView, BonusConfiguration, BonusTriggerType } from '@/types';
+import type { MailMessage, RewardItem, RewardItemType, InventoryItem, AdminUserView, BonusConfiguration, BonusTriggerType, AdminMailLogEntry } from '@/types';
 import { Eye, Edit, Trash2, Loader2, PlusCircle, Mail, Gift, Send, History, Package, Coins, Star, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -27,12 +27,14 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CROP_DATA, FERTILIZER_DATA } from '@/lib/constants';
 import { BonusActionModal } from '@/components/admin/BonusActionModal';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 type ActiveView = 'mail' | 'bonuses';
 type ActiveMailSubView = 'compose' | 'history';
 
-// --- Start of Mail Management Specific Logic (adapted from old mail/page.tsx) ---
+// --- Start of Mail Management Specific Logic ---
 const MailManagementView = () => {
+  const { user } = useAuth(); // Get current admin user
   const [activeMailSubView, setActiveMailSubView] = useState<ActiveMailSubView>('compose');
   const [targetAudience, setTargetAudience] = useState<'all' | 'specific'>('all');
   const [specificUids, setSpecificUids] = useState('');
@@ -46,43 +48,39 @@ const MailManagementView = () => {
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
 
-  const [sentMails, setSentMails] = useState<MailMessage[]>([]);
+  const [sentMailsLog, setSentMailsLog] = useState<AdminMailLogEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
     if (activeMailSubView === 'history') {
-      fetchSentMails();
+      fetchSentMailsHistory();
     }
   }, [activeMailSubView]);
 
-  const fetchSentMails = async () => {
+  const fetchSentMailsHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      // This is a simplified query. For a large number of mails,
-      // you'd need proper indexing and pagination.
-      // Querying all mails can be very inefficient.
-      // We might need to rethink how to efficiently query "sent mails" if the
-      // `mail` collection is under each user.
-      // For now, this assumes a global "sentMailLog" collection if such a thing exists,
-      // or it won't work as intended for user-specific mail subcollections.
-      // Let's assume for now this attempts to fetch from a *hypothetical* global sent mail log.
-      // A more realistic scenario for "sent mail history" in admin would be to list mails
-      // *sent by admin* or *system mails*, or query for mails with specific `senderType`.
-
-      // For now, I'll simulate an empty history as direct querying of all user subcollections is not feasible here.
-      // In a real scenario, you'd have a separate collection for system/admin sent mails.
-      console.warn("Mail History: Fetching a global 'sent mail' log is complex with user-specific mail subcollections. Displaying empty for now. This feature requires a dedicated backend logging strategy for admin-sent mails.");
-      setSentMails([]);
-
+      const logCollectionRef = collection(db, 'adminMailLog');
+      const q = query(logCollectionRef, orderBy('sentAt', 'desc'), limit(50)); // Get last 50 logs
+      const snapshot = await getDocs(q);
+      const logs: AdminMailLogEntry[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        logs.push({
+          id: docSnap.id,
+          ...data,
+          sentAt: data.sentAt instanceof Timestamp ? data.sentAt.toMillis() : data.sentAt,
+        } as AdminMailLogEntry);
+      });
+      setSentMailsLog(logs);
     } catch (error) {
-      console.error("Error fetching sent mail history:", error);
-      toast({ title: "Lỗi Tải Lịch Sử Thư", description: "Không thể tải lịch sử thư đã gửi.", variant: "destructive" });
-      setSentMails([]);
+      console.error("Error fetching admin mail log:", error);
+      toast({ title: "Lỗi Tải Lịch Sử Thư", description: "Không thể tải lịch sử thư đã gửi bởi admin.", variant: "destructive" });
+      setSentMailsLog([]);
     } finally {
       setIsLoadingHistory(false);
     }
   };
-
 
   const getRewardItemNameDisplay = (reward: RewardItem): string => {
     if (reward.type === 'gold') return `${reward.amount} Vàng`;
@@ -126,6 +124,10 @@ const MailManagementView = () => {
   };
 
   const handleSendMail = async () => {
+    if (!user) {
+        toast({ title: "Lỗi Xác Thực", description: "Không tìm thấy thông tin admin.", variant: "destructive" });
+        return;
+    }
     if (!mailSubject.trim() || !mailBody.trim()) {
       toast({ title: "Thiếu Thông Tin", description: "Chủ đề và nội dung thư không được để trống.", variant: "destructive" });
       return;
@@ -164,7 +166,7 @@ const MailManagementView = () => {
         const mailRef = doc(collection(db, 'users', uid, 'mail'));
         const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = {
           senderType: 'admin',
-          senderName: 'Quản Trị Viên HappyFarm',
+          senderName: user.displayName || user.email || 'Quản Trị Viên HappyFarm',
           subject: mailSubject,
           body: mailBody,
           rewards: rewards,
@@ -176,6 +178,22 @@ const MailManagementView = () => {
       });
 
       await batch.commit();
+      
+      // Log to adminMailLog
+      const logEntry: AdminMailLogEntry = {
+        sentAt: serverTimestamp(),
+        mailSubject: mailSubject,
+        mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''),
+        targetAudience: targetAudience,
+        specificUidsPreview: targetAudience === 'specific' 
+            ? (uidsToSend.slice(0,2).join(', ') + (uidsToSend.length > 2 ? `, (+${uidsToSend.length - 2} more)`: '')) 
+            : 'N/A',
+        rewardCount: rewards.length,
+        sentByUid: user.uid,
+        sentByName: user.displayName || user.email || 'Unknown Admin',
+      };
+      await addDoc(collection(db, 'adminMailLog'), logEntry);
+
       toast({
         title: "Gửi Thư Thành Công!",
         description: `Đã gửi thư đến ${uidsToSend.length} người dùng.`,
@@ -198,6 +216,17 @@ const MailManagementView = () => {
     return null;
   };
 
+  const formatTimestamp = (timestamp: any): string => {
+    if (!timestamp) return 'N/A';
+    if (timestamp.seconds) { // Firestore Timestamp object
+      return new Date(timestamp.seconds * 1000).toLocaleString('vi-VN');
+    }
+    if (typeof timestamp === 'number') { // Milliseconds from toMillis()
+      return new Date(timestamp).toLocaleString('vi-VN');
+    }
+    return 'Không rõ ngày';
+  };
+
 
   return (
      <div className="flex-1 flex flex-col min-h-0">
@@ -214,7 +243,7 @@ const MailManagementView = () => {
                 onClick={() => setActiveMailSubView('history')}
                 className={cn("py-2.5 px-3.5 rounded-none text-sm", activeMailSubView === 'history' ? 'border-b-2 border-accent text-accent font-medium' : 'text-muted-foreground hover:bg-muted/40')}
             >
-                <History className="mr-1.5 h-4 w-4"/> Lịch Sử Thư
+                <History className="mr-1.5 h-4 w-4"/> Lịch Sử Gửi
             </Button>
         </div>
 
@@ -255,7 +284,6 @@ const MailManagementView = () => {
                         <Textarea id="mailBody" value={mailBody} onChange={(e) => setMailBody(e.target.value)} rows={5} placeholder="Nội dung chi tiết của thư..." />
                     </div>
 
-                    {/* Rewards Section */}
                     <div className="space-y-4 border-t pt-4">
                         <Label className="text-base font-semibold">Đính kèm phần thưởng (Tùy chọn)</Label>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -327,33 +355,31 @@ const MailManagementView = () => {
                 </div>
             ) : (
                  <div className="flex-1 overflow-y-auto">
-                    {sentMails.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">Chưa có thư nào trong lịch sử.</p>
+                    {sentMailsLog.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">Chưa có thư nào trong lịch sử gửi của admin.</p>
                     ) : (
                         <Table>
                             <TableHeader className="sticky top-0 bg-card z-10">
                                 <TableRow>
                                 <TableHead>Chủ Đề</TableHead>
-                                <TableHead className="w-[150px]">Người Gửi</TableHead>
                                 <TableHead className="w-[180px]">Ngày Gửi</TableHead>
-                                <TableHead className="w-[100px] text-center">Số P.Thưởng</TableHead>
-                                <TableHead className="w-[100px] text-center">Hành Động</TableHead>
+                                <TableHead>Đối Tượng</TableHead>
+                                <TableHead className="w-[100px] text-center">P.Thưởng</TableHead>
+                                <TableHead className="w-[150px]">Người Gửi (Admin)</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {sentMails.map(mail => (
-                                <TableRow key={mail.id}>
-                                    <TableCell className="font-medium truncate max-w-xs" title={mail.subject}>{mail.subject}</TableCell>
-                                    <TableCell>{mail.senderName}</TableCell>
-                                    <TableCell>{mail.createdAt ? new Date(mail.createdAt.seconds * 1000).toLocaleString('vi-VN') : 'N/A'}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Badge variant="secondary">{mail.rewards.length}</Badge>
+                                {sentMailsLog.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell className="font-medium truncate max-w-xs" title={log.mailSubject}>{log.mailSubject}</TableCell>
+                                    <TableCell>{formatTimestamp(log.sentAt)}</TableCell>
+                                    <TableCell>
+                                        {log.targetAudience === 'all' ? <Badge variant="secondary">Tất cả</Badge> : <Badge variant="outline">{log.specificUidsPreview || 'Cụ thể'}</Badge>}
                                     </TableCell>
                                     <TableCell className="text-center">
-                                    <Button variant="ghost" size="icon" title="Xem chi tiết (chưa có)" disabled>
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
+                                        <Badge>{log.rewardCount}</Badge>
                                     </TableCell>
+                                    <TableCell className="text-xs" title={log.sentByUid}>{log.sentByName}</TableCell>
                                 </TableRow>
                                 ))}
                             </TableBody>
@@ -368,7 +394,7 @@ const MailManagementView = () => {
 };
 // --- End of Mail Management Specific Logic ---
 
-// --- Start of Bonus Management Specific Logic (adapted from old bonuses/page.tsx) ---
+// --- Start of Bonus Management Specific Logic ---
 const BonusesManagementView = () => {
   const [bonusConfigs, setBonusConfigs] = useState<BonusConfiguration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -413,9 +439,6 @@ const BonusesManagementView = () => {
   const handleSaveChanges = async (data: BonusConfiguration, idToSave: string, originalId?: string) => {
     try {
       if (modalProps.mode === 'edit' && originalId && originalId !== idToSave) {
-        // This case (changing ID on edit) is complex and might require deleting old + creating new
-        // For simplicity, if ID changes, it's treated as a new document, and the old one is deleted.
-        // Firestore doesn't directly support "renaming" a document ID.
         const oldDocRef = doc(db, 'gameBonusConfigurations', originalId);
         await deleteDoc(oldDocRef);
       }
@@ -457,7 +480,6 @@ const BonusesManagementView = () => {
     }).filter(s => s).join(', ');
     return summary.length > 50 ? summary.substring(0, 47) + "..." : summary;
   };
-
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -581,5 +603,3 @@ export default function AdminMailBonusesPage() {
     </Card>
   );
 }
-
-    

@@ -81,6 +81,19 @@ export interface BonusConfiguration {
   mailBody: string;
   isEnabled: boolean;
 }
+
+export interface AdminMailLogEntry {
+  id?: string; // Firestore document ID
+  sentAt: any; // Firestore Timestamp for sorting
+  mailSubject: string;
+  mailBodyPreview: string; // e.g., first 100 chars of the body
+  targetAudience: 'all' | 'specific';
+  specificUidsPreview?: string; // e.g., "uid1, uid2, (+3 more)" or "N/A"
+  rewardCount: number;
+  sentByUid: string;
+  sentByName: string; // Admin's display name or email
+}
+
 // --- End Mail & Reward Types ---
 
 export interface GameState {
@@ -168,4 +181,15 @@ export interface MarketItemDisplay {
   icon: string;
   basePrice?: number;
   description?: string;
+}
+
+// Tier data as stored in Firestore (matches TierDetail in tier-data.ts but for explicit typing)
+export interface TierDataFromFirestore {
+  name: string;
+  icon: string;
+  colorClass: string;
+  levelStart: number;
+  xpBoostPercent: number;
+  sellPriceBoostPercent: number;
+  growthTimeReductionPercent: number;
 }
