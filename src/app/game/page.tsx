@@ -37,6 +37,7 @@ export default function GamePage() {
     unlockPlot,
     updateDisplayName,
     applyFertilizer,
+    uprootCrop, // Add uprootCrop
     isInitialized,
     playerTierInfo,
     cropData,
@@ -153,6 +154,17 @@ export default function GamePage() {
       toast({ title: "Không Thể Bón Phân", description: "Ô đất này không phù hợp để bón phân.", variant: "default"});
     }
   };
+
+  const uprootCropFromPlotPopover = (plotId: number) => {
+    const plot = gameState.plots.find(p => p.id === plotId);
+    if (!plot) return;
+    if (plot.state === 'planted' || plot.state === 'growing') {
+        uprootCrop(plotId);
+    } else {
+        toast({ title: "Không Có Gì Để Nhổ", description: "Ô đất này không có cây đang trồng/lớn.", variant: "default"});
+    }
+  };
+
 
   const handleSetPlantMode = (seedId: SeedId) => {
     if (!cropData) return;
@@ -372,7 +384,8 @@ export default function GamePage() {
         availableFertilizersForPopover={availableFertilizersForSelection}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
-        fertilizeFromPlotPopover={fertilizeFromPlotPopover} // Pass down
+        fertilizeFromPlotPopover={fertilizeFromPlotPopover}
+        uprootCropFromPlotPopover={uprootCropFromPlotPopover} // Pass uprootCrop
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
@@ -451,3 +464,4 @@ export default function GamePage() {
     </div>
   );
 }
+

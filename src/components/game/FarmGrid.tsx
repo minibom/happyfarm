@@ -1,17 +1,20 @@
 
 import type { FC } from 'react';
 import FarmPlot from './FarmPlot';
-import type { Plot, SeedId, CropDetails, CropId } from '@/types';
+import type { Plot, SeedId, CropDetails, CropId, FertilizerDetails, FertilizerId } from '@/types'; // Added Fertilizer types
 
 interface FarmGridProps {
   plots: Plot[];
   onPlotClick: (plotId: number) => void;
   selectedPlotId?: number;
   availableSeedsForPopover: SeedId[];
+  availableFertilizersForPopover: FertilizerDetails[]; // New prop
   onPlantFromPopover: (plotId: number, seedId: SeedId) => void;
+  onFertilizeFromPopover: (plotId: number, fertilizerId: FertilizerId) => void; // New prop
+  onUprootCrop: (plotId: number) => void; // New prop
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
-  isGloballyFertilizing: boolean; // New prop
+  isGloballyFertilizing: boolean;
   cropData: Record<CropId, CropDetails>;
   playerTier: number;
   unlockedPlotsCount: number;
@@ -23,10 +26,13 @@ const FarmGrid: FC<FarmGridProps> = ({
   onPlotClick,
   selectedPlotId,
   availableSeedsForPopover,
+  availableFertilizersForPopover, // Destructure
   onPlantFromPopover,
+  onFertilizeFromPopover, // Destructure
+  onUprootCrop, // Destructure
   isGloballyPlanting,
   isGloballyHarvesting,
-  isGloballyFertilizing, // Destructure new prop
+  isGloballyFertilizing,
   cropData,
   playerTier,
   unlockedPlotsCount,
@@ -42,13 +48,14 @@ const FarmGrid: FC<FarmGridProps> = ({
           isSelected={plot.id === selectedPlotId}
           availableSeedsForPopover={availableSeedsForPopover}
           onPlantFromPopover={(seedId) => onPlantFromPopover(plot.id, seedId)}
+          onUprootCrop={onUprootCrop} // Pass onUprootCrop
           isGloballyPlanting={isGloballyPlanting}
           isGloballyHarvesting={isGloballyHarvesting}
-          isGloballyFertilizing={isGloballyFertilizing} // Pass down
+          isGloballyFertilizing={isGloballyFertilizing}
           cropData={cropData}
           playerTier={playerTier}
           isLocked={plot.id >= unlockedPlotsCount}
-          unlockCost={plot.id === unlockedPlotsCount ? cropData.tomato.seedPrice : 0}
+          unlockCost={plot.id === unlockedPlotsCount ? cropData.tomato.seedPrice : 0} // This might need a more dynamic cost calculation
           onUnlockPlot={() => onUnlockPlot(plot.id)}
           unlockedPlotsCount={unlockedPlotsCount}
         />
@@ -58,3 +65,4 @@ const FarmGrid: FC<FarmGridProps> = ({
 };
 
 export default FarmGrid;
+

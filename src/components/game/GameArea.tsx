@@ -16,10 +16,11 @@ interface GameAreaProps {
   selectedSeedToPlant?: SeedId;
   selectedFertilizerId?: FertilizerId;
   availableSeedsForPlanting: SeedId[];
-  availableFertilizersForPopover: FertilizerDetails[]; // New prop for fertilizer popover
+  availableFertilizersForPopover: FertilizerDetails[];
   handlePlotClick: (plotId: number) => void;
   plantSeedFromPlotPopover: (plotId: number, seedId: SeedId) => void;
-  fertilizeFromPlotPopover: (plotId: number, fertilizerId: FertilizerId) => void; // New prop
+  fertilizeFromPlotPopover: (plotId: number, fertilizerId: FertilizerId) => void;
+  uprootCropFromPlotPopover: (plotId: number) => void; // New prop for uprooting
   unlockPlot: (plotId: number) => void;
   userStatus: 'active' | 'banned_chat';
 }
@@ -32,10 +33,11 @@ const GameArea: FC<GameAreaProps> = ({
   selectedSeedToPlant,
   selectedFertilizerId,
   availableSeedsForPlanting,
-  availableFertilizersForPopover, // Destructure new prop
+  availableFertilizersForPopover,
   handlePlotClick,
   plantSeedFromPlotPopover,
-  fertilizeFromPlotPopover, // Destructure new prop
+  fertilizeFromPlotPopover,
+  uprootCropFromPlotPopover, // Destructure new prop
   unlockPlot,
   userStatus,
 }) => {
@@ -82,9 +84,10 @@ const GameArea: FC<GameAreaProps> = ({
             plots={gameState.plots}
             onPlotClick={handlePlotClick}
             availableSeedsForPopover={availableSeedsForPlanting}
-            availableFertilizersForPopover={availableFertilizersForPopover} // Pass down
+            availableFertilizersForPopover={availableFertilizersForPopover} 
             onPlantFromPopover={plantSeedFromPlotPopover}
-            onFertilizeFromPopover={fertilizeFromPlotPopover} // Pass down
+            onFertilizeFromPopover={fertilizeFromPlotPopover}
+            onUprootCrop={uprootCropFromPlotPopover} // Pass down uprootCrop
             isGloballyPlanting={currentAction === 'planting'}
             isGloballyHarvesting={currentAction === 'harvesting'}
             isGloballyFertilizing={currentAction === 'fertilizing'} 
@@ -103,3 +106,4 @@ const GameArea: FC<GameAreaProps> = ({
 };
 
 export default GameArea;
+

@@ -1,7 +1,7 @@
 
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { Sprout, Gift, Lock, Coins, Zap as FertilizerIcon } from 'lucide-react'; // Added FertilizerIcon
+import { Sprout, Gift, Lock, Coins, Zap as FertilizerIcon, Axe } from 'lucide-react'; // Added Axe for uproot
 import { LeafIcon } from '@/components/icons/LeafIcon';
 import type { Plot, SeedId, CropId, CropDetails } from '@/types';
 import { cn } from '@/lib/utils';
@@ -16,9 +16,10 @@ interface FarmPlotProps {
   onClick: () => void;
   availableSeedsForPopover: SeedId[];
   onPlantFromPopover: (seedId: SeedId) => void;
+  onUprootCrop: (plotId: number) => void; // New prop for uprooting
   isGloballyPlanting: boolean;
   isGloballyHarvesting: boolean;
-  isGloballyFertilizing: boolean; // New prop
+  isGloballyFertilizing: boolean;
   isSelected?: boolean;
   cropData: Record<CropId, CropDetails>;
   playerTier: number;
@@ -33,9 +34,10 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onClick,
   availableSeedsForPopover,
   onPlantFromPopover,
+  onUprootCrop, // Destructure new prop
   isGloballyPlanting,
   isGloballyHarvesting,
-  isGloballyFertilizing, // Destructure new prop
+  isGloballyFertilizing,
   isSelected,
   cropData,
   playerTier,
@@ -43,7 +45,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
   onUnlockPlot,
   unlockedPlotsCount,
 }) => {
-  const [isSeedSelectorOpen, setIsSeedSelectorOpen] = useState(false);
+  const [isPlotPopoverOpen, setIsPlotPopoverOpen] = useState(false);
   const [timeLeftDisplay, setTimeLeftDisplay] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -167,12 +169,11 @@ const FarmPlot: FC<FarmPlotProps> = ({
       return;
     }
 
-    if (isGloballyPlanting || isGloballyHarvesting || isGloballyFertilizing) { // Check fertilizing mode
-      onClick();
-    } else if (plot.state === 'empty') {
-      setIsSeedSelectorOpen(true);
+    if (isGloballyPlanting || isGloballyHarvesting || isGloballyFertilizing) {
+      onClick(); // Global actions take precedence
     } else {
-      onClick(); // Default click action if not in global mode and not empty (e.g., to open popover for grown plant)
+      // Open popover for non-global actions (plant, uproot)
+      setIsPlotPopoverOpen(true);
     }
   };
 
@@ -195,7 +196,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
     if (isGloballyHarvesting && plot.state === 'ready_to_harvest') {
       actionableClass = 'ring-4 ring-yellow-400 ring-offset-2';
     }
-    if (isGloballyFertilizing && (plot.state === 'planted' || plot.state === 'growing')) { // Highlight for fertilizing
+    if (isGloballyFertilizing && (plot.state === 'planted' || plot.state === 'growing')) {
       actionableClass = 'ring-4 ring-blue-500 ring-offset-2';
     }
   }
@@ -213,11 +214,13 @@ const FarmPlot: FC<FarmPlotProps> = ({
       ? cropData[plot.cropId].name
       : plot.state.charAt(0).toUpperCase() + plot.state.slice(1);
 
+  const showPopover = isPlotPopoverOpen && !isLocked && !isGloballyPlanting && !isGloballyHarvesting && !isGloballyFertilizing;
+
   return (
     <TooltipProvider delayDuration={100}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Popover open={isSeedSelectorOpen && !isLocked && !isGloballyPlanting && !isGloballyHarvesting && !isGloballyFertilizing} onOpenChange={setIsSeedSelectorOpen}>
+          <Popover open={showPopover} onOpenChange={setIsPlotPopoverOpen}>
             <PopoverTrigger asChild>
               <div
                 onClick={handlePlotGUIClick}
@@ -241,49 +244,66 @@ const FarmPlot: FC<FarmPlotProps> = ({
                 )}
               </div>
             </PopoverTrigger>
-            {!isLocked && plot.state === 'empty' && !isGloballyPlanting && !isGloballyHarvesting && !isGloballyFertilizing && cropData && (
+            {showPopover && cropData && (
               <PopoverContent className="w-auto p-2" side="bottom" align="center">
                 <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
-                  {availableSeedsForPopover.length > 0 ? (
-                    availableSeedsForPopover.map(seedId => {
-                      const cropId = seedId.replace('Seed', '') as CropId;
-                      const crop = cropData[cropId];
-                      const isSeedLockedByTier = playerTier < crop.unlockTier;
-                      const requiredTierName = isSeedLockedByTier ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
+                  {plot.state === 'empty' && (
+                    <>
+                      <p className="text-sm font-medium mb-1 text-center">Trồng hạt giống:</p>
+                      {availableSeedsForPopover.length > 0 ? (
+                        availableSeedsForPopover.map(seedId => {
+                          const cropId = seedId.replace('Seed', '') as CropId;
+                          const crop = cropData[cropId];
+                          const isSeedLockedByTier = playerTier < crop.unlockTier;
+                          const requiredTierName = isSeedLockedByTier ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
 
-                      return (
-                        <Tooltip key={seedId} delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <div className={cn("w-full", isSeedLockedByTier && "opacity-50 cursor-not-allowed")}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (!isSeedLockedByTier) {
-                                    onPlantFromPopover(seedId);
-                                    setIsSeedSelectorOpen(false);
-                                  }
-                                }}
-                                className={cn("w-full justify-start", isSeedLockedByTier && "pointer-events-none")}
-                                disabled={!crop || isSeedLockedByTier}
-                              >
-                                {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
-                                Trồng {crop?.name || seedId}
-                                {isSeedLockedByTier && <Lock className="ml-auto h-3 w-3" />}
-                              </Button>
-                            </div>
-                          </TooltipTrigger>
-                          {isSeedLockedByTier && (
-                            <TooltipContent side="right" align="start">
-                              <p>Mở khóa ở {requiredTierName} (Bậc {crop.unlockTier})</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center">Không có hạt giống trong kho.</p>
+                          return (
+                            <Tooltip key={seedId} delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <div className={cn("w-full", isSeedLockedByTier && "opacity-50 cursor-not-allowed")}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (!isSeedLockedByTier) {
+                                        onPlantFromPopover(seedId);
+                                        setIsPlotPopoverOpen(false);
+                                      }
+                                    }}
+                                    className={cn("w-full justify-start", isSeedLockedByTier && "pointer-events-none")}
+                                    disabled={!crop || isSeedLockedByTier}
+                                  >
+                                    {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                                    Trồng {crop?.name || seedId}
+                                    {isSeedLockedByTier && <Lock className="ml-auto h-3 w-3" />}
+                                  </Button>
+                                </div>
+                              </TooltipTrigger>
+                              {isSeedLockedByTier && (
+                                <TooltipContent side="right" align="start">
+                                  <p>Mở khóa ở {requiredTierName} (Bậc {crop.unlockTier})</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          );
+                        })
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-center">Không có hạt giống trong kho.</p>
+                      )}
+                    </>
+                  )}
+                  {(plot.state === 'planted' || plot.state === 'growing') && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        onUprootCrop(plot.id);
+                        setIsPlotPopoverOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Axe className="mr-2 h-4 w-4" /> Nhổ Cây
+                    </Button>
                   )}
                 </div>
               </PopoverContent>
@@ -299,3 +319,4 @@ const FarmPlot: FC<FarmPlotProps> = ({
 };
 
 export default FarmPlot;
+

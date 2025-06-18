@@ -55,7 +55,7 @@ export const useGameLogic = () => {
   return {
     // State from useGameStateCore
     gameState,
-    setGameState, // Added setGameState to the return object
+    setGameState, 
     isInitialized, // This is the overall initialization status
     playerTierInfo,
     gameDataLoaded, // Specifically if user's game data from Firestore is loaded
@@ -72,3 +72,4 @@ export const useGameLogic = () => {
     ...transactionActions,
   };
 };
+

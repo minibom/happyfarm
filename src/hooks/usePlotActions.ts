@@ -223,5 +223,38 @@ export const usePlotActions = ({
     toast({ title: "Đã Bón Phân!", description: `${fertilizerDetail.name} đã được sử dụng, giảm thời gian chờ!`, className: "bg-accent text-accent-foreground" });
   }, [setGameState, gameStateRef, cropData, fertilizerData, toast]);
 
-  return { plantCrop, harvestCrop, unlockPlot, applyFertilizer };
+  const uprootCrop = useCallback((plotId: number) => {
+    const currentGameState = gameStateRef.current;
+    const plotToUproot = currentGameState.plots.find(p => p.id === plotId);
+
+    if (!plotToUproot) {
+      toast({ title: "Lỗi", description: "Ô đất không tồn tại.", variant: "destructive" });
+      return;
+    }
+
+    if (plotId >= currentGameState.unlockedPlotsCount) {
+      toast({ title: "Lỗi", description: "Không thể thao tác trên ô đất bị khóa.", variant: "destructive" });
+      return;
+    }
+
+    if (plotToUproot.state !== 'planted' && plotToUproot.state !== 'growing') {
+      toast({ title: "Không Thể Nhổ", description: "Chỉ có thể nhổ cây đang trồng hoặc đang lớn.", variant: "default" });
+      return;
+    }
+
+    setGameState(prev => {
+      const newPlots = prev.plots.map(p => {
+        if (p.id === plotId) {
+          return { ...p, state: 'empty' as const, cropId: undefined, plantedAt: undefined };
+        }
+        return p;
+      });
+      return { ...prev, plots: newPlots, lastUpdate: Date.now() };
+    });
+
+    toast({ title: "Đã Nhổ Cây", description: `Đã dọn sạch ô đất ${plotId + 1}.`, className: "bg-orange-500 text-white" });
+  }, [setGameState, gameStateRef, toast]);
+
+  return { plantCrop, harvestCrop, unlockPlot, applyFertilizer, uprootCrop };
 };
+
