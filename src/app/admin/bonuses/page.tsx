@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // Added import
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -14,17 +14,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Gift, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import type { BonusTriggerType, RewardItem } from '@/types'; // Assuming types are defined
-
-// Placeholder for bonus data - In a real app, this would come from Firestore
-const placeholderBonusConfigurations = [
-  { id: 'tierUp_2', triggerType: 'tierUp', triggerValue: '2', description: 'Thưởng khi đạt Bậc 2', rewards: [{ type: 'gold', amount: 200 }], mailSubject: 'Chúc mừng lên Bậc 2!', mailBody: 'Phần thưởng cho việc đạt Bậc 2.', isEnabled: true },
-  { id: 'firstLogin', triggerType: 'firstLogin', description: 'Thưởng lần đầu đăng nhập', rewards: [{ type: 'item', itemId: 'tomatoSeed', quantity: 10 }], mailSubject: 'Chào mừng đến Happy Farm!', mailBody: 'Món quà nhỏ cho bạn bắt đầu.', isEnabled: true },
-];
-
+import type { BonusTriggerType, RewardItem } from '@/types';
+import { BONUS_CONFIGURATIONS_DATA } from '@/lib/constants'; // Import the new data
 
 export default function AdminBonusesPage() {
-  // TODO: Fetch and manage bonus configurations from Firestore
+  // TODO: Fetch and manage bonus configurations from Firestore in the future
+  // For now, we use the static data from constants.
+  const bonusConfigurations = BONUS_CONFIGURATIONS_DATA;
 
   return (
     <div className="space-y-6">
@@ -34,8 +30,8 @@ export default function AdminBonusesPage() {
             <Gift className="h-7 w-7"/> Quản Lý Bonus & Phần Thưởng
           </CardTitle>
           <CardDescription>
-            Cấu hình các loại bonus tự động (ví dụ: quà lên bậc) và phần thưởng cho sự kiện.
-            Hệ thống sẽ tự động gửi thư kèm phần thưởng khi người chơi đạt điều kiện.
+            Cấu hình các loại bonus tự động (ví dụ: quà lên bậc, quà đăng nhập) và phần thưởng cho sự kiện.
+            Hệ thống sẽ tự động gửi thư kèm phần thưởng khi người chơi đạt điều kiện (cần Cloud Functions).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -47,32 +43,32 @@ export default function AdminBonusesPage() {
 
           <Card className="border-green-500/50">
             <CardHeader>
-              <CardTitle className="text-xl">Danh Sách Bonus Hiện Tại</CardTitle>
+              <CardTitle className="text-xl">Danh Sách Bonus Hiện Tại ({bonusConfigurations.length})</CardTitle>
               <CardDescription>
-                Quản lý các cấu hình bonus đang hoạt động. (Chức năng chỉnh sửa và tạo mới sẽ được cập nhật)
+                Quản lý các cấu hình bonus đang hoạt động. (Dữ liệu từ constants.ts, sắp tới sẽ từ Firestore).
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {placeholderBonusConfigurations.length > 0 ? (
-                <div className="space-y-4">
-                  {placeholderBonusConfigurations.map((bonus) => (
+              {bonusConfigurations.length > 0 ? (
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                  {bonusConfigurations.map((bonus) => (
                     <Card key={bonus.id} className="p-4 flex justify-between items-start">
                       <div>
-                        <h4 className="font-semibold">{bonus.description} (ID: {bonus.id})</h4>
+                        <h4 className="font-semibold">{bonus.description} (ID: <span className="text-primary">{bonus.id}</span>)</h4>
                         <p className="text-sm text-muted-foreground">
-                          Loại: {bonus.triggerType}
+                          Loại Kích Hoạt: {bonus.triggerType}
                           {bonus.triggerValue && ` (Giá trị: ${bonus.triggerValue})`}
                         </p>
                         <p className="text-sm">Thư: "{bonus.mailSubject}"</p>
                         <p className="text-sm">Phần thưởng: {bonus.rewards.map(r => 
                             r.type === 'gold' ? `${r.amount} vàng` : 
                             r.type === 'xp' ? `${r.amount} XP` : 
-                            r.type === 'item' ? `${r.quantity}x ${r.itemId}` : ''
+                            r.type === 'item' && r.itemId ? `${r.quantity}x ${r.itemId}` : ''
                           ).join(', ')}
                         </p>
                          <p className="text-sm">Trạng thái: <span className={bonus.isEnabled ? "text-green-600 font-medium" : "text-red-600 font-medium"}>{bonus.isEnabled ? "Đang Bật" : "Đang Tắt"}</span></p>
                       </div>
-                      <div className="flex gap-2 mt-1">
+                      <div className="flex gap-2 mt-1 flex-shrink-0">
                         <Button variant="outline" size="icon" disabled title="Chỉnh sửa (Sắp có)">
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -114,15 +110,17 @@ export default function AdminBonusesPage() {
                             <SelectValue placeholder="Chọn loại kích hoạt" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="tierUp">Lên Bậc</SelectItem>
                             <SelectItem value="firstLogin">Lần Đầu Đăng Nhập</SelectItem>
+                            <SelectItem value="tierUp">Lên Bậc</SelectItem>
                             <SelectItem value="event">Sự Kiện Đặc Biệt</SelectItem>
+                            <SelectItem value="leaderboardWeekly">BXH Tuần</SelectItem>
+                            <SelectItem value="leaderboardMonthly">BXH Tháng</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
                 <div>
                     <Label htmlFor="triggerValue">Giá Trị Kích Hoạt (nếu có)</Label>
-                    <Input id="triggerValue" placeholder="vd: 3 (cho tierUp), xmas2024 (cho event)" disabled />
+                    <Input id="triggerValue" placeholder="vd: 3 (cho tierUp), xmas2024 (cho event), top10 (cho bxh)" disabled />
                 </div>
                  <div>
                     <Label htmlFor="mailSubjectEdit">Chủ Đề Thư Gửi Kèm</Label>
@@ -134,7 +132,7 @@ export default function AdminBonusesPage() {
                 </div>
                 <div>
                     <Label>Phần Thưởng (Sắp có giao diện thêm/xóa)</Label>
-                    <p className="text-xs text-muted-foreground">Ví dụ: 100 Vàng, 5 x cà chuaSeed</p>
+                    <p className="text-xs text-muted-foreground">Ví dụ: 100 Vàng, 5 x tomatoSeed</p>
                     {/* TODO: UI to add/remove rewards */}
                 </div>
                 <Button disabled>Lưu Cấu Hình Bonus (Sắp có)</Button>
