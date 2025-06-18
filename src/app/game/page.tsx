@@ -8,8 +8,9 @@ import MarketModal from '@/components/game/MarketModal';
 import BottomNavBar from '@/components/game/BottomNavBar';
 import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
-import GameArea from '@/components/game/GameArea'; // Import the new component
-import ChatPanel from '@/components/game/ChatPanel'; // Keep for modal chat
+import LeaderboardModal from '@/components/game/LeaderboardModal'; // Import LeaderboardModal
+import GameArea from '@/components/game/GameArea'; 
+import ChatPanel from '@/components/game/ChatPanel'; 
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId } from '@/types';
@@ -20,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 
 
 export default function GamePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, userId, loading: authLoading } = useAuth(); // Added userId
   const router = useRouter();
   const { toast } = useToast();
   const {
@@ -41,13 +42,13 @@ export default function GamePage() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false); // State for LeaderboardModal
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
 
   useEffect(() => {
-    // Auth protection is now primarily handled by useAuth hook
-    if (!authLoading && !user && isInitialized) { // isInitialized check to prevent redirect while game logic is still loading
+    if (!authLoading && !user && isInitialized) { 
       router.push('/login');
     }
   }, [user, authLoading, router, isInitialized]);
@@ -171,6 +172,7 @@ export default function GamePage() {
         onOpenMarket={() => setShowMarket(true)}
         onOpenProfile={() => setShowProfileModal(true)}
         onOpenChatModal={() => setIsChatModalOpen(true)}
+        onOpenLeaderboard={() => setShowLeaderboardModal(true)} // Pass handler for LeaderboardModal
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onClearAction={handleClearAction}
@@ -212,6 +214,12 @@ export default function GamePage() {
         playerTierInfo={playerTierInfo}
       />
       
+      <LeaderboardModal
+        isOpen={showLeaderboardModal}
+        onClose={() => setShowLeaderboardModal(false)}
+        currentUserId={userId} 
+      />
+
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
           <ChatPanel isModalMode userStatus={gameState.status} />
@@ -221,3 +229,5 @@ export default function GamePage() {
     </div>
   );
 }
+
+    

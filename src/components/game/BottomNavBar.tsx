@@ -3,7 +3,7 @@
 
 import { type FC, useMemo } from 'react'; 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // Import Link
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PackageSearch, ShoppingCart, Sprout, Hand, Settings, LogOut, ShieldCheck, UserCircle2, Lock, MessageSquare, Library, ListOrdered } from 'lucide-react';
 import {
@@ -30,6 +30,7 @@ interface BottomNavBarProps {
   onOpenMarket: () => void;
   onOpenProfile: () => void;
   onOpenChatModal: () => void;
+  onOpenLeaderboard: () => void; // New prop for leaderboard
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onClearAction: () => void;
@@ -46,6 +47,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenMarket,
   onOpenProfile,
   onOpenChatModal,
+  onOpenLeaderboard, // Use new prop
   onSetPlantMode,
   onToggleHarvestMode,
   onClearAction,
@@ -238,6 +240,24 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
+         <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onOpenLeaderboard} // Call new handler
+                variant="outline"
+                className={cn(buttonBaseClass)}
+                aria-label="Bảng Xếp Hạng"
+              >
+                <ListOrdered className={iconClass} />
+                <span className={labelClass}>BXH</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Bảng Xếp Hạng</p>
+            </TooltipContent>
+          </Tooltip>
+
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -274,18 +294,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                <DropdownMenuItem asChild>
-                    <Link href="/leaderboard/level" className="w-full">
-                        <ListOrdered className="mr-2 h-4 w-4" />
-                        <span>BXH - Cấp Độ</span>
-                    </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                     <Link href="/leaderboard/tier" className="w-full">
-                        <ListOrdered className="mr-2 h-4 w-4" />
-                        <span>BXH - Bậc</span>
-                    </Link>
-                </DropdownMenuItem>
+                {/* Removed old leaderboard links */}
                  <DropdownMenuItem asChild>
                     <Link href="/library" className="w-full">
                         <Library className="mr-2 h-4 w-4" />
@@ -316,3 +325,5 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
+
+    
