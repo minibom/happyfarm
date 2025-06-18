@@ -23,6 +23,7 @@ export async function generateWelcomeGreeting(): Promise<WelcomeGreetingOutput> 
 
 const prompt = ai.definePrompt({
   name: 'generateWelcomeGreetingPrompt',
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly define the model
   output: { schema: WelcomeGreetingOutputSchema },
   prompt: `You are a friendly and enthusiastic mascot for a cheerful farming game called 'Happy Farm'.
 A player has just returned to the game. Generate a short (1-2 sentences), warm, and encouraging welcome-back message for them.
@@ -51,3 +52,4 @@ const generateWelcomeGreetingFlow = ai.defineFlow(
     return output;
   }
 );
+
