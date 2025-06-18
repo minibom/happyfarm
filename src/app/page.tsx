@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -37,13 +38,13 @@ export default function LandingPage() {
 
         <div className="mb-10 sm:mb-12">
           <Image
-            src="https://images.unsplash.com/photo-1676131797570-2e6246cb5365?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmYXJtJTIwaGFwcHklMjBtZW1lfGVufDB8fHx8MTc1MDIxMzkwN3ww&ixlib=rb-4.1.0&q=80&w=1080"
+            src="https://images.unsplash.com/photo-1471193945509-9ad0617afabf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZmFybWVyfGVufDB8fHx8MTc1MDE3NjMyOHww&ixlib=rb-4.1.0&q=80&w=1080"
             alt="Happy Farm Game Screenshot"
             width={600}
             height={400}
             className="rounded-xl shadow-2xl border-4 border-white transform transition-transform duration-500 hover:scale-105"
             priority
-            data-ai-hint="cheerful farm illustration"
+            data-ai-hint="farmer farm work"
           />
         </div>
 
