@@ -20,7 +20,7 @@ import {
   type CropDetails, type CropId,
   type FertilizerDetails, type FertilizerId
 } from '@/lib/constants';
-import { Coins, Clock, TrendingUp, ShoppingBag, Sprout, Zap as FertilizerIcon, Package, Info, Loader2 } from 'lucide-react';
+import { Coins, Clock, TrendingUp, ShoppingBag, Sprout, Zap as FertilizerIcon, Package, Info, Loader2, Zap } from 'lucide-react'; // Added Zap here
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
