@@ -60,6 +60,7 @@ export interface MailMessage {
   isClaimed: boolean; // If rewards have been claimed
   createdAt: any; // Firestore Timestamp or number for client-side
   expiresAt?: any; // Optional expiry for event mails, Firestore Timestamp or number
+  bonusId?: string; // ID of the BonusConfiguration that triggered this mail, if applicable
 }
 
 export type BonusTriggerType =
@@ -94,7 +95,6 @@ export interface GameState {
   lastLogin: number;
   email?: string;
   displayName?: string;
-  // mail: MailMessage[]; // Mail will now be fetched from a subcollection
   claimedBonuses: Record<string, boolean>; // Tracks which one-time bonuses have been claimed e.g. {'tierUp_2': true}
 }
 
@@ -119,7 +119,6 @@ export interface TierInfo {
 
 export interface AdminUserView extends GameState {
   uid: string;
-  // mail property removed as it's now a subcollection
 }
 
 export type MarketItemId = CropId | SeedId;

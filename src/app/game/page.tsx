@@ -40,6 +40,7 @@ export default function GamePage() {
     isInitialized,
     playerTierInfo,
     cropData,
+    fertilizerData, // Make sure fertilizerData is available from useGameLogic
   } = useGameLogic();
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
@@ -72,8 +73,8 @@ export default function GamePage() {
       const mails: MailMessage[] = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        mails.push({ 
-            id: docSnap.id, 
+        mails.push({
+            id: docSnap.id,
             ...data,
             createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toMillis() : data.createdAt,
             expiresAt: data.expiresAt instanceof Timestamp ? data.expiresAt.toMillis() : data.expiresAt,
@@ -122,7 +123,7 @@ export default function GamePage() {
         toast({ title: "Không Thể Bón Phân", description: "Chỉ có thể bón phân cho cây đang trồng hoặc đang lớn.", variant: "default"});
       }
     }
-    // If not in global action mode, plot popover logic is handled in FarmPlot.tsx
+    // If not in global action mode, plot popover logic is handled in FarmPlot.tsx via its own onClick
   };
 
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
@@ -142,7 +143,7 @@ export default function GamePage() {
 
   const fertilizeFromPlotPopover = (plotId: number, fertilizerId: FertilizerId) => {
     if (!FERTILIZER_DATA[fertilizerId] || !gameState.plots.find(p => p.id === plotId)) return;
-    
+
     const plot = gameState.plots.find(p => p.id === plotId);
     if (!plot) return;
 
@@ -185,8 +186,8 @@ export default function GamePage() {
   };
 
   const handleSetFertilizeMode = (fertilizerId: FertilizerId) => {
-    if (!FERTILIZER_DATA[fertilizerId]) return; 
-    const fertilizerDetail = FERTILIZER_DATA[fertilizerId];
+    if (!fertilizerData || !fertilizerData[fertilizerId]) return;
+    const fertilizerDetail = fertilizerData[fertilizerId];
 
     if (playerTierInfo.tier < fertilizerDetail.unlockTier) {
         toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (fertilizerDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${fertilizerDetail.unlockTier}) để chọn phân bón ${fertilizerDetail.name}.`, variant: "destructive" });
@@ -212,22 +213,28 @@ export default function GamePage() {
     setSelectedFertilizerId(undefined);
   };
 
-  const availableSeedsForPlanting = ALL_SEED_IDS
-    .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
-    .filter(seedId => {
-        if (!cropData) return false;
-        const cropDetail = cropData[seedId.replace('Seed','') as CropId];
-        return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
-    });
+  const availableSeedsForPlanting = useMemo(() => {
+    if (!cropData) return [];
+    return ALL_SEED_IDS
+      .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
+      .filter(seedId => {
+          const cropDetail = cropData[seedId.replace('Seed','') as CropId];
+          return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
+      });
+  }, [gameState.inventory, cropData, playerTierInfo.tier]);
 
-  const allAvailableSeedsInInventory = ALL_SEED_IDS
-    .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
+  const allAvailableSeedsInInventory = useMemo(() => {
+    return ALL_SEED_IDS
+      .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
+  }, [gameState.inventory]);
+
 
   const availableFertilizersForSelection = useMemo(() => {
+    if (!fertilizerData) return [];
     return ALL_FERTILIZER_IDS
-    .map(id => FERTILIZER_DATA[id])
+    .map(id => fertilizerData[id])
     .filter(fert => fert && (gameState.inventory[fert.id] || 0) > 0 && playerTierInfo.tier >= fert.unlockTier) as FertilizerDetails[];
-  }, [gameState.inventory, playerTierInfo.tier]);
+  }, [gameState.inventory, playerTierInfo.tier, fertilizerData]);
 
 
   const unreadMailCount = useMemo(() => mailMessages.filter(m => !m.isRead).length, [mailMessages]);
@@ -247,74 +254,73 @@ export default function GamePage() {
   const handleClaimMailRewards = async (mailId: string) => {
     if (!userId) return;
     const mailToClaim = mailMessages.find(m => m.id === mailId);
-    if (!mailToClaim || mailToClaim.isClaimed || mailToClaim.rewards.length === 0) {
-      toast({ title: "Không thể nhận", description: "Thư không có quà hoặc đã nhận.", variant: "default" });
+    if (!mailToClaim) {
+      toast({ title: "Lỗi", description: "Không tìm thấy thư để nhận.", variant: "destructive" });
+      return;
+    }
+    if (mailToClaim.isClaimed) {
+      toast({ title: "Đã Nhận", description: "Bạn đã nhận quà từ thư này rồi.", variant: "default" });
+      return;
+    }
+    if (mailToClaim.rewards.length === 0) {
+      toast({ title: "Không Có Quà", description: "Thư này không có vật phẩm đính kèm.", variant: "default" });
+      // Mark as claimed and read even if no rewards to prevent re-processing
+      const mailRef = doc(db, 'users', userId, 'mail', mailId);
+      try {
+        await updateDoc(mailRef, { isClaimed: true, isRead: true });
+      } catch (error) {
+        console.error("Error marking mail as claimed (no rewards):", error);
+      }
       return;
     }
 
-    let goldReward = 0;
-    let xpReward = 0;
-    const itemRewards: {itemId: string, quantity: number}[] = [];
-    let bonusKeyToClaim: string | undefined = undefined;
-
-    // Check if this mail corresponds to a unique bonus (e.g. tierUp bonuses)
-    // This is a simplified check; a more robust system might involve a 'bonusId' field in the mail document.
-    if (mailToClaim.subject.includes("Chúc Mừng Lên Bậc")) {
-        const tierMatch = mailToClaim.subject.match(/Bậc (\d+)/);
-        if (tierMatch && tierMatch[1]) {
-            bonusKeyToClaim = `tierUp_${tierMatch[1]}`;
-        }
-    }
-    // Add more checks for other unique bonus mail types here if needed
-
-    mailToClaim.rewards.forEach(reward => {
-      if (reward.type === 'gold' && reward.amount) goldReward += reward.amount;
-      if (reward.type === 'xp' && reward.amount) xpReward += reward.amount;
-      if (reward.type === 'item' && reward.itemId && reward.quantity) itemRewards.push({itemId: reward.itemId, quantity: reward.quantity});
-    });
-    
-    // Optimistically update client GameState
     setGameState(prev => {
-      const newInventory = { ...prev.inventory };
-      itemRewards.forEach(item => {
-        newInventory[item.itemId] = (newInventory[item.itemId] || 0) + item.quantity;
+      const newState = { ...prev };
+      let goldReward = 0;
+      let xpReward = 0;
+      const newInventory = { ...newState.inventory };
+      const newClaimedBonuses = { ...newState.claimedBonuses };
+
+      mailToClaim.rewards.forEach(reward => {
+        if (reward.type === 'gold' && reward.amount) goldReward += reward.amount;
+        if (reward.type === 'xp' && reward.amount) xpReward += reward.amount;
+        if (reward.type === 'item' && reward.itemId && reward.quantity) {
+          newInventory[reward.itemId] = (newInventory[reward.itemId] || 0) + reward.quantity;
+        }
       });
 
-      let newXp = prev.xp + xpReward;
-      let newLevel = prev.level;
-      let xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
-      while (newXp >= xpThreshold) {
-        newXp -= xpThreshold;
-        newLevel += 1;
-        xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
+      newState.gold += goldReward;
+      
+      let currentXp = newState.xp + xpReward;
+      let currentLevel = newState.level;
+      let xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
+      while (currentXp >= xpToNext) {
+        currentXp -= xpToNext;
+        currentLevel += 1;
+        xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
       }
+      newState.xp = currentXp;
+      newState.level = currentLevel;
+      newState.inventory = newInventory;
 
-      const updatedClaimedBonuses = { ...prev.claimedBonuses };
-      if (bonusKeyToClaim) {
-        updatedClaimedBonuses[bonusKeyToClaim] = true;
+      if (mailToClaim.bonusId) {
+        newClaimedBonuses[mailToClaim.bonusId] = true;
       }
-
-      return {
-        ...prev,
-        gold: prev.gold + goldReward,
-        xp: newXp,
-        level: newLevel,
-        inventory: newInventory,
-        claimedBonuses: updatedClaimedBonuses,
-        lastUpdate: Date.now(),
-      };
+      newState.claimedBonuses = newClaimedBonuses;
+      newState.lastUpdate = Date.now();
+      return newState;
     });
 
-    // Update Firestore
+    // Update Firestore for the mail item
     const mailRef = doc(db, 'users', userId, 'mail', mailId);
     try {
       await updateDoc(mailRef, { isClaimed: true, isRead: true });
-      // Note: GameState (gold, xp, inventory, claimedBonuses) is saved via its own useEffect in useGameStateCore
       toast({ title: "Đã Nhận Quà!", description: `Bạn đã nhận quà từ thư: ${mailToClaim.subject}`, className: "bg-accent text-accent-foreground" });
     } catch (error) {
-      console.error("Error claiming rewards:", error);
-      toast({ title: "Lỗi Nhận Quà", description: "Không thể cập nhật trạng thái thư.", variant: "destructive"});
-      // Revert client-side GameState changes if Firestore update fails (more complex, consider for production)
+      console.error("Error claiming rewards in Firestore:", error);
+      toast({ title: "Lỗi Nhận Quà", description: "Không thể cập nhật trạng thái thư. Vui lòng thử lại.", variant: "destructive"});
+      // Potentially revert client-side GameState changes if critical, though setGameState is optimistic here.
+      // For simplicity, we'll rely on the next Firestore sync to correct if needed, or user retries.
     }
   };
 
@@ -332,7 +338,7 @@ export default function GamePage() {
   };
 
 
-  if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo) {
+  if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
@@ -343,10 +349,10 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground items-center p-2 sm:p-4 pb-24">
-      <ResourceBar 
-        gold={gameState.gold} 
-        xp={gameState.xp} 
-        level={gameState.level} 
+      <ResourceBar
+        gold={gameState.gold}
+        xp={gameState.xp}
+        level={gameState.level}
         playerTierInfo={playerTierInfo}
         playerDisplayName={gameState.displayName}
       />
@@ -357,12 +363,12 @@ export default function GamePage() {
         playerTierInfo={playerTierInfo}
         currentAction={currentAction}
         selectedSeedToPlant={selectedSeedToPlant}
-        selectedFertilizerId={selectedFertilizerId} 
+        selectedFertilizerId={selectedFertilizerId}
         availableSeedsForPlanting={availableSeedsForPlanting}
         availableFertilizersForPopover={availableFertilizersForSelection}
         handlePlotClick={handlePlotClick}
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
-        fertilizeFromPlotPopover={fertilizeFromPlotPopover} // Pass down
+        fertilizeFromPlotPopover={fertilizeFromPlotPopover}
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
@@ -377,16 +383,16 @@ export default function GamePage() {
         unreadMailCount={unreadMailCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
-        onSetFertilizeMode={handleSetFertilizeMode} 
+        onSetFertilizeMode={handleSetFertilizeMode}
         onClearAction={handleClearAction}
         currentAction={currentAction}
         selectedSeed={selectedSeedToPlant}
-        selectedFertilizerId={selectedFertilizerId} 
+        selectedFertilizerId={selectedFertilizerId}
         availableSeeds={allAvailableSeedsInInventory}
-        availableFertilizers={availableFertilizersForSelection} 
+        availableFertilizers={availableFertilizersForSelection}
         inventory={gameState.inventory}
         cropData={cropData}
-        fertilizerData={FERTILIZER_DATA} 
+        fertilizerData={fertilizerData}
         playerTier={playerTierInfo.tier}
       />
 
@@ -416,7 +422,7 @@ export default function GamePage() {
         playerTierInfo={playerTierInfo}
         currentDisplayName={gameState.displayName}
       />
-      
+
       <LeaderboardModal
         isOpen={showLeaderboardModal}
         onClose={() => setShowLeaderboardModal(false)}
