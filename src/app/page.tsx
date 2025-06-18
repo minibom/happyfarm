@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Tractor, Wheat, LogIn, UserPlus, Leaf } from 'lucide-react';
+import { Tractor, Wheat, LogIn, UserPlus } from 'lucide-react';
+import ClientOnlyLeafBackground from '@/components/game/ClientOnlyLeafBackground'; // Import the new component
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -22,22 +22,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-200 via-yellow-100 to-sky-200 p-6 text-center overflow-hidden">
-      <div className="absolute inset-0 opacity-20">
-        {[...Array(20)].map((_, i) => (
-          <Leaf
-            key={i}
-            className="absolute text-green-400 animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              transform: `scale(${Math.random() * 1 + 0.5}) rotate(${Math.random() * 360}deg)`,
-              animationDuration: `${Math.random() * 5 + 5}s`,
-              animationDelay: `${Math.random() * 2}s`,
-            }}
-            size={Math.random() * 80 + 20}
-          />
-        ))}
-      </div>
+      <ClientOnlyLeafBackground /> {/* Use the new component here */}
       <main className="z-10">
         <header className="mb-10 sm:mb-12">
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary font-headline mb-4 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
