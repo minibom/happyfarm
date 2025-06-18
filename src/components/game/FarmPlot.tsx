@@ -116,7 +116,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
     const cropName = currentCropDetail?.name;
 
     const cropNameElement = cropName ? (
-      <span className="text-xs font-medium text-center text-yellow-900 dark:text-yellow-200 -mb-1">
+      <span className="text-xs font-medium text-center text-yellow-900 dark:text-yellow-200 -mb-0.5">
         {cropName}
       </span>
     ) : null;
@@ -128,14 +128,20 @@ const FarmPlot: FC<FarmPlotProps> = ({
         return (
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
-            <Sprout className="w-6 h-6 sm:w-8 sm:h-8 text-green-700 plot-sway" />
+            <Sprout className="w-6 h-6 sm:w-8 sm:h-8 text-green-700 plot-sway my-1" />
+            <span className="text-[10px] sm:text-xs font-semibold text-green-800 dark:text-green-300 bg-green-200/50 dark:bg-green-700/50 px-1.5 py-0.5 rounded">
+              Đang trồng
+            </span>
           </div>
         );
       case 'growing':
         return (
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
-            <LeafIcon className="w-8 h-8 sm:w-10 sm:h-10 text-green-600 plot-sway" />
+            <LeafIcon className="w-8 h-8 sm:w-10 sm:h-10 text-green-600 plot-sway my-1" />
+            <span className="text-[10px] sm:text-xs font-semibold text-lime-800 dark:text-lime-300 bg-lime-200/50 dark:bg-lime-700/50 px-1.5 py-0.5 rounded">
+              Đang lớn
+            </span>
           </div>
         );
       case 'ready_to_harvest':
@@ -143,13 +149,15 @@ const FarmPlot: FC<FarmPlotProps> = ({
           <div className="flex flex-col items-center justify-center h-full">
             {cropNameElement}
             {currentCropDetail ? (
-              <span className={cn("text-2xl sm:text-3xl", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
+              <span className={cn("text-2xl sm:text-3xl my-1", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')}>
                 {currentCropDetail.icon}
               </span>
             ) : (
-              <Gift className={cn("w-8 h-8 sm:w-10 sm:h-10 text-red-500", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
+              <Gift className={cn("w-8 h-8 sm:w-10 sm:h-10 text-red-500 my-1", plot.state === 'ready_to_harvest' ? 'gentle-pulse' : 'plot-sway')} />
             )}
-            <span className="text-xs font-semibold text-primary-foreground bg-primary/80 px-1 rounded mt-0.5">Sẵn Sàng</span>
+            <span className="text-xs font-semibold text-primary-foreground bg-primary/90 px-1.5 py-0.5 rounded">
+              Thu Hoạch
+            </span>
           </div>
         );
       default:
@@ -319,4 +327,3 @@ const FarmPlot: FC<FarmPlotProps> = ({
 };
 
 export default FarmPlot;
-
