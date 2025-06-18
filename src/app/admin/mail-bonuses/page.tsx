@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,8 @@ type ActiveMailSubView = 'compose' | 'templates' | 'history';
 
 const MailManagementView = () => {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeMailSubView, setActiveMailSubView] = useState<ActiveMailSubView>('compose');
   const [targetAudience, setTargetAudience] = useState<'all' | 'specific'>('all');
   const [specificUids, setSpecificUids] = useState('');
@@ -50,38 +53,59 @@ const MailManagementView = () => {
   const { toast } = useToast();
 
   const [mailTemplates, setMailTemplates] = useState<MailTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(''); // Use empty string for "no template"
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('__clear_template__');
   const [selectedTemplatePlaceholders, setSelectedTemplatePlaceholders] = useState<string[]>([]);
 
   const [sentMailsLog, setSentMailsLog] = useState<AdminMailLogEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
-    // For simplicity, load templates directly from constants.
-    // In a more dynamic system, these could be fetched from Firestore.
     setMailTemplates(MAIL_TEMPLATES_DATA);
   }, []);
+
+  useEffect(() => {
+    // Check for mail draft from event in localStorage
+    const mailDraftString = localStorage.getItem('happyFarmAdminMailDraftFromEvent');
+    const mailDraftSource = localStorage.getItem('happyFarmAdminMailDraftSource');
+
+    if (mailDraftString && mailDraftSource === 'event') {
+      try {
+        const mailDraft = JSON.parse(mailDraftString);
+        if (mailDraft.subject && mailDraft.body) {
+          setMailSubject(mailDraft.subject);
+          setMailBody(mailDraft.body);
+          setActiveMailSubView('compose'); // Switch to compose tab
+          setSelectedTemplateId('__clear_template__'); // Ensure no template is "selected"
+          setRewards([]); // Clear any rewards from a previously selected template
+          toast({ title: "Bản Nháp Đã Tải", description: "Nội dung thư từ sự kiện đã được điền. Hãy kiểm tra và gửi." });
+        }
+      } catch (e) {
+        console.error("Error parsing mail draft from localStorage", e);
+      } finally {
+        localStorage.removeItem('happyFarmAdminMailDraftFromEvent');
+        localStorage.removeItem('happyFarmAdminMailDraftSource');
+      }
+    } else if (searchParams && searchParams.has('subject') && searchParams.has('body')) {
+        // Fallback for query params, though localStorage is preferred
+        setMailSubject(searchParams.get('subject') || '');
+        setMailBody(searchParams.get('body') || '');
+        setActiveMailSubView('compose');
+        setSelectedTemplateId('__clear_template__');
+        setRewards([]);
+        router.replace('/admin/mail-bonuses', { scroll: false }); // Clean URL
+    }
+  }, [searchParams, router, toast]);
+
 
   useEffect(() => {
     if (activeMailSubView === 'history') {
       fetchSentMailsHistory();
     }
-    // When switching away from templates tab, clear selection
-    if (activeMailSubView !== 'templates' && selectedTemplateId !== '') {
-       // Only reset if a template was actually selected
-      // setSelectedTemplateId(''); // Keep selected template if user switches back and forth between compose/template
-      // setSelectedTemplatePlaceholders([]); // Keep placeholders if template is still logically "selected"
-    }
-     if (activeMailSubView === 'compose' && selectedTemplateId === '') {
-      // If switching to compose and no template selected, ensure form is clear or as intended
-      // Optionally clear form when switching to 'compose', or let user decide
-      // setMailSubject(''); setMailBody(''); setRewards([]); // This might be too aggressive
-    }
   }, [activeMailSubView]);
 
   const handleTemplateSelect = (templateIdValue: string) => {
     if (templateIdValue === "__clear_template__") {
-      setSelectedTemplateId(''); // Set to empty string for "no template" state
+      setSelectedTemplateId('__clear_template__');
       setMailSubject('');
       setMailBody('');
       setRewards([]);
@@ -93,13 +117,11 @@ const MailManagementView = () => {
       if (template) {
         setMailSubject(template.defaultSubject);
         setMailBody(template.defaultBody);
-        setRewards([...template.defaultRewards]); // Clone rewards array
+        setRewards([...template.defaultRewards]);
         setSelectedTemplatePlaceholders(template.placeholders || []);
         toast({ title: "Đã Áp Dụng Thư Mẫu", description: `Thư mẫu "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white" });
       } else {
-        // This case should ideally not be hit if IDs are correct from map
-        // but as a fallback, clear everything.
-        setSelectedTemplateId('');
+        setSelectedTemplateId('__clear_template__');
         setMailSubject('');
         setMailBody('');
         setRewards([]);
@@ -251,7 +273,7 @@ const MailManagementView = () => {
         description: `Đã gửi thư đến ${uidsToSend.length} người dùng.`,
         className: "bg-green-500 text-white"
       });
-      setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids(''); setSelectedTemplateId(''); setSelectedTemplatePlaceholders([]);
+      setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids(''); setSelectedTemplateId('__clear_template__'); setSelectedTemplatePlaceholders([]);
     } catch (error) {
       console.error("Error sending mail:", error);
       toast({ title: "Lỗi Gửi Thư", description: `Không thể gửi thư. Lỗi: ${(error as Error).message}`, variant: "destructive" });
@@ -316,7 +338,6 @@ const MailManagementView = () => {
                                     <SelectValue placeholder="-- Chọn một thư mẫu --" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {/* Add a specific item for clearing selection */}
                                     <SelectItem value="__clear_template__">-- Xóa/Không dùng thư mẫu --</SelectItem>
                                     {mailTemplates.map(template => (
                                         <SelectItem key={template.id} value={template.id}>
@@ -360,7 +381,7 @@ const MailManagementView = () => {
                     <div className="space-y-2">
                         <Label htmlFor="mailBody" className="text-base">Nội dung thư*</Label>
                         <Textarea id="mailBody" value={mailBody} onChange={(e) => setMailBody(e.target.value)} rows={5} placeholder="Nội dung chi tiết của thư..." />
-                         {selectedTemplateId && selectedTemplatePlaceholders.length > 0 && activeMailSubView === 'templates' && (
+                         {selectedTemplateId && selectedTemplateId !== "__clear_template__" && selectedTemplatePlaceholders.length > 0 && activeMailSubView === 'templates' && (
                             <div className="text-xs text-muted-foreground mt-1">
                                 <p className="font-medium">Các placeholder cần thay thế trong mẫu này:</p>
                                 <ul className="list-disc list-inside">
@@ -678,3 +699,4 @@ export default function AdminMailBonusesPage() {
   );
 }
 
+    

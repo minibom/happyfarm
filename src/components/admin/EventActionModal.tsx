@@ -3,6 +3,7 @@
 
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ActiveGameEvent, GameEventConfig, GameEventType, GameEventEffect, InventoryItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Trash2, Calendar, Tag, Percent, ListChecks, CheckSquare, XSquare } from 'lucide-react';
+import { PlusCircle, Trash2, Calendar, Tag, Percent, ListChecks, CheckSquare, XSquare, Mail } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -28,9 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarPicker } from "@/components/ui/calendar"; // Renamed to avoid conflict
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Card } from "@/components/ui/card"; // Added Card import
+import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import { Timestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
@@ -42,7 +43,7 @@ export interface EventModalProps {
   eventData: ActiveGameEvent;
   eventId?: string;
   onSave?: (data: ActiveGameEvent, idToSave: string, originalId?: string) => void;
-  eventTemplates: GameEventConfig[]; // To select a base template
+  eventTemplates: GameEventConfig[];
 }
 
 const eventTypes: GameEventType[] = [
@@ -51,10 +52,9 @@ const eventTypes: GameEventType[] = [
   'ITEM_SELL_PRICE_MODIFIER'
 ];
 
-const affectedItemOptions: GameEventEffect['affectedItemIds'][] = [
-    'ALL_CROPS', 'ALL_SEEDS', 'ALL_FERTILIZERS'
-    // Specific items will be input manually
-];
+// const affectedItemOptions: GameEventEffect['affectedItemIds'][] = [
+//     'ALL_CROPS', 'ALL_SEEDS', 'ALL_FERTILIZERS'
+// ];
 
 export const EventActionModal: FC<EventModalProps> = ({
     isOpen,
@@ -67,10 +67,11 @@ export const EventActionModal: FC<EventModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<ActiveGameEvent>(initialEventData);
   const [currentEventId, setCurrentEventId] = useState<string | undefined>(initialEventId);
+  const router = useRouter(); // Initialize useRouter
 
   const [currentEffectType, setCurrentEffectType] = useState<GameEventType>(eventTypes[0]);
-  const [currentEffectValue, setCurrentEffectValue] = useState<number>(0.1); // e.g., 10%
-  const [currentAffectedItems, setCurrentAffectedItems] = useState<string>(''); // Comma-separated string or "ALL_CROPS"
+  const [currentEffectValue, setCurrentEffectValue] = useState<number>(0.1);
+  const [currentAffectedItems, setCurrentAffectedItems] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
 
@@ -79,17 +80,16 @@ export const EventActionModal: FC<EventModalProps> = ({
   useEffect(() => {
     setFormData(initialEventData);
     setCurrentEventId(mode === 'create' ? initialEventData.id : initialEventId);
-    setSelectedTemplateId(''); // Reset template selection when modal reopens or mode changes
+    setSelectedTemplateId('');
   }, [initialEventData, initialEventId, mode]);
 
   const handleTemplateChange = (templateIdValue: string) => {
     if (templateIdValue === "__clear_event_template__") {
-        setSelectedTemplateId(''); // Clear selection
-        // Reset form data to a default "new event" state
+        setSelectedTemplateId('');
         const now = Timestamp.now();
         const oneDayLater = Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000);
         setFormData(prev => ({
-            ...prev, // Keep current ID if in create mode
+            ...prev,
             id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`,
             name: 'Sự Kiện Mới',
             description: 'Mô tả sự kiện...',
@@ -103,23 +103,20 @@ export const EventActionModal: FC<EventModalProps> = ({
     } else {
         setSelectedTemplateId(templateIdValue);
         const template = eventTemplates.find(t => t.id === templateIdValue);
-        if (template && (mode === 'create' || mode === 'edit')) { // Apply template in create or edit
+        if (template && (mode === 'create' || mode === 'edit')) {
         const now = Timestamp.now();
         const durationMillis = (template.defaultDurationHours || 24) * 60 * 60 * 1000;
-
-        // Preserve current ID if in create mode and already set, otherwise use template's nature or new event ID
         const newEventId = mode === 'create' ? (formData.id || `event_${Date.now().toString().slice(-6)}`) : currentEventId;
 
         setFormData(prev => ({
-            ...prev, // Keep existing ID if editing, or current ID if creating
+            ...prev,
             id: newEventId || `event_tpl_${template.id}_${Date.now().toString().slice(-4)}`,
             name: template.templateName,
             description: template.description,
             effects: template.defaultEffects.map(eff => ({...eff})),
-            startTime: formData.startTime || now, // Keep existing start time if already set
-            endTime: formData.endTime || Timestamp.fromMillis((formData.startTime || now).toMillis() + durationMillis), // Keep existing end time if already set
+            startTime: formData.startTime || now,
+            endTime: formData.endTime || Timestamp.fromMillis((formData.startTime || now).toMillis() + durationMillis),
             configId: template.id,
-            // isActive will be kept from current prev state or defaulted if not set
             isActive: prev.isActive !== undefined ? prev.isActive : true,
         }));
         toast({ title: "Đã Áp Dụng Mẫu", description: `Mẫu sự kiện "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white"});
@@ -158,7 +155,6 @@ export const EventActionModal: FC<EventModalProps> = ({
     if ((currentEffectType === 'ITEM_PURCHASE_PRICE_MODIFIER' || currentEffectType === 'ITEM_SELL_PRICE_MODIFIER') && (currentEffectValue <=0 || currentEffectValue > 5)) {
         toast({ title: "Lỗi", description: "Giá trị Price Modifier nên từ 0.1 (giảm 90%) đến 5 (tăng 400%).", variant: "destructive" }); return;
     }
-
 
     let affected: GameEventEffect['affectedItemIds'];
     if (currentAffectedItems.startsWith('ALL_')) {
@@ -211,6 +207,46 @@ export const EventActionModal: FC<EventModalProps> = ({
     }
     onClose();
   };
+  
+  const formatTimestampForDisplay = (timestamp: any): string => {
+    if (!timestamp) return 'N/A';
+    if (timestamp.toDate) { // Check if it's a Firestore Timestamp
+      return format(timestamp.toDate(), "dd/MM/yyyy HH:mm");
+    }
+    try {
+      return format(new Date(timestamp), "dd/MM/yyyy HH:mm");
+    } catch (e) {
+      return 'Ngày không hợp lệ';
+    }
+  };
+
+  const getEffectSummaryForMail = (effects: GameEventEffect[]): string => {
+    if (!effects || effects.length === 0) return "Không có hiệu ứng đặc biệt.";
+    return effects.map(eff => {
+        let target = "Tất cả";
+        if (Array.isArray(eff.affectedItemIds)) target = eff.affectedItemIds.join(', ');
+        else if (eff.affectedItemIds) target = eff.affectedItemIds.replace('ALL_', '').toLowerCase();
+
+        let effectDesc = eff.type.replace(/_/g, ' ').toLowerCase();
+        if (eff.type.includes('PRICE_MODIFIER')) {
+            effectDesc += ` (${((eff.value - 1) * 100).toFixed(0)}%)`;
+        } else { // for time reduction
+            effectDesc += ` (${(eff.value * 100).toFixed(0)}%)`;
+        }
+        return `- ${effectDesc} cho ${target}`;
+    }).join('\n');
+  };
+
+
+  const handleSendNotificationMail = () => {
+    const subject = `Thông Báo Sự Kiện: ${formData.name}`;
+    const body = `Chào các Nông Dân,\n\nSự kiện "${formData.name}" sẽ diễn ra!\n\n${formData.description}\n\nThời gian:\n- Bắt đầu: ${formatTimestampForDisplay(formData.startTime)}\n- Kết thúc: ${formatTimestampForDisplay(formData.endTime)}\n\nHiệu ứng chính:\n${getEffectSummaryForMail(formData.effects)}\n\nHãy tham gia và nhận những phần quà hấp dẫn nhé!\n\nTrân trọng,\nBQT Happy Farm`;
+
+    localStorage.setItem('happyFarmAdminMailDraftFromEvent', JSON.stringify({ subject, body }));
+    localStorage.setItem('happyFarmAdminMailDraftSource', 'event'); // Flag to switch tab
+    router.push('/admin/mail-bonuses');
+    onClose(); // Close the event modal
+  };
 
   const titleText = mode === 'create' ? 'Tạo Sự Kiện Mới' : mode === 'edit' ? `Chỉnh Sửa: ${initialEventData.name}` : `Chi Tiết: ${initialEventData.name}`;
   const descriptionText = mode === 'create'
@@ -223,7 +259,7 @@ export const EventActionModal: FC<EventModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl"> {/* Wider modal for more fields */}
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{titleText}</DialogTitle>
           <DialogDescription>{descriptionText}</DialogDescription>
@@ -291,7 +327,6 @@ export const EventActionModal: FC<EventModalProps> = ({
                         onSelect={(date) => handleDateChange('startTime', date)}
                         initialFocus
                     />
-                    {/* Basic Time Input - Consider a proper TimePicker component for better UX */}
                     <Input type="time" className="mt-1" defaultValue={formData.startTime ? format(formData.startTime.toDate(), "HH:mm") : "00:00"}
                         onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
@@ -338,10 +373,15 @@ export const EventActionModal: FC<EventModalProps> = ({
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="isActive" className="text-right">Kích hoạt</Label>
-            <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} disabled={isReadOnly} className="col-span-3"/>
+            <Switch id="isActive" checked={formData.isActive} onCheckedChange={handleSwitchChange} disabled={isReadOnly} />
+            {(mode === 'edit' || mode === 'view') && !isReadOnly && (
+                <Button onClick={handleSendNotificationMail} variant="outline" className="col-span-2 col-start-3 bg-teal-500 hover:bg-teal-600 text-white">
+                    <Mail className="mr-2 h-4 w-4" /> Gửi Mail Thông Báo
+                </Button>
+            )}
           </div>
 
-          {/* Effects Section */}
+
           {!isReadOnly && (
             <div className="border-t pt-6 mt-4 space-y-4">
                 <Label className="text-lg font-semibold block">Quản Lý Hiệu Ứng Sự Kiện*</Label>
@@ -381,7 +421,7 @@ export const EventActionModal: FC<EventModalProps> = ({
                             <div className="flex items-center justify-between text-xs">
                                 <div className="flex-grow space-y-0.5">
                                     <p><Tag className="inline h-3 w-3 mr-1"/><strong>Loại:</strong> {effect.type.replace(/_/g, ' ').toLowerCase()}</p>
-                                    <p><Percent className="inline h-3 w-3 mr-1"/><strong>Giá trị:</strong> {(effect.value * 100).toFixed(0)}%</p>
+                                    <p><Percent className="inline h-3 w-3 mr-1"/><strong>Giá trị:</strong> {(effect.type.includes('PRICE_MODIFIER') ? (effect.value * 100 -100) : (effect.value * 100)).toFixed(0)}%</p>
                                     <p><ListChecks className="inline h-3 w-3 mr-1"/><strong>Ảnh hưởng:</strong> {Array.isArray(effect.affectedItemIds) ? effect.affectedItemIds.join(', ') : effect.affectedItemIds}</p>
                                 </div>
                                 {!isReadOnly && (
@@ -410,3 +450,5 @@ export const EventActionModal: FC<EventModalProps> = ({
     </Dialog>
   );
 };
+
+    
