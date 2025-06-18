@@ -81,34 +81,48 @@ export const EventActionModal: FC<EventModalProps> = ({
     setSelectedTemplateId(''); // Reset template selection when modal reopens or mode changes
   }, [initialEventData, initialEventId, mode]);
 
-  const handleTemplateChange = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    const template = eventTemplates.find(t => t.id === templateId);
-    if (template && mode === 'create') { // Only apply template fully in create mode
-      const now = Timestamp.now();
-      const durationMillis = (template.defaultDurationHours || 24) * 60 * 60 * 1000;
-      setFormData(prev => ({
-        ...prev,
-        name: template.templateName, // Use templateName for player-facing name
-        description: template.description,
-        effects: template.defaultEffects.map(eff => ({...eff})), // Deep copy
-        startTime: now,
-        endTime: Timestamp.fromMillis(now.toMillis() + durationMillis),
-        configId: template.id,
-      }));
-      toast({ title: "Đã Áp Dụng Mẫu", description: `Mẫu sự kiện "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white"});
-    } else if (!templateId) { // Clear form if "no template" is chosen
+  const handleTemplateChange = (templateIdValue: string) => {
+    if (templateIdValue === "__clear_event_template__") {
+        setSelectedTemplateId(''); // Clear selection
+        // Reset form data to a default "new event" state
         const now = Timestamp.now();
         const oneDayLater = Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000);
         setFormData(prev => ({
-            ...prev,
+            ...prev, // Keep current ID if in create mode
+            id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`,
             name: 'Sự Kiện Mới',
             description: 'Mô tả sự kiện...',
             effects: [],
             startTime: now,
             endTime: oneDayLater,
+            isActive: true,
             configId: undefined,
         }));
+        toast({ title: "Đã Xóa Mẫu", description: "Biểu mẫu sự kiện đã được làm mới.", variant: "default"});
+    } else {
+        setSelectedTemplateId(templateIdValue);
+        const template = eventTemplates.find(t => t.id === templateIdValue);
+        if (template && (mode === 'create' || mode === 'edit')) { // Apply template in create or edit
+        const now = Timestamp.now();
+        const durationMillis = (template.defaultDurationHours || 24) * 60 * 60 * 1000;
+        
+        // Preserve current ID if in create mode and already set, otherwise use template's nature or new event ID
+        const newEventId = mode === 'create' ? (formData.id || `event_${Date.now().toString().slice(-6)}`) : currentEventId;
+        
+        setFormData(prev => ({
+            ...prev, // Keep existing ID if editing, or current ID if creating
+            id: newEventId || `event_tpl_${template.id}_${Date.now().toString().slice(-4)}`,
+            name: template.templateName, 
+            description: template.description,
+            effects: template.defaultEffects.map(eff => ({...eff})), 
+            startTime: formData.startTime || now, // Keep existing start time if already set
+            endTime: formData.endTime || Timestamp.fromMillis((formData.startTime || now).toMillis() + durationMillis), // Keep existing end time if already set
+            configId: template.id,
+            // isActive will be kept from current prev state or defaulted if not set
+            isActive: prev.isActive !== undefined ? prev.isActive : true,
+        }));
+        toast({ title: "Đã Áp Dụng Mẫu", description: `Mẫu sự kiện "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white"});
+        }
     }
   };
 
@@ -223,7 +237,7 @@ export const EventActionModal: FC<EventModalProps> = ({
                   <SelectValue placeholder="-- Chọn mẫu để bắt đầu --" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- Không dùng mẫu / Xóa mẫu --</SelectItem>
+                  <SelectItem value="__clear_event_template__">-- Không dùng mẫu / Xóa mẫu --</SelectItem>
                   {eventTemplates.map(template => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.templateName} ({template.icon})
