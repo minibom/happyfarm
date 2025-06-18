@@ -3,12 +3,20 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog } from 'lucide-react'; // Added CalendarCog
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog, Store } from 'lucide-react'; // Added Store icon
 import { useToast } from '@/hooks/use-toast';
-import { CROP_DATA, FERTILIZER_DATA, BONUS_CONFIGURATIONS_DATA, TIER_DATA, MAIL_TEMPLATES_DATA, GAME_EVENT_TEMPLATES_DATA } from '@/lib/constants'; // Added GAME_EVENT_TEMPLATES_DATA
+import { 
+  CROP_DATA, 
+  FERTILIZER_DATA, 
+  BONUS_CONFIGURATIONS_DATA, 
+  TIER_DATA, 
+  MAIL_TEMPLATES_DATA, 
+  GAME_EVENT_TEMPLATES_DATA,
+  INITIAL_MARKET_STATE // Import INITIAL_MARKET_STATE
+} from '@/lib/constants'; 
 import { db } from '@/lib/firebase';
-import { doc, setDoc, writeBatch } from 'firebase/firestore';
-import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig } from '@/types'; // Added GameEventConfig
+import { doc, setDoc, writeBatch, getDoc } from 'firebase/firestore'; // Added getDoc
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig, MarketState } from '@/types'; 
 import type { TierDetail } from '@/lib/tier-data';
 import type { MailTemplate } from '@/lib/mail-templates';
 
@@ -178,7 +186,7 @@ export default function AdminConfigPage() {
       let templateCount = 0;
 
       for (const template of GAME_EVENT_TEMPLATES_DATA) {
-        const templateRef = doc(db, 'gameEventTemplates', template.id); // Store in 'gameEventTemplates' collection
+        const templateRef = doc(db, 'gameEventTemplates', template.id);
         batch.set(templateRef, template);
         templateCount++;
       }
@@ -196,6 +204,35 @@ export default function AdminConfigPage() {
        toast({
         title: "Lỗi Đẩy Mẫu Sự Kiện",
         description: `Không thể đẩy dữ liệu mẫu sự kiện. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInitializeMarketState = async () => {
+    toast({
+      title: "Đang Xử Lý...",
+      description: "Khởi tạo/Đặt lại trạng thái Chợ...",
+      duration: 3000,
+    });
+    try {
+      const marketDocRef = doc(db, 'marketState', 'global');
+      // We can directly set the initial market state.
+      // Firestore's setDoc will create the document if it doesn't exist, or overwrite it if it does.
+      await setDoc(marketDocRef, INITIAL_MARKET_STATE);
+      
+      toast({
+        title: "Thành Công!",
+        description: "Trạng thái Chợ đã được khởi tạo/đặt lại với dữ liệu mặc định.",
+        duration: 7000,
+        className: "bg-green-500 text-white"
+      });
+
+    } catch (error) {
+      console.error("Error initializing/resetting market state:", error);
+       toast({
+        title: "Lỗi Khởi Tạo Chợ",
+        description: `Không thể khởi tạo/đặt lại trạng thái chợ. Lỗi: ${(error as Error).message}`,
         variant: "destructive",
       });
     }
@@ -305,8 +342,8 @@ export default function AdminConfigPage() {
             <Card className="border-blue-500/50">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                    <CalendarCog className="h-6 w-6 text-blue-500" /> {/* Changed Icon */}
-                    <CardTitle className="text-xl">Đồng Bộ Mẫu Sự Kiện</CardTitle> {/* Changed Title */}
+                    <CalendarCog className="h-6 w-6 text-blue-500" />
+                    <CardTitle className="text-xl">Đồng Bộ Mẫu Sự Kiện</CardTitle>
                 </div>
                 <CardDescription>
                   Đẩy TOÀN BỘ Mẫu Sự Kiện từ <code>event-templates.ts</code>
@@ -314,7 +351,7 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushEventTemplates} className="bg-blue-500 hover:bg-blue-600 text-white"> {/* Made button active */}
+                <Button onClick={handlePushEventTemplates} className="bg-blue-500 hover:bg-blue-600 text-white">
                     <UploadCloud className="mr-2 h-5 w-5" />
                     Đồng Bộ Mẫu Sự Kiện
                 </Button>
@@ -324,10 +361,33 @@ export default function AdminConfigPage() {
               </CardContent>
             </Card>
             
-            <Card className="border-orange-500/50">
+            <Card className="border-orange-400/50">
               <CardHeader>
                   <div className="flex items-center gap-2">
-                    <ServerCog className="h-6 w-6 text-orange-500" />
+                    <Store className="h-6 w-6 text-orange-400" />
+                    <CardTitle className="text-xl">Khởi Tạo Trạng Thái Chợ</CardTitle>
+                  </div>
+                  <CardDescription>
+                  Khởi tạo hoặc đặt lại tài liệu <code>marketState/global</code> trong Firestore với giá và sự kiện mặc định.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <Button onClick={handleInitializeMarketState} className="bg-orange-400 hover:bg-orange-500 text-white">
+                    <UploadCloud className="mr-2 h-5 w-5" />
+                    Khởi Tạo/Reset Chợ
+                  </Button>
+                   <p className="mt-2 text-sm text-muted-foreground">
+                    GHI ĐÈ dữ liệu trên <code>marketState/global</code>.
+                  </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+             <Card className="border-gray-500/50">
+              <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <ServerCog className="h-6 w-6 text-gray-500" />
                     <CardTitle className="text-xl">Thông Báo Hệ Thống (Placeholder)</CardTitle>
                   </div>
                   <CardDescription>
@@ -338,6 +398,8 @@ export default function AdminConfigPage() {
                   <Button variant="outline" disabled className="mt-2">Soạn Thông Báo</Button>
               </CardContent>
             </Card>
+            {/* Placeholder for another card if needed, or leave one empty */}
+            <div></div>
           </div>
 
         </CardContent>
@@ -345,4 +407,6 @@ export default function AdminConfigPage() {
     </div>
   );
 }
+    
+
     
