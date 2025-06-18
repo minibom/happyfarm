@@ -50,14 +50,14 @@ const MailManagementView = () => {
   const { toast } = useToast();
 
   const [mailTemplates, setMailTemplates] = useState<MailTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | ''>('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(''); // Use empty string for "no template"
   const [selectedTemplatePlaceholders, setSelectedTemplatePlaceholders] = useState<string[]>([]);
 
   const [sentMailsLog, setSentMailsLog] = useState<AdminMailLogEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   useEffect(() => {
-    // For simplicity, load templates directly from constants. 
+    // For simplicity, load templates directly from constants.
     // In a more dynamic system, these could be fetched from Firestore.
     setMailTemplates(MAIL_TEMPLATES_DATA);
   }, []);
@@ -67,33 +67,47 @@ const MailManagementView = () => {
       fetchSentMailsHistory();
     }
     // When switching away from templates tab, clear selection
-    if (activeMailSubView !== 'templates') {
-      setSelectedTemplateId('');
-      setSelectedTemplatePlaceholders([]);
+    if (activeMailSubView !== 'templates' && selectedTemplateId !== '') {
+       // Only reset if a template was actually selected
+      // setSelectedTemplateId(''); // Keep selected template if user switches back and forth between compose/template
+      // setSelectedTemplatePlaceholders([]); // Keep placeholders if template is still logically "selected"
     }
-     if (activeMailSubView === 'compose') {
+     if (activeMailSubView === 'compose' && selectedTemplateId === '') {
+      // If switching to compose and no template selected, ensure form is clear or as intended
       // Optionally clear form when switching to 'compose', or let user decide
-      // setMailSubject(''); setMailBody(''); setRewards([]);
+      // setMailSubject(''); setMailBody(''); setRewards([]); // This might be too aggressive
     }
   }, [activeMailSubView]);
 
-  const handleTemplateSelect = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    const template = mailTemplates.find(t => t.id === templateId);
-    if (template) {
-      setMailSubject(template.defaultSubject);
-      setMailBody(template.defaultBody);
-      setRewards([...template.defaultRewards]); // Clone rewards array
-      setSelectedTemplatePlaceholders(template.placeholders || []);
-      toast({ title: "Đã Áp Dụng Thư Mẫu", description: `Thư mẫu "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white" });
-    } else {
-      // Clear form if "No Template" or invalid template selected
+  const handleTemplateSelect = (templateIdValue: string) => {
+    if (templateIdValue === "__clear_template__") {
+      setSelectedTemplateId(''); // Set to empty string for "no template" state
       setMailSubject('');
       setMailBody('');
       setRewards([]);
       setSelectedTemplatePlaceholders([]);
+      toast({ title: "Đã Xóa Thư Mẫu", description: "Nội dung thư đã được làm mới.", variant: "default" });
+    } else {
+      setSelectedTemplateId(templateIdValue);
+      const template = mailTemplates.find(t => t.id === templateIdValue);
+      if (template) {
+        setMailSubject(template.defaultSubject);
+        setMailBody(template.defaultBody);
+        setRewards([...template.defaultRewards]); // Clone rewards array
+        setSelectedTemplatePlaceholders(template.placeholders || []);
+        toast({ title: "Đã Áp Dụng Thư Mẫu", description: `Thư mẫu "${template.templateName}" đã được tải.`, className: "bg-blue-500 text-white" });
+      } else {
+        // This case should ideally not be hit if IDs are correct from map
+        // but as a fallback, clear everything.
+        setSelectedTemplateId('');
+        setMailSubject('');
+        setMailBody('');
+        setRewards([]);
+        setSelectedTemplatePlaceholders([]);
+      }
     }
   };
+
 
   const fetchSentMailsHistory = async () => {
     setIsLoadingHistory(true);
@@ -182,7 +196,7 @@ const MailManagementView = () => {
     if (targetAudience === 'all') {
       try {
         const usersCollectionRef = collection(db, 'users');
-        const usersSnapshot = await getDocs(query(usersCollectionRef)); 
+        const usersSnapshot = await getDocs(query(usersCollectionRef));
         usersSnapshot.forEach(userDoc => uidsToSend.push(userDoc.id));
       } catch (error) {
         console.error("Error fetching all users for mail:", error);
@@ -202,8 +216,8 @@ const MailManagementView = () => {
 
     try {
       uidsToSend.forEach(uid => {
-        const mailRef = doc(collection(db, 'users', uid, 'mail')); 
-        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = { 
+        const mailRef = doc(collection(db, 'users', uid, 'mail'));
+        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = {
           senderType: 'admin',
           senderName: user.displayName || user.email || 'Quản Trị Viên HappyFarm',
           subject: mailSubject,
@@ -217,14 +231,14 @@ const MailManagementView = () => {
       });
 
       await batch.commit();
-      
+
       const logEntry: AdminMailLogEntry = {
         sentAt: serverTimestamp(),
         mailSubject: mailSubject,
         mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''),
         targetAudience: targetAudience,
-        specificUidsPreview: targetAudience === 'specific' 
-            ? (uidsToSend.slice(0,2).join(', ') + (uidsToSend.length > 2 ? `, (+${uidsToSend.length - 2} more)`: '')) 
+        specificUidsPreview: targetAudience === 'specific'
+            ? (uidsToSend.slice(0,2).join(', ') + (uidsToSend.length > 2 ? `, (+${uidsToSend.length - 2} more)`: ''))
             : 'N/A',
         rewardCount: rewards.length,
         sentByUid: user.uid,
@@ -245,7 +259,7 @@ const MailManagementView = () => {
       setIsSending(false);
     }
   };
-  
+
   const getRewardItemIcon = (type: RewardItemType) => {
     if (type === 'gold') return <Coins className="mr-2 h-4 w-4 text-yellow-500" />;
     if (type === 'xp') return <Star className="mr-2 h-4 w-4 text-yellow-400" />;
@@ -297,12 +311,13 @@ const MailManagementView = () => {
                     {activeMailSubView === 'templates' && (
                         <div className="space-y-2 border-b pb-4">
                             <Label htmlFor="mailTemplateSelect" className="text-base">Chọn Thư Mẫu</Label>
-                            <Select value={selectedTemplateId || ''} onValueChange={handleTemplateSelect}>
+                            <Select value={selectedTemplateId} onValueChange={handleTemplateSelect}>
                                 <SelectTrigger id="mailTemplateSelect">
                                     <SelectValue placeholder="-- Chọn một thư mẫu --" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">-- Không dùng thư mẫu --</SelectItem>
+                                    {/* Add a specific item for clearing selection */}
+                                    <SelectItem value="__clear_template__">-- Xóa/Không dùng thư mẫu --</SelectItem>
                                     {mailTemplates.map(template => (
                                         <SelectItem key={template.id} value={template.id}>
                                             {template.templateName}
@@ -345,7 +360,7 @@ const MailManagementView = () => {
                     <div className="space-y-2">
                         <Label htmlFor="mailBody" className="text-base">Nội dung thư*</Label>
                         <Textarea id="mailBody" value={mailBody} onChange={(e) => setMailBody(e.target.value)} rows={5} placeholder="Nội dung chi tiết của thư..." />
-                         {selectedTemplatePlaceholders.length > 0 && activeMailSubView === 'templates' && (
+                         {selectedTemplateId && selectedTemplatePlaceholders.length > 0 && activeMailSubView === 'templates' && (
                             <div className="text-xs text-muted-foreground mt-1">
                                 <p className="font-medium">Các placeholder cần thay thế trong mẫu này:</p>
                                 <ul className="list-disc list-inside">
@@ -538,7 +553,7 @@ const BonusesManagementView = () => {
       toast({ title: "Lỗi Xóa", description: `Không thể xóa cấu hình bonus "${bonusToDelete.description}".`, variant: "destructive" });
     }
   };
-  
+
   const getRewardSummary = (rewards: RewardItem[]) => {
     if (rewards.length === 0) return "Không có";
     const summary = rewards.map(r => {
@@ -655,7 +670,7 @@ export default function AdminMailBonusesPage() {
             <Gift className="mr-2 h-5 w-5"/> Quản Lý Bonus
           </Button>
         </div>
-        
+
         {activeView === 'mail' && <MailManagementView />}
         {activeView === 'bonuses' && <BonusesManagementView />}
       </CardContent>
