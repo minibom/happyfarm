@@ -269,6 +269,23 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
           <Tooltip>
             <TooltipTrigger asChild>
+            <Button
+                onClick={onOpenChatModal}
+                variant="outline"
+                className={cn(buttonBaseClass)}
+                aria-label="Mở Trò Chuyện"
+            >
+                <MessageSquare className={iconClass} />
+                <span className={labelClass}>Chat</span>
+            </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+            <p>Mở Trò Chuyện</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
                 onClick={onOpenInventory}
                 variant="outline"
@@ -301,9 +318,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          {/* ---- Desktop Specific Buttons ---- */}
+          {/* ---- Desktop Specific Buttons (Missions and Settings Dropdown) ---- */}
           <div className="hidden md:flex items-center gap-2">
-             {/* Mission Button - Desktop */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -379,25 +395,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </DropdownMenu>
           </div>
 
-          {/* ---- Mobile Specific Buttons ---- */}
+          {/* ---- Mobile Specific "More" Dropdown ---- */}
           <div className="block md:hidden">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                <Button
-                    onClick={onOpenChatModal}
-                    variant="outline"
-                    className={cn(buttonBaseClass)}
-                    aria-label="Mở Trò Chuyện"
-                >
-                    <MessageSquare className={iconClass} />
-                    <span className={labelClass}>Chat</span>
-                </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                <p>Mở Trò Chuyện</p>
-                </TooltipContent>
-            </Tooltip>
-
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -471,3 +470,4 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
+
