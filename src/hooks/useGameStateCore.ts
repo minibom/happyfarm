@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, TierInfo, Plot, PlotState, CropId, SeedId, FertilizerId, InventoryItem, ActiveGameEvent, CropDetails, PlayerMissionProgress, Mission, MissionType } from '@/types';
+import type { GameState, TierInfo, Plot, PlotState, CropId, SeedId, FertilizerId, InventoryItem, ActiveGameEvent, CropDetails, PlayerMissionProgress, Mission, MissionType, BonusConfiguration, MailMessage } from '@/types';
 import {
   INITIAL_GAME_STATE,
   LEVEL_UP_XP_THRESHOLD,
@@ -17,11 +17,12 @@ import {
   MAIN_MISSIONS_DATA,
   DAILY_MISSION_TEMPLATES_DATA,
   WEEKLY_MISSION_TEMPLATES_DATA,
+  BONUS_CONFIGURATIONS_DATA, 
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp, collection, query, where, addDoc, serverTimestamp as firestoreServerTimestamp } from 'firebase/firestore';
 
 
 interface UseGameStateCoreProps {
@@ -45,10 +46,11 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
   const { toast } = useToast();
 
   const prevLevelRef = useRef(gameState.level);
-  const gameStateRef = useRef(gameState); // Use this for up-to-date state in async operations or complex updates
+  const prevUnlockedPlotsCountRef = useRef(gameState.unlockedPlotsCount);
+  const gameStateRef = useRef(gameState); 
 
   useEffect(() => {
-    gameStateRef.current = gameState; // Keep ref updated
+    gameStateRef.current = gameState; 
     setPlayerTierInfo(getPlayerTierInfo(gameState.level));
   }, [gameState]);
 
@@ -61,10 +63,8 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          const stateToSave = { ...gameStateRef.current }; // Use the ref here for the latest state
+          const stateToSave = { ...gameStateRef.current }; 
 
-          // Ensure undefined fields are handled if necessary for Firestore or remove them
-          // For example, if email or displayName could be undefined but Firestore expects them or null:
           if (stateToSave.email === undefined) delete (stateToSave as any).email;
           if (stateToSave.displayName === undefined) delete (stateToSave as any).displayName;
           
@@ -85,7 +85,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }
   }, [gameState, gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, saveGameStateToFirestore]);
 
-  // Fetch Active Game Events
+  
   useEffect(() => {
     if (!userId) return;
 
@@ -150,7 +150,6 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     let missionsChanged = false;
     const updatedMissions = { ...currentActiveMissions };
 
-    // Expire old missions
     Object.keys(updatedMissions).forEach(missionId => {
       const mission = updatedMissions[missionId];
       if (mission.category === missionCategory && mission.status === 'active' && mission.expiresAt && now >= mission.expiresAt) {
@@ -160,7 +159,6 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     });
     
     if (!lastRefreshTime || now >= lastRefreshTime + durationMs) {
-      // Clear out old missions of this category that are not claimed
       Object.keys(updatedMissions).forEach(missionId => {
         if (updatedMissions[missionId].category === missionCategory && updatedMissions[missionId].status !== 'claimed') {
           delete updatedMissions[missionId];
@@ -168,17 +166,16 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
         }
       });
 
-      // Assign new missions
       const availableTemplates = missionTemplates.filter(
-        def => !Object.keys(updatedMissions).some(activeId => activeId.startsWith(def.id)) // Avoid re-assigning variants of same template if logic changes
+        def => !Object.keys(updatedMissions).some(activeId => activeId.startsWith(def.id)) 
       );
       const shuffledTemplates = [...availableTemplates].sort(() => 0.5 - Math.random());
       const newMissionsToAdd = shuffledTemplates.slice(0, numberOfMissionsToAssign);
 
       newMissionsToAdd.forEach(missionDef => {
-        const newMissionId = `${missionDef.id}_${now}`; // Make ID unique for this assignment
+        const newMissionId = `${missionDef.id}_${now}`; 
         updatedMissions[newMissionId] = {
-          missionId: newMissionId, // Use the unique ID
+          missionId: newMissionId, 
           progress: 0,
           status: 'active',
           assignedAt: now,
@@ -200,8 +197,30 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     return { updatedMissions, newRefreshTime: lastRefreshTime || now, missionsChanged };
   }, []);
 
+  const sendBonusMail = useCallback(async (userIdForMail: string, bonus: BonusConfiguration) => {
+    if (!userIdForMail) return;
 
-  // Effect to load initial game state and set up listeners
+    const mailMessage: Omit<MailMessage, 'id'> = {
+      senderType: 'system',
+      senderName: 'Hệ Thống Happy Farm',
+      subject: bonus.mailSubject,
+      body: bonus.mailBody,
+      rewards: bonus.rewards,
+      isRead: false,
+      isClaimed: false,
+      createdAt: firestoreServerTimestamp(),
+      bonusId: bonus.id,
+    };
+    try {
+      const mailCollectionRef = collection(db, 'users', userIdForMail, 'mail');
+      await addDoc(mailCollectionRef, mailMessage);
+    } catch (mailError) {
+      console.error(`Failed to send mail for bonus ${bonus.id}:`, mailError);
+      toast({ title: "Lỗi Gửi Thư Bonus", description: `Không thể gửi thư cho bonus ${bonus.description}.`, variant: "destructive" });
+    }
+  }, [toast]);
+
+
   useEffect(() => {
     if (authLoading) {
       setGameDataLoaded(false);
@@ -219,16 +238,19 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribeGameState = onSnapshot(gameDocRef, (docSnap) => {
         let finalStateToSet: GameState;
+        let isNewUser = !docSnap.exists();
+
         if (docSnap.exists()) {
           const firestoreData = docSnap.data() as Partial<GameState>;
           let loadedState: GameState = { 
             ...INITIAL_GAME_STATE, 
             ...firestoreData,
-            activeMissions: firestoreData.activeMissions || {}, // Ensure activeMissions is initialized
+            activeMissions: firestoreData.activeMissions || {},
+            claimedBonuses: firestoreData.claimedBonuses || {},
             lastDailyMissionRefresh: firestoreData.lastDailyMissionRefresh || 0,
             lastWeeklyMissionRefresh: firestoreData.lastWeeklyMissionRefresh || 0,
           };
-
+          
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
             ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
                 const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' as PlotState };
@@ -271,27 +293,22 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastLogin = firestoreData.lastLogin || Date.now();
           loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
           
-          loadedState.claimedBonuses = typeof firestoreData.claimedBonuses === 'object' && firestoreData.claimedBonuses !== null ? firestoreData.claimedBonuses : {};
-          
-          // Assign missions based on loaded state
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {});
-          
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, ONE_DAY_MS, 'daily');
           if (dailyResult.missionsChanged) {
             newActiveMissions = dailyResult.updatedMissions;
             loadedState.lastDailyMissionRefresh = dailyResult.newRefreshTime;
           }
-
           const weeklyResult = refreshTimedMissions(newActiveMissions, loadedState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, ONE_WEEK_MS, 'weekly');
-           if (weeklyResult.missionsChanged) {
+          if (weeklyResult.missionsChanged) {
             newActiveMissions = weeklyResult.updatedMissions;
             loadedState.lastWeeklyMissionRefresh = weeklyResult.newRefreshTime;
           }
           loadedState.activeMissions = newActiveMissions;
           finalStateToSet = loadedState;
 
-        } else {
-           const newInitialUserState: GameState = {
+        } else { 
+          const newInitialUserState: GameState = {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
             plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })),
@@ -301,11 +318,12 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
             lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             status: 'active' as const,
-            claimedBonuses: {},
+            claimedBonuses: {}, 
             activeMissions: {},
             lastDailyMissionRefresh: 0,
             lastWeeklyMissionRefresh: 0,
           };
+          
           let newActiveMissions = assignMainMissions(newInitialUserState.level, newInitialUserState.activeMissions);
           const dailyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, ONE_DAY_MS, 'daily');
           newActiveMissions = dailyResult.updatedMissions;
@@ -319,8 +337,24 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           finalStateToSet = newInitialUserState;
         }
         
+        if (isNewUser && userId) {
+          const tempClaimedBonuses = {...finalStateToSet.claimedBonuses};
+          let firstLoginBonusFoundAndApplied = false;
+          BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
+            if (bonus.triggerType === 'firstLogin' && bonus.isEnabled && !tempClaimedBonuses[bonus.id]) {
+              tempClaimedBonuses[bonus.id] = true;
+              sendBonusMail(userId, bonus);
+              firstLoginBonusFoundAndApplied = true;
+            }
+          });
+          if (firstLoginBonusFoundAndApplied) {
+            finalStateToSet = {...finalStateToSet, claimedBonuses: tempClaimedBonuses };
+          }
+        }
+
         setGameState(finalStateToSet);
         prevLevelRef.current = finalStateToSet.level;
+        prevUnlockedPlotsCountRef.current = finalStateToSet.unlockedPlotsCount;
 
         if (!gameDataLoaded && !authLoading && userId) {
             setGameDataLoaded(true);
@@ -331,6 +365,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
         toast({ title: "Lỗi Kết Nối", description: "Không thể đồng bộ dữ liệu trò chơi.", variant: "destructive" });
         setGameState(INITIAL_GAME_STATE);
         prevLevelRef.current = INITIAL_GAME_STATE.level;
+        prevUnlockedPlotsCountRef.current = INITIAL_GAME_STATE.unlockedPlotsCount;
          if (!gameDataLoaded && !authLoading && userId) {
           setGameDataLoaded(true);
         }
@@ -340,36 +375,102 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
         if (unsubscribeGameState) unsubscribeGameState();
       };
     }
-  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded, assignMainMissions, refreshTimedMissions]);
+  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded, assignMainMissions, refreshTimedMissions, sendBonusMail]);
 
-  // Level Up and Main Mission Check
+  
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
-      const oldTierInfo = getPlayerTierInfo(prevLevelRef.current);
-      const newTierInfo = getPlayerTierInfo(gameState.level);
+      const oldLevel = prevLevelRef.current;
+      const newLevel = gameState.level;
+      const oldTierInfo = getPlayerTierInfo(oldLevel);
+      const newTierInfo = getPlayerTierInfo(newLevel);
       
-      toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${gameState.level}!`, className: "bg-primary text-primary-foreground" });
+      toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${newLevel}!`, className: "bg-primary text-primary-foreground" });
       
+      let bonusStateChangedInLevelUp = false;
+
       if (newTierInfo.tier > oldTierInfo.tier) {
         toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
+
+        let tempClaimedBonuses = {...gameStateRef.current.claimedBonuses};
+        let tierBonusAppliedThisCheck = false;
+
+        BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
+          if (
+            bonus.triggerType === 'tierUp' &&
+            bonus.triggerValue === newTierInfo.tier && 
+            bonus.isEnabled &&
+            !tempClaimedBonuses[bonus.id] 
+          ) {
+            tempClaimedBonuses[bonus.id] = true;
+            sendBonusMail(userId, bonus); 
+            tierBonusAppliedThisCheck = true;
+          }
+        });
+
+        if (tierBonusAppliedThisCheck) {
+            setGameState(prev => ({...prev, claimedBonuses: tempClaimedBonuses, lastUpdate: Date.now() }));
+            bonusStateChangedInLevelUp = true;
+        }
       }
       
-      // Check for new main missions after level up
       setGameState(prev => {
         const updatedMissions = assignMainMissions(prev.level, prev.activeMissions);
-        if (updatedMissions !== prev.activeMissions) {
+        if (updatedMissions !== prev.activeMissions || bonusStateChangedInLevelUp) { 
           return { ...prev, activeMissions: updatedMissions, lastUpdate: Date.now() };
         }
-        return prev;
+        return prev; 
       });
     }
     if (gameDataLoaded) {
         prevLevelRef.current = gameState.level;
     }
-  }, [gameState.level, gameDataLoaded, toast, userId, assignMainMissions, setGameState]);
+  }, [gameState.level, gameDataLoaded, toast, userId, assignMainMissions, sendBonusMail, setGameState]); 
 
 
-  // Game Loop for Plot Updates
+  useEffect(() => {
+    if (gameDataLoaded && userId && gameState.unlockedPlotsCount > prevUnlockedPlotsCountRef.current) {
+      let bonusStateChangedInPlotUnlock = false;
+      let tempClaimedBonuses = {...gameStateRef.current.claimedBonuses};
+
+      if (prevUnlockedPlotsCountRef.current < INITIAL_UNLOCKED_PLOTS + 1 && gameState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS + 1) {
+        BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
+          if (
+            bonus.triggerType === 'firstPlotUnlock' &&
+            bonus.isEnabled &&
+            !tempClaimedBonuses[bonus.id]
+          ) {
+            tempClaimedBonuses[bonus.id] = true;
+            sendBonusMail(userId, bonus);
+            bonusStateChangedInPlotUnlock = true;
+          }
+        });
+      }
+
+      const plots15BonusId = "plotsUnlocked_15";
+      if (gameState.unlockedPlotsCount >= 15 && !tempClaimedBonuses[plots15BonusId]) {
+          const plots15Bonus = BONUS_CONFIGURATIONS_DATA.find(b => b.id === plots15BonusId && b.triggerType === 'specialEvent' && b.triggerValue === 'plots_15');
+          if (plots15Bonus && plots15Bonus.isEnabled) {
+              tempClaimedBonuses[plots15Bonus.id] = true;
+              sendBonusMail(userId, plots15Bonus);
+              bonusStateChangedInPlotUnlock = true;
+          }
+      }
+      
+      if (bonusStateChangedInPlotUnlock) {
+        setGameState(prev => ({
+            ...prev,
+            claimedBonuses: tempClaimedBonuses,
+            lastUpdate: Date.now(),
+        }));
+      }
+    }
+    if (gameDataLoaded) {
+      prevUnlockedPlotsCountRef.current = gameState.unlockedPlotsCount;
+    }
+  }, [gameState.unlockedPlotsCount, gameDataLoaded, userId, sendBonusMail, setGameState]);
+
+
   useEffect(() => {
     if (!gameDataLoaded || !itemDataLoaded || !userId || !cropData) return;
 
@@ -387,12 +488,16 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
           let totalGrowthTimeReduction = currentTierInfo.growthTimeReductionPercent;
           activeGameEvents.forEach(event => {
-            if (event.type === 'CROP_GROWTH_TIME_REDUCTION') {
-              const affectsAllCrops = event.affectedItemIds === 'ALL_CROPS';
-              const affectsSpecificCrop = Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(plot.cropId!);
-              if (affectsAllCrops || affectsSpecificCrop) {
-                totalGrowthTimeReduction += event.value;
-              }
+            if (event.effects.some(eff => eff.type === 'CROP_GROWTH_TIME_REDUCTION')) {
+                 event.effects.forEach(eff => {
+                    if (eff.type === 'CROP_GROWTH_TIME_REDUCTION') {
+                        const affectsAllCrops = eff.affectedItemIds === 'ALL_CROPS';
+                        const affectsSpecificCrop = Array.isArray(eff.affectedItemIds) && eff.affectedItemIds.includes(plot.cropId!);
+                        if (affectsAllCrops || affectsSpecificCrop) {
+                            totalGrowthTimeReduction += eff.value;
+                        }
+                    }
+                 });
             }
           });
           totalGrowthTimeReduction = Math.min(totalGrowthTimeReduction, MAX_GROWTH_TIME_REDUCTION_CAP);
