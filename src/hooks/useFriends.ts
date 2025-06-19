@@ -2,12 +2,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { db, rtdb } from '@/lib/firebase'; // Added rtdb
+import { db, rtdb, analytics } from '@/lib/firebase'; 
+import { logEvent } from 'firebase/analytics'; 
 import {
   collection,
   query,
   where,
-  onSnapshot as onFirestoreSnapshot, // Aliased to avoid conflict
+  onSnapshot as onFirestoreSnapshot, 
   doc,
   setDoc,
   deleteDoc,
@@ -19,7 +20,7 @@ import {
   Timestamp,
   orderBy, 
 } from 'firebase/firestore';
-import { ref as rtdbRef, onValue as onRtdbValue, type Unsubscribe as RtdbUnsubscribe } from 'firebase/database'; // Added RTDB imports
+import { ref as rtdbRef, onValue as onRtdbValue, type Unsubscribe as RtdbUnsubscribe } from 'firebase/database'; 
 import { useAuth } from './useAuth';
 import type { FriendInfo, FriendRequestSent, FriendRequestReceived, GameState } from '@/types';
 import { useToast } from './use-toast';
@@ -38,7 +39,6 @@ export const useFriends = () => {
     return incomingRequests.filter(req => req.status === 'pending').length;
   }, [incomingRequests]);
 
-  // Fetch friends and their online status
   useEffect(() => {
     if (!userId) {
       setFriendsList([]);
@@ -53,7 +53,7 @@ export const useFriends = () => {
         return { 
             uid: friendDoc.id, 
             ...friendData, 
-            onlineStatus: 'offline' // Default to offline, will be updated by RTDB listener
+            onlineStatus: 'offline' 
         } as FriendInfo;
       });
 
@@ -63,7 +63,7 @@ export const useFriends = () => {
       });
 
     }, (error) => {
-      console.error("Error fetching friends list:", error);
+      // console.error("Error fetching friends list:", error);
       toast({ title: "Lỗi", description: "Không thể tải danh sách bạn bè.", variant: "destructive" });
       setLoadingFriendsData(false);
     });
@@ -71,7 +71,6 @@ export const useFriends = () => {
     return () => unsubscribeFirestoreFriends();
   }, [userId, toast]);
 
-  // RTDB listeners for friends' online status
   useEffect(() => {
     if (!userId || friendsList.length === 0) {
         return;
@@ -95,9 +94,8 @@ export const useFriends = () => {
     return () => {
         rtdbListeners.forEach(listener => listener());
     };
-  }, [userId, friendsList]); // Re-run if friendsList changes
+  }, [userId, friendsList]); 
 
-  // Fetch incoming friend requests
   useEffect(() => {
     if (!userId) {
       setIncomingRequests([]);
@@ -112,13 +110,12 @@ export const useFriends = () => {
       });
       setIncomingRequests(fetchedRequests);
     }, (error) => {
-      console.error("Error fetching incoming friend requests:", error);
+      // console.error("Error fetching incoming friend requests:", error);
       toast({ title: "Lỗi", description: "Không thể tải lời mời kết bạn.", variant: "destructive" });
     });
     return () => unsubscribe();
   }, [userId, toast]);
 
-  // Fetch outgoing friend requests
   useEffect(() => {
     if (!userId) {
       setOutgoingRequests([]);
@@ -133,7 +130,7 @@ export const useFriends = () => {
       });
       setOutgoingRequests(fetchedRequests);
     }, (error) => {
-      console.error("Error fetching outgoing friend requests:", error);
+      // console.error("Error fetching outgoing friend requests:", error);
     });
     return () => unsubscribe();
   }, [userId, toast]);
@@ -149,7 +146,7 @@ export const useFriends = () => {
         snapshot.forEach(doc => uids.push(doc.id));
         setBlockedUsers(uids);
     }, (error) => {
-        console.error("Error fetching blocked users:", error);
+        // console.error("Error fetching blocked users:", error);
     });
     return () => unsubscribe();
   }, [userId]);
@@ -215,8 +212,11 @@ export const useFriends = () => {
 
       await batch.commit();
       toast({ title: "Thành Công", description: `Đã gửi lời mời kết bạn đến ${recipientName}.`, className: "bg-green-500 text-white" });
+      if (analytics) {
+        logEvent(analytics, 'send_friend_request', { recipient_id: recipientId });
+      }
     } catch (error) {
-      console.error("Error sending friend request:", error);
+      // console.error("Error sending friend request:", error);
       toast({ title: "Lỗi", description: "Không thể gửi lời mời kết bạn.", variant: "destructive" });
       throw error;
     }
@@ -257,8 +257,11 @@ export const useFriends = () => {
       batch.delete(doc(db, 'users', userId, 'friendRequestsReceived', senderId));
       batch.delete(doc(db, 'users', senderId, 'friendRequestsSent', userId));
       await batch.commit();
+      if (analytics) {
+        logEvent(analytics, 'accept_friend_request', { sender_id: senderId });
+      }
     } catch (error) {
-      console.error("Error accepting friend request:", error);
+      // console.error("Error accepting friend request:", error);
       toast({ title: "Lỗi", description: "Không thể chấp nhận lời mời.", variant: "destructive" });
       throw error;
     }
@@ -271,8 +274,11 @@ export const useFriends = () => {
       batch.delete(doc(db, 'users', userId, 'friendRequestsReceived', senderId));
       batch.delete(doc(db, 'users', senderId, 'friendRequestsSent', userId)); 
       await batch.commit();
+      if (analytics) {
+        logEvent(analytics, 'decline_friend_request', { sender_id: senderId });
+      }
     } catch (error) {
-      console.error("Error declining friend request:", error);
+      // console.error("Error declining friend request:", error);
       toast({ title: "Lỗi", description: "Không thể từ chối lời mời.", variant: "destructive" });
       throw error;
     }
@@ -285,8 +291,11 @@ export const useFriends = () => {
       batch.delete(doc(db, 'users', userId, 'friends', friendId));
       batch.delete(doc(db, 'users', friendId, 'friends', userId));
       await batch.commit();
+      if (analytics) {
+        logEvent(analytics, 'remove_friend', { friend_id: friendId });
+      }
     } catch (error) {
-      console.error("Error removing friend:", error);
+      // console.error("Error removing friend:", error);
       toast({ title: "Lỗi", description: "Không thể xóa bạn bè.", variant: "destructive" });
       throw error;
     }
@@ -309,8 +318,11 @@ export const useFriends = () => {
         
         await batch.commit();
         toast({ title: "Đã chặn", description: "Người chơi đã bị chặn.", className: "bg-orange-500 text-white" });
+        if (analytics) {
+          logEvent(analytics, 'block_user', { blocked_user_id: userIdToBlock });
+        }
     } catch (error) {
-        console.error("Error blocking user:", error);
+        // console.error("Error blocking user:", error);
         toast({ title: "Lỗi", description: "Không thể chặn người chơi.", variant: "destructive" });
         throw error;
     }
@@ -321,8 +333,11 @@ export const useFriends = () => {
     try {
         await deleteDoc(doc(db, 'users', userId, 'blockedUsers', userIdToUnblock));
         toast({ title: "Đã bỏ chặn", description: "Người chơi đã được bỏ chặn.", className: "bg-green-500 text-white" });
+        if (analytics) {
+          logEvent(analytics, 'unblock_user', { unblocked_user_id: userIdToUnblock });
+        }
     } catch (error) {
-        console.error("Error unblocking user:", error);
+        // console.error("Error unblocking user:", error);
         toast({ title: "Lỗi", description: "Không thể bỏ chặn người chơi.", variant: "destructive" });
         throw error;
     }
@@ -343,4 +358,3 @@ export const useFriends = () => {
     loadingFriendsData,
   };
 };
-

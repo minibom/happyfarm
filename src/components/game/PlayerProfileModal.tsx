@@ -16,23 +16,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { UserCircle2, Coins, Star, Award, Mail, ShieldHalf, Edit3, Save } from 'lucide-react';
+import { UserCircle2, Coins, Star, Award, Mail, ShieldHalf, Edit3, Save, Brain } from 'lucide-react'; // Added Brain
 import type { TierInfo } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useGameLogic } from '@/hooks/useGameLogic'; // Import useGameLogic
+import { useGameLogic } from '@/hooks/useGameLogic'; 
 import { useToast } from '@/hooks/use-toast';
+import AdvisorDialog from '@/components/game/AdvisorDialog'; // Import AdvisorDialog
+import { getFarmingAdvice } from '@/ai/flows/ai-farming-advisor'; // Import AI flow
+import type { FarmingAdviceInput } from '@/ai/flows/ai-farming-advisor'; // Import input type
+import { analytics } from '@/lib/firebase'; // Import analytics
+import { logEvent } from 'firebase/analytics'; // Import logEvent
+import { useMarket } from '@/hooks/useMarket'; // Import useMarket
 
 interface PlayerProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  playerEmail: string; // Still useful for initial display or if displayName is cleared
+  playerEmail: string; 
   playerLevel: number;
   playerGold: number;
   playerXP: number;
   xpToNextLevel: number;
   playerTierInfo: TierInfo;
-  currentDisplayName?: string; // Pass current display name from GameState
+  currentDisplayName?: string; 
 }
 
 const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
@@ -46,10 +52,16 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
   playerTierInfo,
   currentDisplayName,
 }) => {
-  const { updateDisplayName } = useGameLogic();
+  const { gameState, updateDisplayName } = useGameLogic(); // Get gameState
+  const { prices: marketPrices } = useMarket(); // Get market prices
   const { toast } = useToast();
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState(currentDisplayName || '');
+
+  const [showAdvisor, setShowAdvisor] = useState(false);
+  const [farmingAdvice, setFarmingAdvice] = useState<string | null>(null);
+  const [isAdvisorLoading, setIsAdvisorLoading] = useState(false);
+
 
   useEffect(() => {
     setNewDisplayName(currentDisplayName || '');
@@ -69,16 +81,59 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
     try {
       await updateDisplayName(newDisplayName.trim());
       setEditingName(false);
-      // Toast is handled by useGameLogic.updateDisplayName
     } catch (error) {
-      console.error("Failed to update display name:", error);
+      // console.error("Failed to update display name:", error);
       toast({ title: "Lỗi", description: "Không thể cập nhật tên hiển thị.", variant: "destructive" });
+    }
+  };
+
+  const handleGetNewAdvice = async () => {
+    if (!gameState) {
+        toast({title: "Lỗi", description: "Không thể tải trạng thái game để nhận lời khuyên.", variant: "destructive"});
+        return;
+    }
+    setIsAdvisorLoading(true);
+    setFarmingAdvice(null);
+    try {
+        const adviceInput: FarmingAdviceInput = {
+            gold: gameState.gold,
+            xp: gameState.xp,
+            level: gameState.level,
+            plots: gameState.plots.map(p => ({ state: p.state, crop: p.cropId })),
+            inventory: gameState.inventory,
+            marketPrices: marketPrices,
+        };
+        const result = await getFarmingAdvice(adviceInput);
+        setFarmingAdvice(result.advice);
+        if (analytics) {
+            logEvent(analytics, 'request_farming_advice', {
+                player_level: gameState.level,
+                advice_length: result.advice.length,
+            });
+        }
+    } catch (error) {
+        // console.error("Error getting farming advice:", error);
+        setFarmingAdvice("Xin lỗi, cố vấn đang bận một chút. Hãy thử lại sau!");
+        toast({ title: "Lỗi Lời Khuyên", description: "Không thể nhận lời khuyên từ cố vấn.", variant: "destructive"});
+    } finally {
+        setIsAdvisorLoading(false);
+    }
+  };
+
+  const openAdvisor = () => {
+    setShowAdvisor(true);
+    if (analytics) {
+      logEvent(analytics, 'view_farming_advisor');
+    }
+    if (!farmingAdvice) { // Fetch advice if not already fetched or if user wants new
+        handleGetNewAdvice();
     }
   };
 
   const displayOrDefaultName = currentDisplayName || playerEmail.split('@')[0] || 'Nông Dân';
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -176,6 +231,9 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
                 </p>
               )}
             </div>
+             <Button onClick={openAdvisor} variant="outline" className="w-full mt-4">
+              <Brain className="mr-2 h-4 w-4" /> Cố Vấn Nông Trại AI
+            </Button>
           </div>
         </div>
 
@@ -186,6 +244,16 @@ const PlayerProfileModal: FC<PlayerProfileModalProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {showAdvisor && AdvisorDialog && (
+        <AdvisorDialog
+            isOpen={showAdvisor}
+            onClose={() => setShowAdvisor(false)}
+            advice={farmingAdvice}
+            onGetNewAdvice={handleGetNewAdvice}
+            isLoading={isAdvisorLoading}
+        />
+    )}
+    </>
   );
 };
 

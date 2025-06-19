@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { db, analytics } from '@/lib/firebase'; // Added analytics
-import { logEvent } from 'firebase/analytics'; // Added logEvent
+import { db, analytics } from '@/lib/firebase'; 
+import { logEvent } from 'firebase/analytics'; 
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, where, getDocs } from 'firebase/firestore';
 
 import ResourceBar from '@/components/game/ResourceBar';
@@ -142,7 +142,7 @@ export default function GamePage() {
             setAiGreeting("Chào mừng bạn trở lại Happy Farm! Chúc bạn một ngày vui vẻ!");
           }
         }
-        setShowWelcomePopup(true);
+        setShowWelcomePopup(true); // This will trigger the useEffect for logging
         sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
       } catch (error) {
         try {
@@ -151,7 +151,7 @@ export default function GamePage() {
         } catch (aiError) {
             setAiGreeting("Chào bạn! Nông trại luôn chào đón bạn!");
         }
-        setShowWelcomePopup(true);
+        setShowWelcomePopup(true); // This will trigger the useEffect for logging
         sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
       } finally {
         setIsLoadingWelcomeData(false);
@@ -161,6 +161,17 @@ export default function GamePage() {
     fetchWelcomeData();
 
   }, [isInitialized, userId]);
+
+  useEffect(() => {
+    if (showWelcomePopup && !isLoadingWelcomeData && analytics) {
+      logEvent(analytics, 'screen_view', {
+        firebase_screen: 'welcome_popup',
+        has_active_events: activeGameEventsForPopup.length > 0,
+        has_ai_greeting: !!aiGreeting,
+      });
+    }
+  }, [showWelcomePopup, isLoadingWelcomeData, activeGameEventsForPopup, aiGreeting]);
+
 
   useEffect(() => {
     if (!userId) {
@@ -191,6 +202,7 @@ export default function GamePage() {
   const handleOpenUserProfilePopup = useCallback((uid: string, displayName: string) => {
     setSelectedUserProfileData({ uid, displayName });
     setShowUserProfilePopup(true);
+    // Assuming UserProfilePopup logs its own screen_view if needed
   }, []);
 
   const handlePlotClick = (plotId: number) => {
@@ -365,7 +377,7 @@ export default function GamePage() {
      if (mailToClaim.bonusId && gameState.claimedBonuses[mailToClaim.bonusId]) {
       toast({ title: "Bonus Đã Nhận", description: "Bạn đã nhận phần thưởng bonus này rồi.", variant: "default" });
       const mailRef = doc(db, 'users', userId, 'mail', mailId);
-      try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { console.warn("Error updating mail for already claimed bonus:", e);}
+      try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { /* console.warn("Error updating mail for already claimed bonus:", e); */ }
       return;
     }
 
@@ -375,7 +387,7 @@ export default function GamePage() {
       try {
         await updateDoc(mailRef, { isClaimed: true, isRead: true });
       } catch (error) {
-        console.warn("Error marking mail as claimed (no rewards):", error);
+        // console.warn("Error marking mail as claimed (no rewards):", error);
       }
       return;
     }
@@ -463,6 +475,17 @@ export default function GamePage() {
       toast({ title: "Lỗi", description: "Không thể xóa thư.", variant: "destructive"});
     }
   };
+  
+  // Analytics for modal views
+  useEffect(() => { if (showMarket && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'market_modal' }); }, [showMarket]);
+  useEffect(() => { if (showInventoryModal && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'inventory_modal' }); }, [showInventoryModal]);
+  useEffect(() => { if (showProfileModal && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'player_profile_modal' }); }, [showProfileModal]);
+  useEffect(() => { if (isChatModalOpen && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'chat_modal' }); }, [isChatModalOpen]);
+  useEffect(() => { if (showLeaderboardModal && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'leaderboard_modal' }); }, [showLeaderboardModal]);
+  useEffect(() => { if (isMailModalOpen && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'mail_modal' }); }, [isMailModalOpen]);
+  useEffect(() => { if (isMissionModalOpen && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'mission_modal' }); }, [isMissionModalOpen]);
+  useEffect(() => { if (showFriendsModal && analytics) logEvent(analytics, 'screen_view', { firebase_screen: 'friends_modal' }); }, [showFriendsModal]);
+
 
   if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData || loadingFriendsData) {
     return (
