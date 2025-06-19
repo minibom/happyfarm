@@ -42,7 +42,6 @@ export default function AdminConfigPage() {
     docIdField: string,
     dataTypeLabel: string
   ) => {
-    // setLoadingState?.(true); // Removed: loading state managed by caller
     toast({
       title: "Đang Xử Lý...",
       description: `Bắt đầu đẩy dữ liệu ${dataTypeLabel} lên Firestore...`,
@@ -88,11 +87,8 @@ export default function AdminConfigPage() {
         description: `Không thể đẩy dữ liệu. Lỗi: ${String((error as Error)?.message || 'Unknown error')}`,
         variant: "destructive",
       });
-      throw error; // Re-throw the error so the caller's catch block can handle it
+      throw error; 
     } 
-    // finally { // Removed: loading state managed by caller
-    //   setLoadingState?.(false);
-    // }
   };
 
 
@@ -231,8 +227,6 @@ export default function AdminConfigPage() {
         duration: 7000,
       });
     } catch (error) {
-      // Error is already toasted by handlePushGenericData if it throws
-      // We can add a more general error message here if needed, or rely on the specific one.
       toast({
         title: "Lỗi Đồng Bộ Tổng Thể Nhiệm Vụ",
         description: "Một hoặc nhiều loại nhiệm vụ không thể đồng bộ. Kiểm tra console để biết thêm chi tiết.",
@@ -249,15 +243,13 @@ export default function AdminConfigPage() {
     collectionName: string,
     docIdField: string,
     dataTypeLabel: string,
-    setLoadingState: (loading: boolean) => void // Specific setLoading function for this button
+    setLoadingState: (loading: boolean) => void 
   ) => {
     setLoadingState(true);
     try {
         await handlePushGenericData(dataArray, collectionName, docIdField, dataTypeLabel);
-        // Success is toasted within handlePushGenericData
     } catch (error) {
-        // Error is toasted within handlePushGenericData
-        // No need to re-toast here unless we want a more generic message
+      // Error is toasted within handlePushGenericData
     } finally {
         setLoadingState(false);
     }
@@ -470,5 +462,3 @@ export default function AdminConfigPage() {
     </div>
   );
 }
-
-    

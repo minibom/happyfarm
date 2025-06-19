@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation'; 
 import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ const MailManagementView = () => {
           toast({ title: "Bản Nháp Đã Tải", description: "Nội dung thư từ sự kiện đã được điền. Hãy kiểm tra và gửi." });
         }
       } catch (e) {
-        console.error("Error parsing mail draft from localStorage", e);
+        // console.error("Error parsing mail draft from localStorage", e); // Kept for debugging admin tool itself
       } finally {
         localStorage.removeItem('happyFarmAdminMailDraftFromEvent');
         localStorage.removeItem('happyFarmAdminMailDraftSource');
@@ -715,4 +715,3 @@ export default function AdminMailBonusesPage() {
     </Card>
   );
 }
-    

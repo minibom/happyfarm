@@ -20,7 +20,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. Fetch current market state
     const marketDocRef = doc(db, 'marketState', 'global');
     const marketDocSnap = await getDoc(marketDocRef);
     
@@ -30,14 +29,10 @@ export async function POST(request: Request) {
     } else {
       console.warn("Market state document not found, using initial market state for price update job.");
       currentMarketData = INITIAL_MARKET_STATE;
-      // Optionally, you might want to create the document here if it's missing,
-      // but the updateDoc below with { merge: true } might handle it if prices are present.
-      // For safety, let's ensure it's at least partially initialized if it was missing.
       await updateDoc(marketDocRef, { prices: INITIAL_MARKET_STATE.prices, priceChanges: {}, lastUpdated: serverTimestamp() }, { merge: true });
     }
     const currentPrices = currentMarketData.prices || INITIAL_MARKET_STATE.prices;
 
-    // 2. Construct itemUnlockTiers from constants
     const itemUnlockTiers: Record<string, number> = {};
     for (const cropId in CROP_DATA) {
       itemUnlockTiers[cropId] = CROP_DATA[cropId as MarketItemId].unlockTier;
@@ -47,23 +42,19 @@ export async function POST(request: Request) {
       itemUnlockTiers[fertId] = FERTILIZER_DATA[fertId as MarketItemId].unlockTier;
     }
 
-    // 3. Aggregated Activity (Placeholder - implement actual logging and aggregation separately)
     const aggregatedActivity = {
-      sells: {}, // TODO: Populate from actual sales logs
-      buys: {},  // TODO: Populate from actual purchase logs
+      sells: {}, 
+      buys: {},  
     };
 
-    // 4. Prepare input for the AI flow
     const flowInput: PriceAdjustmentInput = {
       currentPrices,
       aggregatedActivity,
       itemUnlockTiers,
     };
 
-    // 5. Call the AI flow
     const adjustmentOutput = await suggestPriceAdjustments(flowInput);
 
-    // 6. Process the output and calculate new prices
     const newPrices: Record<string, number> = { ...currentPrices };
     const newPriceChanges: Record<string, number> = {};
 
@@ -75,7 +66,7 @@ export async function POST(request: Request) {
 
         if (currentPrice !== undefined) {
           const calculatedNewPrice = currentPrice * (1 + percentageChange);
-          newPrices[itemId] = Math.max(1, Math.round(calculatedNewPrice)); // Ensure price is at least 1
+          newPrices[itemId] = Math.max(1, Math.round(calculatedNewPrice)); 
           newPriceChanges[itemId] = percentageChange;
         } else {
           console.warn(`Item ID "${itemId}" from AI suggestion not found in current market prices. Skipping.`);
@@ -83,7 +74,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // 7. Update Firestore
     await updateDoc(marketDocRef, {
       prices: newPrices,
       priceChanges: newPriceChanges,

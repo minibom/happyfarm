@@ -64,11 +64,16 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
           const stateToSave = { ...gameStateRef.current };
 
+          // Firestore cannot store 'undefined', convert to 'null' or remove keys.
+          // The replacer function handles 'undefined' to 'null'.
+          // Explicitly delete keys if they are undefined and you prefer them absent.
           if (stateToSave.email === undefined) delete (stateToSave as any).email;
           if (stateToSave.displayName === undefined) delete (stateToSave as any).displayName;
+          if (stateToSave.lastDailyMissionRefresh === undefined) delete (stateToSave as any).lastDailyMissionRefresh;
+          if (stateToSave.lastWeeklyMissionRefresh === undefined) delete (stateToSave as any).lastWeeklyMissionRefresh;
 
           await setDoc(gameDocRef, JSON.parse(JSON.stringify(stateToSave, (key, value) => {
-             return value === undefined ? null : value;
+             return value === undefined ? null : value; // Convert undefined to null for Firestore
           })));
         } catch (error) {
           console.error("Failed to save game state:", error);
@@ -151,12 +156,10 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           let loadedState: GameState = {
             ...INITIAL_GAME_STATE,
             ...firestoreData,
-            // Ensure activeMissions and claimedBonuses are initialized if not present in firestoreData
-            activeMissions: {}, // Will be populated below
+            activeMissions: {}, 
             claimedBonuses: firestoreData.claimedBonuses || {},
           };
 
-          // Process activeMissions to convert Timestamps
           if (firestoreData.activeMissions) {
             const processedMissions: Record<string, PlayerMissionProgress> = {};
             for (const missionKey in firestoreData.activeMissions) {
@@ -236,6 +239,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastWeeklyMissionRefresh = (firestoreData.lastWeeklyMissionRefresh && typeof firestoreData.lastWeeklyMissionRefresh === 'object' && 'toMillis' in (firestoreData.lastWeeklyMissionRefresh as any))
             ? ((firestoreData.lastWeeklyMissionRefresh as unknown as Timestamp).toMillis())
             : (typeof firestoreData.lastWeeklyMissionRefresh === 'number' ? firestoreData.lastWeeklyMissionRefresh : 0);
+
 
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {}, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
@@ -333,7 +337,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
 
   useEffect(() => {
-    if (!gameDataLoaded || !itemDataLoaded || !userId || !cropData) return;
+    if (!gameDataLoaded || !itemDataLoaded || !fertilizerDataLoaded || !userId || !cropData) return;
 
     const currentTierInfo = getPlayerTierInfo(gameStateRef.current.level);
 
@@ -392,10 +396,9 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }, 1000);
 
     return () => clearInterval(gameLoopInterval);
-  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]);
+  }, [gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]); // Added fertilizerDataLoaded
 
   const isInitialized = gameDataLoaded && itemDataLoaded && fertilizerDataLoaded && !!userId && !authLoading && !!cropData;
 
   return { gameState, setGameState, isInitialized, playerTierInfo, gameDataLoaded, activeGameEvents };
 };
-

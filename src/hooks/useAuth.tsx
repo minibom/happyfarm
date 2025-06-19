@@ -4,8 +4,8 @@
 import type { ReactNode } from 'react';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { auth, db, analytics } from '@/lib/firebase'; // Added analytics
-import { logEvent } from 'firebase/analytics'; // Added logEvent
+import { auth, db, analytics } from '@/lib/firebase'; 
+import { logEvent } from 'firebase/analytics'; 
 import type { User as FirebaseUser, AuthError } from 'firebase/auth';
 import {
   createUserWithEmailAndPassword,
@@ -105,6 +105,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastUpdate: Date.now(),
         status: 'active',
         unlockedPlotsCount: INITIAL_GAME_STATE.unlockedPlotsCount,
+        claimedBonuses: {},
+        activeMissions: {},
+        lastDailyMissionRefresh: 0,
+        lastWeeklyMissionRefresh: 0,
       };
       
       const gameDocRef = doc(db, 'users', uid, 'gameState', 'data');
@@ -149,11 +153,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
+      if (analytics && user) {
+        logEvent(analytics, 'custom_logout', { user_id: user.uid }); // Log custom logout before sign out
+      }
       await signOut(auth);
       setInitialGameState(undefined);
-      // No specific Firebase Analytics 'log_out' event, session end is tracked automatically
-      // If a custom event is desired, it could be added here:
-      // if (analytics) { logEvent(analytics, 'custom_logout'); }
     } catch (e) {
       setError(e as AuthError);
     }

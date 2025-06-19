@@ -1,12 +1,8 @@
 
 'use client';
-// This file is now intended to be imported as a component by missions-events/page.tsx
-// So, we rename the default export and remove the 'export default'.
-// The main layout structure (Card, CardHeader etc.) will be provided by the parent missions-events page.
 
 import { useState, useEffect, useCallback } from 'react';
 import { Timestamp, collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, writeBatch, doc, setDoc, deleteDoc, getDoc, updateDoc, onSnapshot, limit } from 'firebase/firestore';
-// Card components are removed as they will be provided by the parent
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
@@ -25,7 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { EventActionModal } from '@/components/admin/EventActionModal';
 import { GAME_EVENT_TEMPLATES_DATA } from '@/lib/constants';
 
-// Renamed default export to a named export
 export default function AdminEventsPageContent() {
   const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]);
   const [eventTemplates, setEventTemplates] = useState<GameEventConfig[]>([]);
@@ -66,7 +61,7 @@ export default function AdminEventsPageContent() {
         snapshot.forEach(docSnap => {
             templates.push(docSnap.data() as GameEventConfig);
         });
-        setEventTemplates(templates.length > 0 ? templates : GAME_EVENT_TEMPLATES_DATA); // Fallback if Firestore is empty
+        setEventTemplates(templates.length > 0 ? templates : GAME_EVENT_TEMPLATES_DATA); 
     }, (error) => {
         console.error("Error fetching event templates:", error);
         setEventTemplates(GAME_EVENT_TEMPLATES_DATA);
@@ -167,8 +162,6 @@ export default function AdminEventsPageContent() {
     return summary.length > 60 ? summary.substring(0, 57) + "..." : summary;
   };
 
-  // The main Card and CardHeader/CardContent are now removed from here
-  // as they will be part of the parent missions-events/page.tsx
   return (
     <>
       <div className="flex justify-end mb-4 shrink-0">
@@ -248,5 +241,3 @@ export default function AdminEventsPageContent() {
     </>
   );
 }
-
-  

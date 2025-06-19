@@ -3,7 +3,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getDatabase, type Database } from "firebase/database";
-import { getAnalytics, type Analytics } from "firebase/analytics"; // Import getAnalytics
+import { getAnalytics, type Analytics } from "firebase/analytics"; 
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,14 +13,14 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   databaseURL: "https://quantum-nexus-33878-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Added Measurement ID
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID 
 };
 
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let rtdb: Database;
-let analytics: Analytics | null = null; // Initialize analytics as null
+let analytics: Analytics | null = null; 
 
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
@@ -32,12 +32,11 @@ auth = getAuth(app);
 db = getFirestore(app);
 rtdb = getDatabase(app);
 
-// Conditionally initialize Analytics only on the client side
 if (typeof window !== "undefined") {
-  if (firebaseConfig.measurementId) {
+  if (firebaseConfig.measurementId && firebaseConfig.measurementId !== "G-XXXXXXXXXX") {
     analytics = getAnalytics(app);
   } else {
-    console.warn("Firebase Measurement ID (NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) is not set in environment variables. Firebase Analytics will not be initialized.");
+    console.warn("Firebase Measurement ID (NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) is not set or is a placeholder. Firebase Analytics will not be initialized.");
   }
 }
 

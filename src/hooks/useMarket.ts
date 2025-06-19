@@ -46,12 +46,21 @@ export const useMarket = (): MarketData => {
           }
 
           let currentEventData: MarketEventData | null = data.currentEvent || INITIAL_MARKET_STATE.currentEvent;
-          if (currentEventData && currentEventData.expiresAt && typeof currentEventData.expiresAt === 'object' && 'toMillis' in currentEventData.expiresAt) {
-            currentEventData = {
-              ...currentEventData,
-              expiresAt: (currentEventData.expiresAt as unknown as Timestamp).toMillis()
-            };
+          if (currentEventData && currentEventData.expiresAt) {
+            if (typeof currentEventData.expiresAt === 'object' && 'toMillis' in currentEventData.expiresAt) {
+                currentEventData = {
+                ...currentEventData,
+                expiresAt: (currentEventData.expiresAt as unknown as Timestamp).toMillis()
+                };
+            } else if (typeof currentEventData.expiresAt !== 'number') {
+                // If it's not a Timestamp object and not a number, it's an invalid format.
+                // Consider logging this or setting expiresAt to undefined/null.
+                console.warn("MarketEventData.expiresAt has an unexpected format:", currentEventData.expiresAt);
+                currentEventData = {...currentEventData, expiresAt: undefined };
+            }
+            // If it's already a number, it's fine.
           }
+
 
           setMarketState({
             prices: validatedPrices,
@@ -83,21 +92,21 @@ export const useMarket = (): MarketData => {
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
         const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        // Ensure startTime and endTime are numbers (milliseconds) in the ActiveGameEvent state
+        
         const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
           ? (eventDocData.startTime as unknown as Timestamp).toMillis()
           : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
         
         const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
           ? (eventDocData.endTime as unknown as Timestamp).toMillis()
-          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000; // Default to 1 day from now if invalid
+          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000; 
 
         if (endTimeMillis > now.toMillis()) {
           fetchedEvents.push({ 
             id: docSnap.id, 
             ...eventDocData,
-            startTime: startTimeMillis, // Store as number
-            endTime: endTimeMillis,     // Store as number
+            startTime: startTimeMillis, 
+            endTime: endTimeMillis,     
           });
         }
       });
@@ -231,4 +240,3 @@ export const useMarket = (): MarketData => {
     getItemDetails,
   };
 };
-

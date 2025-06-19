@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift, CalendarDays, ListChecks } from 'lucide-react'; // Added ListChecks for Missions
+import { Package, Users, Settings, ShieldCheck, LayoutDashboard, Home, Loader2, BarChart3, Mail, Gift, CalendarDays, ListChecks } from 'lucide-react'; 
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/items-management', label: 'QL Vật Phẩm', icon: Package },
     { href: '/admin/users-tiers', label: 'Người Dùng & Bậc', icon: Users },
     { href: '/admin/mail-bonuses', label: 'Thư & Bonus', icon: Mail },
-    { href: '/admin/missions-events', label: 'Nhiệm Vụ & Sự Kiện', icon: ListChecks }, // Updated label and link
+    { href: '/admin/missions-events', label: 'Nhiệm Vụ & Sự Kiện', icon: ListChecks }, 
     { href: '/admin/config', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
 
@@ -77,7 +77,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (pathname.startsWith('/admin/items-management')) return 'Quản Lý Vật Phẩm';
     if (pathname.startsWith('/admin/users-tiers')) return 'Người Dùng & Cấp Bậc';
     if (pathname.startsWith('/admin/mail-bonuses')) return 'Thư & Bonus';
-    if (pathname.startsWith('/admin/missions-events')) return 'Nhiệm Vụ & Sự Kiện'; // Updated
+    if (pathname.startsWith('/admin/missions-events')) return 'Nhiệm Vụ & Sự Kiện'; 
     if (pathname.startsWith('/admin/config')) return 'Cấu hình Hệ thống';
     
     return 'Bảng điều khiển Admin';
@@ -158,5 +158,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
-  
