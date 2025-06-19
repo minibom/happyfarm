@@ -302,4 +302,57 @@ export const GAME_EVENT_TEMPLATES_DATA: GameEventConfig[] = [
     defaultMailSubject: "Sự Kiện: {{eventName}}!",
     defaultMailBody: "Chào Nông Dân,\n\nSự kiện '{{eventName}}' đã chính thức bắt đầu!\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: Hạt Mầm Kỳ Diệu (miracleSproutSeed) đã xuất hiện trong Chợ!\n\nĐừng bỏ lỡ cơ hội sở hữu hạt giống độc đáo này!",
   },
+
+  // --- New Recurring Event Templates ---
+  {
+    id: "recurring_weekend_market_boost_fruits",
+    templateName: "Chợ Nông Sản Cuối Tuần (Trái Cây)",
+    description: "Cuối tuần này, tất cả các loại trái cây bán được giá cao hơn! (Sự kiện lặp lại hàng tuần, thay đổi loại nông sản).",
+    defaultEffects: [
+      { type: 'ITEM_SELL_PRICE_MODIFIER', value: 1.25, affectedItemIds: ['strawberry', 'blueberry', 'lemon', 'mango', 'kiwi', 'apple', 'banana', 'grapes', 'greenapple', 'papaya', 'peach', 'pear', 'plum', 'starfruit', 'cherry', 'orange', 'watermelon', 'avocado', 'dragonfruit', 'pineapple', 'coconut', 'durian', 'celestialCarrot', 'starBean', 'moonHerb', 'sunBerry', 'galaxyGrain', 'cometCorn', 'nebulaNectarine', 'voidRoot', 'quantumQuince', 'phantomPepper'] } // Example, update with your actual fruit IDs
+    ],
+    defaultDurationHours: 48, // Saturday & Sunday
+    icon: "🍉📈",
+    defaultMailSubject: "Sự Kiện Cuối Tuần: {{eventName}}!",
+    defaultMailBody: "Chào Nông Dân,\n\nSự kiện Chợ Nông Sản Cuối Tuần đã trở lại! Tuần này, {{categoryFocus}} đang được giá.\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nChúc bạn buôn may bán đắt!",
+    placeholders: ["{{categoryFocus}}"], // For admin to specify "Trái cây" or "Rau củ"
+  },
+  {
+    id: "recurring_daily_fertilizer_happy_hour",
+    templateName: "Giờ Vàng Phân Bón (Hàng Ngày)",
+    description: "Mỗi ngày, vào một khung giờ nhất định, tất cả phân bón sẽ được giảm giá! (Sự kiện lặp lại hàng ngày).",
+    defaultEffects: [
+      { type: 'ITEM_PURCHASE_PRICE_MODIFIER', value: 0.75, affectedItemIds: 'ALL_FERTILIZERS' } // 25% discount
+    ],
+    defaultDurationHours: 2, // Short duration, e.g., 2 hours
+    icon: "🧪⏰",
+    defaultMailSubject: "Giờ Vàng Phân Bón Đã Đến!",
+    defaultMailBody: "Chào Nông Dân,\n\nGiờ Vàng Phân Bón đã bắt đầu! Từ {{startTime}} đến {{endTime}}, tất cả phân bón đều được giảm giá.\n\nMô tả: {{eventDescription}}\nHiệu ứng: {{effectsSummary}}\n\nNhanh tay mua sắm để cây mau lớn!",
+  },
+  {
+    id: "recurring_weekly_seed_sale_tier_X",
+    templateName: "Ngày Vàng Hạt Giống (Hàng Tuần)",
+    description: "Mỗi tuần một lần, một bậc hạt giống ngẫu nhiên sẽ được giảm giá đặc biệt! (Sự kiện lặp lại hàng tuần).",
+    defaultEffects: [
+      // Effect should be set dynamically by admin based on selected tier for the week
+      // Example: { type: 'ITEM_PURCHASE_PRICE_MODIFIER', value: 0.6, affectedItemIds: ['tomatoSeed', 'carrotSeed', 'cornSeed'] }
+    ],
+    defaultDurationHours: 24,
+    icon: "🌱🏷️",
+    defaultMailSubject: "Ngày Vàng Hạt Giống Tuần Này!",
+    defaultMailBody: "Chào Nông Dân,\n\nNgày Vàng Hạt Giống tuần này đã đến! Tất cả hạt giống Bậc {{tierNumber}} đang được giảm giá.\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nĐừng bỏ lỡ cơ hội vàng!",
+    placeholders: ["{{tierNumber}}"], // Admin fills this based on the week's chosen tier
+  },
+  {
+    id: "recurring_biweekly_growth_spurt",
+    templateName: "Thử Thách Tăng Trưởng (2 Tuần/Lần)",
+    description: "Cứ mỗi hai tuần, nông trại sẽ nhận được một luồng năng lượng giúp cây trồng phát triển nhanh hơn một chút.",
+    defaultEffects: [
+      { type: 'CROP_GROWTH_TIME_REDUCTION', value: 0.05, affectedItemIds: 'ALL_CROPS' } // 5% growth reduction
+    ],
+    defaultDurationHours: 72, // 3 days
+    icon: "🌿💨",
+    defaultMailSubject: "Sự Kiện: Thử Thách Tăng Trưởng!",
+    defaultMailBody: "Chào Nông Dân,\n\nThử Thách Tăng Trưởng đã quay trở lại! Trong thời gian này, tất cả cây trồng của bạn sẽ phát triển nhanh hơn.\n\nMô tả: {{eventDescription}}\nThời gian: Từ {{startTime}} đến {{endTime}}.\nHiệu ứng: {{effectsSummary}}\n\nChúc bạn có một mùa vụ bội thu!",
+  },
 ];
