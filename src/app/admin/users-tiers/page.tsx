@@ -10,9 +10,10 @@ import { UserDetailModal } from '@/components/admin/UserActionModals';
 import { TierActionModal } from '@/components/admin/TierActionModal';
 import { useToast } from '@/hooks/use-toast';
 import { db, rtdb } from '@/lib/firebase'; // Import rtdb
-import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as rtdbRef, get as rtdbGet } from 'firebase/database'; // Import RTDB get
-import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE } from '@/lib/constants';
+import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE, INITIAL_UNLOCKED_PLOTS, NUMBER_OF_DAILY_MISSIONS, NUMBER_OF_WEEKLY_MISSIONS, MAIN_MISSIONS_DATA, DAILY_MISSION_TEMPLATES_DATA, WEEKLY_MISSION_TEMPLATES_DATA } from '@/lib/constants';
+import { assignMainMissions, refreshTimedMissions } from '@/lib/mission-logic';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -58,7 +59,6 @@ const UsersManagementView = () => {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       setIsLoading(true);
       const fetchedUsersList: AdminUserView[] = [];
-      // Fetch all online statuses once
       const allStatusRef = rtdbRef(rtdb, 'status');
       const allStatusSnapshot = await rtdbGet(allStatusRef);
       const onlineStatuses: Record<string, { state: 'online' | 'offline' }> = allStatusSnapshot.exists() ? allStatusSnapshot.val() : {};
@@ -66,10 +66,8 @@ const UsersManagementView = () => {
       for (const userDoc of snapshot.docs) {
         const uid = userDoc.id;
         const baseUserData = userDoc.data();
-
         const gameStateRef = doc(db, 'users', uid, 'gameState', 'data');
         const gameStateSnap = await getDoc(gameStateRef);
-
         let userView: AdminUserView;
         const rtdbStatus = onlineStatuses[uid]?.state || 'offline';
 
@@ -136,7 +134,7 @@ const UsersManagementView = () => {
     setIsUserModalOpen(true);
   };
 
-  const handleUserAction = async (userId: string, action: 'delete' | 'toggle_ban_chat' | 'view_game_state' | 'reset_progress' | 'grant_items') => {
+  const handleUserAction = async (userId: string, action: 'delete' | 'toggle_ban_chat' | 'reset_progress' | 'grant_items') => {
     const userToUpdate = allUsers.find(u => u.uid === userId);
     if (!userToUpdate) return;
 
@@ -158,11 +156,87 @@ const UsersManagementView = () => {
           className: "bg-green-500 text-white"
         });
         setIsUserModalOpen(false);
-         setAllUsers(prev => prev.map(u => u.uid === userId ? { ...u, status: newStatus } : u)); // Optimistic update
+         setAllUsers(prev => prev.map(u => u.uid === userId ? { ...u, status: newStatus } : u)); 
       } catch (err) {
         console.error("Error updating user status:", err);
         toast({ title: "Lỗi", description: "Không thể cập nhật trạng thái người dùng.", variant: "destructive"});
       }
+    } else if (action === 'reset_progress') {
+        try {
+            const userGameStateRef = doc(db, 'users', userId, 'gameState', 'data');
+            const userTopLevelRef = doc(db, 'users', userId);
+
+            // Fetch current basic info to preserve
+            let existingEmail = userToUpdate.email;
+            let existingDisplayName = userToUpdate.displayName;
+
+            if (!existingEmail || !existingDisplayName) {
+                const gsSnap = await getDoc(userGameStateRef);
+                if (gsSnap.exists()) {
+                    const gsData = gsSnap.data() as GameState;
+                    if (!existingEmail) existingEmail = gsData.email;
+                    if (!existingDisplayName) existingDisplayName = gsData.displayName;
+                }
+                if (!existingEmail || !existingDisplayName) {
+                    const userSnap = await getDoc(userTopLevelRef);
+                    if (userSnap.exists()) {
+                        const baseData = userSnap.data();
+                         if (!existingEmail) existingEmail = baseData.email;
+                         if (!existingDisplayName) existingDisplayName = baseData.displayName;
+                    }
+                }
+            }
+            
+            const newState: GameState = {
+                ...INITIAL_GAME_STATE,
+                inventory: { ...INITIAL_GAME_STATE.inventory },
+                plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })),
+                email: existingEmail || undefined,
+                displayName: existingDisplayName || `Farmer${Date.now().toString().slice(-5)}`,
+                lastLogin: Date.now(),
+                lastUpdate: Date.now(),
+                status: 'active',
+                unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
+                claimedBonuses: {},
+                activeMissions: {},
+                lastDailyMissionRefresh: 0,
+                lastWeeklyMissionRefresh: 0,
+            };
+
+            newState.activeMissions = assignMainMissions(newState.level, newState.activeMissions, MAIN_MISSIONS_DATA);
+            const dailyResult = refreshTimedMissions(newState.activeMissions, 0, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
+            newState.activeMissions = dailyResult.updatedMissions;
+            newState.lastDailyMissionRefresh = dailyResult.newRefreshTime;
+
+            const weeklyResult = refreshTimedMissions(newState.activeMissions, 0, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, 'weekly');
+            newState.activeMissions = weeklyResult.updatedMissions;
+            newState.lastWeeklyMissionRefresh = weeklyResult.newRefreshTime;
+            
+            await setDoc(userGameStateRef, newState);
+            await updateDoc(userTopLevelRef, {
+                level: INITIAL_GAME_STATE.level,
+                xp: INITIAL_GAME_STATE.xp,
+                gold: INITIAL_GAME_STATE.gold, // Assuming gold might be at top level too
+                lastLogin: serverTimestamp(), // Use server timestamp for top-level
+                progressResetAt: serverTimestamp(),
+            });
+
+            toast({
+                title: "Reset Thành Công!",
+                description: `Tiến trình của người dùng ${userToUpdate.displayName || userToUpdate.email} đã được reset.`,
+                className: "bg-orange-500 text-white",
+                duration: 7000
+            });
+            setIsUserModalOpen(false);
+            // Refetch or update local state for allUsers if necessary
+            const updatedUserView = { ...userToUpdate, ...newState, lastLogin: Date.now(), onlineStatus: userToUpdate.onlineStatus };
+            setAllUsers(prev => prev.map(u => u.uid === userId ? updatedUserView : u));
+
+
+        } catch (err) {
+            console.error("Error resetting user progress:", err);
+            toast({ title: "Lỗi Reset", description: "Không thể reset tiến trình người dùng.", variant: "destructive"});
+        }
     } else if (action === 'delete') {
         toast({ title: "Mô Phỏng Xóa", description: `Đã yêu cầu xóa người dùng ${userToUpdate.displayName || userToUpdate.email} (cần triển khai Cloud Function).`, variant: "default" });
     } else {

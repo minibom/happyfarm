@@ -24,3 +24,7 @@ export const LOCAL_STORAGE_GAME_KEY = 'happyFarmGame';
 
 // Maximum cap for combined growth time reduction (e.g., 90%)
 export const MAX_GROWTH_TIME_REDUCTION_CAP = 0.9;
+
+// Number of daily/weekly missions to assign
+export const NUMBER_OF_DAILY_MISSIONS = 3;
+export const NUMBER_OF_WEEKLY_MISSIONS = 3;

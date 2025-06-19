@@ -18,6 +18,8 @@ import {
   DAILY_MISSION_TEMPLATES_DATA,
   WEEKLY_MISSION_TEMPLATES_DATA,
   BONUS_CONFIGURATIONS_DATA, 
+  NUMBER_OF_DAILY_MISSIONS, // Import from constants
+  NUMBER_OF_WEEKLY_MISSIONS // Import from constants
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
@@ -32,10 +34,6 @@ interface UseGameStateCoreProps {
   itemDataLoaded: boolean;
   fertilizerDataLoaded: boolean;
 }
-
-const NUMBER_OF_DAILY_MISSIONS = 3;
-const NUMBER_OF_WEEKLY_MISSIONS = 3;
-
 
 export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoaded }: UseGameStateCoreProps) => {
   const { user, userId, loading: authLoading } = useAuth();
@@ -342,4 +340,3 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
   return { gameState, setGameState, isInitialized, playerTierInfo, gameDataLoaded, activeGameEvents };
 };
-
