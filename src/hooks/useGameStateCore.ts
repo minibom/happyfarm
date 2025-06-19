@@ -151,11 +151,29 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           let loadedState: GameState = {
             ...INITIAL_GAME_STATE,
             ...firestoreData,
-            activeMissions: firestoreData.activeMissions || {},
+            // Ensure activeMissions and claimedBonuses are initialized if not present in firestoreData
+            activeMissions: {}, // Will be populated below
             claimedBonuses: firestoreData.claimedBonuses || {},
-            lastDailyMissionRefresh: firestoreData.lastDailyMissionRefresh || 0,
-            lastWeeklyMissionRefresh: firestoreData.lastWeeklyMissionRefresh || 0,
           };
+
+          // Process activeMissions to convert Timestamps
+          if (firestoreData.activeMissions) {
+            const processedMissions: Record<string, PlayerMissionProgress> = {};
+            for (const missionKey in firestoreData.activeMissions) {
+              const mission = (firestoreData.activeMissions as Record<string, any>)[missionKey];
+              processedMissions[missionKey] = {
+                ...mission,
+                assignedAt: (mission.assignedAt && typeof mission.assignedAt === 'object' && 'toMillis' in mission.assignedAt)
+                  ? (mission.assignedAt as unknown as Timestamp).toMillis()
+                  : typeof mission.assignedAt === 'number' ? mission.assignedAt : undefined,
+                expiresAt: (mission.expiresAt && typeof mission.expiresAt === 'object' && 'toMillis' in mission.expiresAt)
+                  ? (mission.expiresAt as unknown as Timestamp).toMillis()
+                  : typeof mission.expiresAt === 'number' ? mission.expiresAt : undefined,
+              };
+            }
+            loadedState.activeMissions = processedMissions;
+          }
+
 
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
             ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
@@ -211,6 +229,13 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastUpdate = firestoreData.lastUpdate && typeof firestoreData.lastUpdate === 'object' && 'toMillis' in (firestoreData.lastUpdate as any)
             ? (firestoreData.lastUpdate as unknown as Timestamp).toMillis()
             : typeof firestoreData.lastUpdate === 'number' ? firestoreData.lastUpdate : gameStateRef.current.lastUpdate || Date.now();
+          
+          loadedState.lastDailyMissionRefresh = (firestoreData.lastDailyMissionRefresh && typeof firestoreData.lastDailyMissionRefresh === 'object' && 'toMillis' in (firestoreData.lastDailyMissionRefresh as any))
+            ? ((firestoreData.lastDailyMissionRefresh as unknown as Timestamp).toMillis())
+            : (typeof firestoreData.lastDailyMissionRefresh === 'number' ? firestoreData.lastDailyMissionRefresh : 0);
+          loadedState.lastWeeklyMissionRefresh = (firestoreData.lastWeeklyMissionRefresh && typeof firestoreData.lastWeeklyMissionRefresh === 'object' && 'toMillis' in (firestoreData.lastWeeklyMissionRefresh as any))
+            ? ((firestoreData.lastWeeklyMissionRefresh as unknown as Timestamp).toMillis())
+            : (typeof firestoreData.lastWeeklyMissionRefresh === 'number' ? firestoreData.lastWeeklyMissionRefresh : 0);
 
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {}, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');

@@ -13,14 +13,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Sparkles } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Đăng Ký - Happy Farm',
-  description: 'Tạo tài khoản mới để tham gia vào thế giới nông trại Happy Farm.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+// Removed metadata export:
+// export const metadata: Metadata = {
+//   title: 'Đăng Ký - Happy Farm',
+//   description: 'Tạo tài khoản mới để tham gia vào thế giới nông trại Happy Farm.',
+//   robots: {
+//     index: false,
+//     follow: false,
+//   },
+// };
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
