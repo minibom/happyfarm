@@ -23,6 +23,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp, collection, query, where, addDoc, serverTimestamp as firestoreServerTimestamp } from 'firebase/firestore';
+import { assignMainMissions, refreshTimedMissions } from '@/lib/mission-logic';
+import { checkAndApplyFirstLoginBonus, checkAndApplyTierUpBonus, checkAndApplyPlotUnlockBonus } from '@/lib/bonus-logic';
 
 
 interface UseGameStateCoreProps {
@@ -33,8 +35,6 @@ interface UseGameStateCoreProps {
 
 const NUMBER_OF_DAILY_MISSIONS = 3;
 const NUMBER_OF_WEEKLY_MISSIONS = 3;
-// const ONE_DAY_MS = 24 * 60 * 60 * 1000; // Not directly used for 00:00 reset
-// const ONE_WEEK_MS = 7 * ONE_DAY_MS; // Not directly used for Monday 00:00 reset
 
 
 export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoaded }: UseGameStateCoreProps) => {
@@ -113,159 +113,6 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     return () => unsubscribeEvents();
   }, [userId, toast]);
 
-  const assignMainMissions = useCallback((currentLevel: number, currentActiveMissions: Record<string, PlayerMissionProgress>) => {
-    const newActiveMissions = { ...currentActiveMissions };
-    let missionAdded = false;
-    MAIN_MISSIONS_DATA.forEach(missionDef => {
-      if (currentLevel >= (missionDef.requiredLevelUnlock || 1) && !newActiveMissions[missionDef.id]) {
-        newActiveMissions[missionDef.id] = {
-          missionId: missionDef.id,
-          progress: 0,
-          status: 'active',
-          title: missionDef.title,
-          description: missionDef.description,
-          category: missionDef.category,
-          type: missionDef.type,
-          targetItemId: missionDef.targetItemId,
-          targetQuantity: missionDef.targetQuantity,
-          rewards: missionDef.rewards,
-          icon: missionDef.icon,
-          requiredLevelUnlock: missionDef.requiredLevelUnlock,
-        };
-        missionAdded = true;
-      }
-    });
-    return missionAdded ? newActiveMissions : currentActiveMissions;
-  }, []);
-
-const refreshTimedMissions = useCallback((
-    currentActiveMissions: Record<string, PlayerMissionProgress>,
-    lastRefreshTime: number | undefined,
-    missionTemplates: Mission[],
-    numberOfMissionsToAssign: number,
-    missionCategory: 'daily' | 'weekly'
-  ): { updatedMissions: Record<string, PlayerMissionProgress>, newRefreshTime: number, missionsChanged: boolean } => {
-    const now = Date.now();
-    const currentDate = new Date(now);
-    let missionsChanged = false;
-    const updatedMissions = { ...currentActiveMissions };
-    let shouldReset = false;
-
-    // Expire old missions first
-    Object.keys(updatedMissions).forEach(missionId => {
-      const mission = updatedMissions[missionId];
-      if (mission.category === missionCategory && mission.status === 'active' && mission.expiresAt && now >= mission.expiresAt) {
-        updatedMissions[missionId] = { ...mission, status: 'expired' };
-        missionsChanged = true;
-      }
-    });
-
-    if (!lastRefreshTime) { // First time ever for this user or category
-      shouldReset = true;
-    } else {
-      const lastRefreshDate = new Date(lastRefreshTime);
-      if (missionCategory === 'daily') {
-        if (
-          currentDate.getFullYear() > lastRefreshDate.getFullYear() ||
-          currentDate.getMonth() > lastRefreshDate.getMonth() ||
-          currentDate.getDate() > lastRefreshDate.getDate()
-        ) {
-          shouldReset = true;
-        }
-      } else if (missionCategory === 'weekly') {
-        const dayOfWeekCurrent = currentDate.getDay(); // 0 for Sunday, 1 for Monday...
-        const diffToCurrentMonday = (dayOfWeekCurrent === 0 ? -6 : 1 - dayOfWeekCurrent); // days to subtract to get to current week's Monday
-        const startOfCurrentWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + diffToCurrentMonday);
-        startOfCurrentWeek.setHours(0, 0, 0, 0);
-
-        const dayOfWeekLast = lastRefreshDate.getDay();
-        const diffToLastMonday = (dayOfWeekLast === 0 ? -6 : 1 - dayOfWeekLast);
-        const startOfLastRefreshWeek = new Date(lastRefreshDate.getFullYear(), lastRefreshDate.getMonth(), lastRefreshDate.getDate() + diffToLastMonday);
-        startOfLastRefreshWeek.setHours(0, 0, 0, 0);
-
-        if (startOfCurrentWeek.getTime() > startOfLastRefreshWeek.getTime()) {
-          shouldReset = true;
-        }
-      }
-    }
-    
-    if (shouldReset) {
-      missionsChanged = true;
-      // Remove old, unclaimable missions of this category
-      Object.keys(updatedMissions).forEach(missionId => {
-        if (updatedMissions[missionId].category === missionCategory && updatedMissions[missionId].status !== 'claimed') {
-          delete updatedMissions[missionId];
-        }
-      });
-
-      const availableTemplates = missionTemplates.filter(
-        def => !Object.keys(updatedMissions).some(activeId => activeId.startsWith(def.id)) 
-      );
-      const shuffledTemplates = [...availableTemplates].sort(() => 0.5 - Math.random());
-      const newMissionsToAdd = shuffledTemplates.slice(0, numberOfMissionsToAssign);
-
-      let newExpirationTime: number;
-      if (missionCategory === 'daily') {
-        const endOfToday = new Date(currentDate);
-        endOfToday.setHours(23, 59, 59, 999);
-        newExpirationTime = endOfToday.getTime();
-      } else { // weekly
-        const endOfWeek = new Date(currentDate);
-        const dayOfWeek = endOfWeek.getDay(); // 0 for Sunday
-        const daysUntilNextSundayEnd = (7 - dayOfWeek) % 7; 
-        endOfWeek.setDate(endOfWeek.getDate() + daysUntilNextSundayEnd);
-        endOfWeek.setHours(23, 59, 59, 999);
-        newExpirationTime = endOfWeek.getTime();
-      }
-
-      newMissionsToAdd.forEach(missionDef => {
-        const newMissionId = `${missionDef.id}_${now}`; 
-        updatedMissions[newMissionId] = {
-          missionId: newMissionId, 
-          progress: 0,
-          status: 'active',
-          assignedAt: now,
-          expiresAt: newExpirationTime,
-          title: missionDef.title,
-          description: missionDef.description,
-          category: missionDef.category,
-          type: missionDef.type,
-          targetItemId: missionDef.targetItemId,
-          targetQuantity: missionDef.targetQuantity,
-          rewards: missionDef.rewards,
-          icon: missionDef.icon,
-          requiredLevelUnlock: missionDef.requiredLevelUnlock,
-        };
-      });
-      return { updatedMissions, newRefreshTime: now, missionsChanged };
-    }
-    return { updatedMissions, newRefreshTime: lastRefreshTime || now, missionsChanged };
-  }, []);
-
-
-  const sendBonusMail = useCallback(async (userIdForMail: string, bonus: BonusConfiguration) => {
-    if (!userIdForMail) return;
-
-    const mailMessage: Omit<MailMessage, 'id'> = {
-      senderType: 'system',
-      senderName: 'Hệ Thống Happy Farm',
-      subject: bonus.mailSubject,
-      body: bonus.mailBody,
-      rewards: bonus.rewards,
-      isRead: false,
-      isClaimed: false,
-      createdAt: firestoreServerTimestamp(),
-      bonusId: bonus.id,
-    };
-    try {
-      const mailCollectionRef = collection(db, 'users', userIdForMail, 'mail');
-      await addDoc(mailCollectionRef, mailMessage);
-    } catch (mailError) {
-      console.error(`Failed to send mail for bonus ${bonus.id}:`, mailError);
-      toast({ title: "Lỗi Gửi Thư Bonus", description: `Không thể gửi thư cho bonus ${bonus.description}.`, variant: "destructive" });
-    }
-  }, [toast]);
-
 
   useEffect(() => {
     if (authLoading) {
@@ -339,7 +186,7 @@ const refreshTimedMissions = useCallback((
           loadedState.lastLogin = firestoreData.lastLogin || Date.now();
           loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
           
-          let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {});
+          let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {}, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           if (dailyResult.missionsChanged) {
             newActiveMissions = dailyResult.updatedMissions;
@@ -370,7 +217,7 @@ const refreshTimedMissions = useCallback((
             lastWeeklyMissionRefresh: 0,
           };
           
-          let newActiveMissions = assignMainMissions(newInitialUserState.level, newInitialUserState.activeMissions);
+          let newActiveMissions = assignMainMissions(newInitialUserState.level, newInitialUserState.activeMissions, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           newActiveMissions = dailyResult.updatedMissions;
           newInitialUserState.lastDailyMissionRefresh = dailyResult.newRefreshTime;
@@ -384,18 +231,7 @@ const refreshTimedMissions = useCallback((
         }
         
         if (isNewUser && userId) {
-          const tempClaimedBonuses = {...finalStateToSet.claimedBonuses};
-          let firstLoginBonusFoundAndApplied = false;
-          BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
-            if (bonus.triggerType === 'firstLogin' && bonus.isEnabled && !tempClaimedBonuses[bonus.id]) {
-              tempClaimedBonuses[bonus.id] = true;
-              sendBonusMail(userId, bonus);
-              firstLoginBonusFoundAndApplied = true;
-            }
-          });
-          if (firstLoginBonusFoundAndApplied) {
-            finalStateToSet = {...finalStateToSet, claimedBonuses: tempClaimedBonuses };
-          }
+          checkAndApplyFirstLoginBonus(userId, finalStateToSet, setGameState, db, toast, BONUS_CONFIGURATIONS_DATA);
         }
 
         setGameState(finalStateToSet);
@@ -421,100 +257,28 @@ const refreshTimedMissions = useCallback((
         if (unsubscribeGameState) unsubscribeGameState();
       };
     }
-  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded, assignMainMissions, refreshTimedMissions, sendBonusMail]);
+  }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded]);
 
   
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
-      const oldLevel = prevLevelRef.current;
-      const newLevel = gameState.level;
-      const oldTierInfo = getPlayerTierInfo(oldLevel);
-      const newTierInfo = getPlayerTierInfo(newLevel);
-      
-      toast({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${newLevel}!`, className: "bg-primary text-primary-foreground" });
-      
-      let bonusStateChangedInLevelUp = false;
-
-      if (newTierInfo.tier > oldTierInfo.tier) {
-        toast({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
-
-        let tempClaimedBonuses = {...gameStateRef.current.claimedBonuses};
-        let tierBonusAppliedThisCheck = false;
-
-        BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
-          if (
-            bonus.triggerType === 'tierUp' &&
-            bonus.triggerValue === newTierInfo.tier && 
-            bonus.isEnabled &&
-            !tempClaimedBonuses[bonus.id] 
-          ) {
-            tempClaimedBonuses[bonus.id] = true;
-            sendBonusMail(userId, bonus); 
-            tierBonusAppliedThisCheck = true;
-          }
-        });
-
-        if (tierBonusAppliedThisCheck) {
-            setGameState(prev => ({...prev, claimedBonuses: tempClaimedBonuses, lastUpdate: Date.now() }));
-            bonusStateChangedInLevelUp = true;
-        }
-      }
-      
-      setGameState(prev => {
-        const updatedMissions = assignMainMissions(prev.level, prev.activeMissions);
-        if (updatedMissions !== prev.activeMissions || bonusStateChangedInLevelUp) { 
-          return { ...prev, activeMissions: updatedMissions, lastUpdate: Date.now() };
-        }
-        return prev; 
-      });
+        const oldLevel = prevLevelRef.current;
+        checkAndApplyTierUpBonus(userId, oldLevel, gameState.level, gameStateRef.current, setGameState, db, toast, TIER_DATA, BONUS_CONFIGURATIONS_DATA, MAIN_MISSIONS_DATA);
     }
     if (gameDataLoaded) {
         prevLevelRef.current = gameState.level;
     }
-  }, [gameState.level, gameDataLoaded, toast, userId, assignMainMissions, sendBonusMail, setGameState]); 
+  }, [gameState.level, gameDataLoaded, toast, userId, setGameState]); 
 
 
   useEffect(() => {
     if (gameDataLoaded && userId && gameState.unlockedPlotsCount > prevUnlockedPlotsCountRef.current) {
-      let bonusStateChangedInPlotUnlock = false;
-      let tempClaimedBonuses = {...gameStateRef.current.claimedBonuses};
-
-      if (prevUnlockedPlotsCountRef.current < INITIAL_UNLOCKED_PLOTS + 1 && gameState.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS + 1) {
-        BONUS_CONFIGURATIONS_DATA.forEach(bonus => {
-          if (
-            bonus.triggerType === 'firstPlotUnlock' &&
-            bonus.isEnabled &&
-            !tempClaimedBonuses[bonus.id]
-          ) {
-            tempClaimedBonuses[bonus.id] = true;
-            sendBonusMail(userId, bonus);
-            bonusStateChangedInPlotUnlock = true;
-          }
-        });
-      }
-
-      const plots15BonusId = "plotsUnlocked_15";
-      if (gameState.unlockedPlotsCount >= 15 && !tempClaimedBonuses[plots15BonusId]) {
-          const plots15Bonus = BONUS_CONFIGURATIONS_DATA.find(b => b.id === plots15BonusId && b.triggerType === 'specialEvent' && b.triggerValue === 'plots_15');
-          if (plots15Bonus && plots15Bonus.isEnabled) {
-              tempClaimedBonuses[plots15Bonus.id] = true;
-              sendBonusMail(userId, plots15Bonus);
-              bonusStateChangedInPlotUnlock = true;
-          }
-      }
-      
-      if (bonusStateChangedInPlotUnlock) {
-        setGameState(prev => ({
-            ...prev,
-            claimedBonuses: tempClaimedBonuses,
-            lastUpdate: Date.now(),
-        }));
-      }
+        checkAndApplyPlotUnlockBonus(userId, prevUnlockedPlotsCountRef.current, gameState.unlockedPlotsCount, gameStateRef.current, setGameState, db, toast, BONUS_CONFIGURATIONS_DATA);
     }
     if (gameDataLoaded) {
       prevUnlockedPlotsCountRef.current = gameState.unlockedPlotsCount;
     }
-  }, [gameState.unlockedPlotsCount, gameDataLoaded, userId, sendBonusMail, setGameState]);
+  }, [gameState.unlockedPlotsCount, gameDataLoaded, userId, setGameState, toast]);
 
 
   useEffect(() => {
