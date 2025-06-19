@@ -64,16 +64,16 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
           const stateToSave = { ...gameStateRef.current };
 
-          // Firestore cannot store 'undefined', convert to 'null' or remove keys.
-          // The replacer function handles 'undefined' to 'null'.
-          // Explicitly delete keys if they are undefined and you prefer them absent.
           if (stateToSave.email === undefined) delete (stateToSave as any).email;
           if (stateToSave.displayName === undefined) delete (stateToSave as any).displayName;
-          if (stateToSave.lastDailyMissionRefresh === undefined) delete (stateToSave as any).lastDailyMissionRefresh;
-          if (stateToSave.lastWeeklyMissionRefresh === undefined) delete (stateToSave as any).lastWeeklyMissionRefresh;
+          // Optional fields in GameState that might be undefined should be handled.
+          // Firestore deletes fields that are set to undefined. If you want them as null, ensure they are explicitly null.
+          if (stateToSave.lastDailyMissionRefresh === undefined) (stateToSave as any).lastDailyMissionRefresh = null;
+          if (stateToSave.lastWeeklyMissionRefresh === undefined) (stateToSave as any).lastWeeklyMissionRefresh = null;
+
 
           await setDoc(gameDocRef, JSON.parse(JSON.stringify(stateToSave, (key, value) => {
-             return value === undefined ? null : value; // Convert undefined to null for Firestore
+             return value === undefined ? null : value; 
           })));
         } catch (error) {
           console.error("Failed to save game state:", error);
@@ -105,13 +105,23 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       snapshot.forEach(docSnap => {
         const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
 
-        const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
-          ? (eventDocData.startTime as unknown as Timestamp).toMillis()
-          : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
-
-        const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
-          ? (eventDocData.endTime as unknown as Timestamp).toMillis()
-          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000;
+        let startTimeMillis: number;
+        if (eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime) {
+            startTimeMillis = (eventDocData.startTime as unknown as Timestamp).toMillis();
+        } else if (typeof eventDocData.startTime === 'number') {
+            startTimeMillis = eventDocData.startTime;
+        } else {
+            startTimeMillis = Date.now(); // Default if invalid
+        }
+        
+        let endTimeMillis: number;
+        if (eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime) {
+            endTimeMillis = (eventDocData.endTime as unknown as Timestamp).toMillis();
+        } else if (typeof eventDocData.endTime === 'number') {
+            endTimeMillis = eventDocData.endTime;
+        } else {
+            endTimeMillis = Date.now() + 24 * 60 * 60 * 1000; // Default if invalid
+        }
 
         if (endTimeMillis > now.toMillis()) {
            fetchedEvents.push({
@@ -189,7 +199,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
                 if (loadedPlotData.plantedAt) {
                   if (typeof loadedPlotData.plantedAt === 'number') {
                     newPlot.plantedAt = loadedPlotData.plantedAt;
-                  } else if (typeof loadedPlotData.plantedAt === 'object' && 'toMillis' in loadedPlotData.plantedAt) {
+                  } else if (loadedPlotData.plantedAt && typeof loadedPlotData.plantedAt === 'object' && 'toMillis' in loadedPlotData.plantedAt) {
                     newPlot.plantedAt = (loadedPlotData.plantedAt as unknown as Timestamp).toMillis();
                   } else {
                     newPlot.plantedAt = undefined;
@@ -225,13 +235,23 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.displayName = firestoreData.displayName || user?.displayName || INITIAL_GAME_STATE.displayName;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
 
-          loadedState.lastLogin = firestoreData.lastLogin && typeof firestoreData.lastLogin === 'object' && 'toMillis' in (firestoreData.lastLogin as any)
-            ? (firestoreData.lastLogin as unknown as Timestamp).toMillis()
-            : typeof firestoreData.lastLogin === 'number' ? firestoreData.lastLogin : Date.now();
+          // Refined timestamp handling for lastLogin
+          if (firestoreData.lastLogin && typeof firestoreData.lastLogin === 'object' && 'toMillis' in (firestoreData.lastLogin as any)) {
+            loadedState.lastLogin = (firestoreData.lastLogin as unknown as Timestamp).toMillis();
+          } else if (typeof firestoreData.lastLogin === 'number') {
+            loadedState.lastLogin = firestoreData.lastLogin;
+          } else {
+            loadedState.lastLogin = Date.now(); // Default if not Timestamp or number
+          }
 
-          loadedState.lastUpdate = firestoreData.lastUpdate && typeof firestoreData.lastUpdate === 'object' && 'toMillis' in (firestoreData.lastUpdate as any)
-            ? (firestoreData.lastUpdate as unknown as Timestamp).toMillis()
-            : typeof firestoreData.lastUpdate === 'number' ? firestoreData.lastUpdate : gameStateRef.current.lastUpdate || Date.now();
+          // Refined timestamp handling for lastUpdate
+          if (firestoreData.lastUpdate && typeof firestoreData.lastUpdate === 'object' && 'toMillis' in (firestoreData.lastUpdate as any)) {
+            loadedState.lastUpdate = (firestoreData.lastUpdate as unknown as Timestamp).toMillis();
+          } else if (typeof firestoreData.lastUpdate === 'number') {
+            loadedState.lastUpdate = firestoreData.lastUpdate;
+          } else {
+            loadedState.lastUpdate = Date.now(); // Default if not Timestamp or number
+          }
           
           loadedState.lastDailyMissionRefresh = (firestoreData.lastDailyMissionRefresh && typeof firestoreData.lastDailyMissionRefresh === 'object' && 'toMillis' in (firestoreData.lastDailyMissionRefresh as any))
             ? ((firestoreData.lastDailyMissionRefresh as unknown as Timestamp).toMillis())
@@ -396,7 +416,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }, 1000);
 
     return () => clearInterval(gameLoopInterval);
-  }, [gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]); // Added fertilizerDataLoaded
+  }, [gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]);
 
   const isInitialized = gameDataLoaded && itemDataLoaded && fertilizerDataLoaded && !!userId && !authLoading && !!cropData;
 

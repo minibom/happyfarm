@@ -1,34 +1,38 @@
 
 {
-  "name": "Happy Farm - Cheerful Farming Game",
-  "short_name": "Happy Farm",
-  "description": "Plant, grow, harvest, and trade in Happy Farm! A delightful Next.js farming game. Build your dream farm today!",
+  "name": "Happy Farm",
+  "short_name": "HappyFarm",
+  "description": "Plant, grow, harvest, and trade in Happy Farm! A delightful Next.js farming game.",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-384x384.png",
-      "sizes": "384x384",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
       "type": "image/png"
     }
   ],
   "theme_color": "#FAF7EB",
-  "background_color": "#E0B319",
-  "start_url": "/",
+  "background_color": "#FAF7EB",
   "display": "standalone",
-  "orientation": "portrait",
   "scope": "/",
-  "lang": "vi-VN",
-  "categories": ["games", "entertainment", "simulation"]
+  "start_url": "/"
 }
-// IMPORTANT: Create an "icons" folder inside /public and add icon-192x192.png, icon-384x384.png, and icon-512x512.png.
-// These are standard PWA icon sizes. You can generate these from a base logo.
