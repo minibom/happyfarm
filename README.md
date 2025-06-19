@@ -10,6 +10,11 @@ In Happy Farm, players can:
 - Harvest their produce.
 - Buy and sell items in the market.
 - Level up and unlock new tiers with special perks.
+- Complete a variety of missions:
+    - **Main Missions**: Follow a storyline and unlock major game features.
+    - **Daily Missions**: Receive new, short-term objectives each day for quick rewards.
+    - **Weekly Missions**: Tackle more involved tasks for better rewards over the week.
+    - (Future) **Random & Event Missions**: Encounter spontaneous tasks and special event-related objectives.
 - Chat with other players.
 - Compete on the leaderboard.
 - Customize their display name.
@@ -104,6 +109,7 @@ In Happy Farm, players can:
     -   `src/lib/crop-data.ts`: Crop definitions.
     -   `src/lib/fertilizer-data.ts`: Fertilizer definitions.
     -   `src/lib/tier-data.ts`: Tier definitions and logic.
+    -   `src/lib/mission-data.ts`: Definitions for Main, Daily, Weekly, and Random missions.
     -   `src/lib/bonus-configurations.ts`: Definitions for automatic bonus rewards.
     -   `src/lib/mail-templates.ts`: Predefined mail templates for admin use.
     -   `src/lib/event-templates.ts`: Predefined game event templates.
@@ -128,29 +134,29 @@ The admin panel allows:
     -   Compose and send mail to all users or specific users, with optional item/currency rewards.
     -   Use predefined mail templates to quickly draft messages.
     -   View, create, edit, and delete bonus configurations (e.g., first login bonus, tier-up rewards).
--   **Events Management**:
-    -   View, create, edit, and delete active/scheduled game events.
-    -   Base new events on predefined templates (synced from `event-templates.ts`).
-    -   Define event types (e.g., crop growth boost, item price changes), duration, and affected items.
+-   **Missions & Events Management**:
+    -   **Events Tab**: View, create, edit, and delete active/scheduled game events. Base new events on predefined templates.
+    -   **Missions Tab**: (Future) View, create, edit, and delete mission definitions (main, daily, weekly, random) directly in Firestore. Currently, mission definitions are synced from constants.
 -   **System Configuration**:
-    -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, and `gameEventTemplates`. Use this section to ensure Firestore has the latest static game data.
+    -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, and `gameRandomMissionPool`. Use this section to ensure Firestore has the latest static game data.
 
 ## Game Data Management
 
-Core static game data such as crop details, fertilizer properties, tier progression, bonus rules, mail templates, and event templates are defined in TypeScript files within the `src/lib/` directory (e.g., `crop-data.ts`, `tier-data.ts`, `bonus-configurations.ts`, `mail-templates.ts`, `event-templates.ts`).
+Core static game data such as crop details, fertilizer properties, tier progression, bonus rules, mail templates, event templates, and mission definitions are defined in TypeScript files within the `src/lib/` directory (e.g., `crop-data.ts`, `tier-data.ts`, `mission-data.ts`, `bonus-configurations.ts`, `mail-templates.ts`, `event-templates.ts`).
 
 To populate or update your Firestore database with this data:
 1.  Navigate to the **Admin Panel**.
 2.  Go to the **"Cấu hình Hệ thống" (System Configuration)** page.
-3.  Use the respective "Đồng Bộ" (Sync) buttons to push the local constant data to the corresponding Firestore collections. This ensures your game uses the most up-to-date definitions.
+3.  Use the respective "Đồng Bộ" (Sync) buttons to push the local constant data to the corresponding Firestore collections (e.g., `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, `gameRandomMissionPool`). This ensures your game uses the most up-to-date definitions.
 
 ## Important: Firestore Security Rules
 
 For a production environment, **it is crucial to set up robust Firestore Security Rules** to protect your game data and prevent cheating. The client-side logic currently has a high degree of trust, and security rules are the primary way to enforce game logic and permissions on the server side. Ensure that:
 -   Users can only write to their own game state (`/users/{userId}/gameState/data`).
--   Data modifications are validated (e.g., gold cannot increase arbitrarily, XP and level progression is valid).
--   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, and `gameEventTemplates` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
+-   Data modifications are validated (e.g., gold cannot increase arbitrarily, XP and level progression is valid, mission progress updates are legitimate).
+-   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, `gameRandomMissionPool` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
 -   The `activeGameEvents` collection should be read-only for clients and writable only by admin-privileged functions.
+-   Player mission subcollections (`/users/{userId}/playerMissions` - if you choose to store active/completed missions per player in a subcollection) must be carefully secured.
 -   Mail subcollections (`/users/{userId}/mail`) are writable by admin-privileged functions for sending mail and readable by the recipient user. Users should only be able to update `isRead` and `isClaimed` fields on their own mail.
 -   Chat messages in Realtime Database (`/messages`) should also have appropriate rules (e.g., authenticated users can write, all can read).
 
