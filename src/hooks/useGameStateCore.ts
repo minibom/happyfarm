@@ -33,8 +33,8 @@ interface UseGameStateCoreProps {
 
 const NUMBER_OF_DAILY_MISSIONS = 3;
 const NUMBER_OF_WEEKLY_MISSIONS = 3;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+// const ONE_DAY_MS = 24 * 60 * 60 * 1000; // Not directly used for 00:00 reset
+// const ONE_WEEK_MS = 7 * ONE_DAY_MS; // Not directly used for Monday 00:00 reset
 
 
 export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoaded }: UseGameStateCoreProps) => {
@@ -138,18 +138,20 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     return missionAdded ? newActiveMissions : currentActiveMissions;
   }, []);
 
-  const refreshTimedMissions = useCallback((
+const refreshTimedMissions = useCallback((
     currentActiveMissions: Record<string, PlayerMissionProgress>,
     lastRefreshTime: number | undefined,
     missionTemplates: Mission[],
     numberOfMissionsToAssign: number,
-    durationMs: number,
     missionCategory: 'daily' | 'weekly'
   ): { updatedMissions: Record<string, PlayerMissionProgress>, newRefreshTime: number, missionsChanged: boolean } => {
     const now = Date.now();
+    const currentDate = new Date(now);
     let missionsChanged = false;
     const updatedMissions = { ...currentActiveMissions };
+    let shouldReset = false;
 
+    // Expire old missions first
     Object.keys(updatedMissions).forEach(missionId => {
       const mission = updatedMissions[missionId];
       if (mission.category === missionCategory && mission.status === 'active' && mission.expiresAt && now >= mission.expiresAt) {
@@ -157,12 +159,42 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
         missionsChanged = true;
       }
     });
+
+    if (!lastRefreshTime) { // First time ever for this user or category
+      shouldReset = true;
+    } else {
+      const lastRefreshDate = new Date(lastRefreshTime);
+      if (missionCategory === 'daily') {
+        if (
+          currentDate.getFullYear() > lastRefreshDate.getFullYear() ||
+          currentDate.getMonth() > lastRefreshDate.getMonth() ||
+          currentDate.getDate() > lastRefreshDate.getDate()
+        ) {
+          shouldReset = true;
+        }
+      } else if (missionCategory === 'weekly') {
+        const dayOfWeekCurrent = currentDate.getDay(); // 0 for Sunday, 1 for Monday...
+        const diffToCurrentMonday = (dayOfWeekCurrent === 0 ? -6 : 1 - dayOfWeekCurrent); // days to subtract to get to current week's Monday
+        const startOfCurrentWeek = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + diffToCurrentMonday);
+        startOfCurrentWeek.setHours(0, 0, 0, 0);
+
+        const dayOfWeekLast = lastRefreshDate.getDay();
+        const diffToLastMonday = (dayOfWeekLast === 0 ? -6 : 1 - dayOfWeekLast);
+        const startOfLastRefreshWeek = new Date(lastRefreshDate.getFullYear(), lastRefreshDate.getMonth(), lastRefreshDate.getDate() + diffToLastMonday);
+        startOfLastRefreshWeek.setHours(0, 0, 0, 0);
+
+        if (startOfCurrentWeek.getTime() > startOfLastRefreshWeek.getTime()) {
+          shouldReset = true;
+        }
+      }
+    }
     
-    if (!lastRefreshTime || now >= lastRefreshTime + durationMs) {
+    if (shouldReset) {
+      missionsChanged = true;
+      // Remove old, unclaimable missions of this category
       Object.keys(updatedMissions).forEach(missionId => {
         if (updatedMissions[missionId].category === missionCategory && updatedMissions[missionId].status !== 'claimed') {
           delete updatedMissions[missionId];
-          missionsChanged = true;
         }
       });
 
@@ -172,6 +204,20 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       const shuffledTemplates = [...availableTemplates].sort(() => 0.5 - Math.random());
       const newMissionsToAdd = shuffledTemplates.slice(0, numberOfMissionsToAssign);
 
+      let newExpirationTime: number;
+      if (missionCategory === 'daily') {
+        const endOfToday = new Date(currentDate);
+        endOfToday.setHours(23, 59, 59, 999);
+        newExpirationTime = endOfToday.getTime();
+      } else { // weekly
+        const endOfWeek = new Date(currentDate);
+        const dayOfWeek = endOfWeek.getDay(); // 0 for Sunday
+        const daysUntilNextSundayEnd = (7 - dayOfWeek) % 7; 
+        endOfWeek.setDate(endOfWeek.getDate() + daysUntilNextSundayEnd);
+        endOfWeek.setHours(23, 59, 59, 999);
+        newExpirationTime = endOfWeek.getTime();
+      }
+
       newMissionsToAdd.forEach(missionDef => {
         const newMissionId = `${missionDef.id}_${now}`; 
         updatedMissions[newMissionId] = {
@@ -179,7 +225,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           progress: 0,
           status: 'active',
           assignedAt: now,
-          expiresAt: now + durationMs,
+          expiresAt: newExpirationTime,
           title: missionDef.title,
           description: missionDef.description,
           category: missionDef.category,
@@ -190,12 +236,12 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           icon: missionDef.icon,
           requiredLevelUnlock: missionDef.requiredLevelUnlock,
         };
-        missionsChanged = true;
       });
       return { updatedMissions, newRefreshTime: now, missionsChanged };
     }
     return { updatedMissions, newRefreshTime: lastRefreshTime || now, missionsChanged };
   }, []);
+
 
   const sendBonusMail = useCallback(async (userIdForMail: string, bonus: BonusConfiguration) => {
     if (!userIdForMail) return;
@@ -294,12 +340,12 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
           
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {});
-          const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, ONE_DAY_MS, 'daily');
+          const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           if (dailyResult.missionsChanged) {
             newActiveMissions = dailyResult.updatedMissions;
             loadedState.lastDailyMissionRefresh = dailyResult.newRefreshTime;
           }
-          const weeklyResult = refreshTimedMissions(newActiveMissions, loadedState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, ONE_WEEK_MS, 'weekly');
+          const weeklyResult = refreshTimedMissions(newActiveMissions, loadedState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, 'weekly');
           if (weeklyResult.missionsChanged) {
             newActiveMissions = weeklyResult.updatedMissions;
             loadedState.lastWeeklyMissionRefresh = weeklyResult.newRefreshTime;
@@ -325,11 +371,11 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           };
           
           let newActiveMissions = assignMainMissions(newInitialUserState.level, newInitialUserState.activeMissions);
-          const dailyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, ONE_DAY_MS, 'daily');
+          const dailyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           newActiveMissions = dailyResult.updatedMissions;
           newInitialUserState.lastDailyMissionRefresh = dailyResult.newRefreshTime;
 
-          const weeklyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, ONE_WEEK_MS, 'weekly');
+          const weeklyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, 'weekly');
           newActiveMissions = weeklyResult.updatedMissions;
           newInitialUserState.lastWeeklyMissionRefresh = weeklyResult.newRefreshTime;
           
