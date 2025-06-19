@@ -44,12 +44,18 @@ const generateWelcomeGreetingFlow = ai.defineFlow(
     outputSchema: WelcomeGreetingOutputSchema,
   },
   async () => {
-    const { output } = await prompt({});
-    if (!output) {
-      console.error('AI failed to generate a welcome greeting.');
-      return { greeting: "Chào mừng bạn trở lại Happy Farm! Chúc bạn chơi game vui vẻ!" }; // Fallback
+    try {
+      const { output } = await prompt({});
+      if (!output) {
+        console.error('AI failed to generate a welcome greeting (output was null).');
+        return { greeting: "Chào mừng bạn trở lại Happy Farm! Chúc bạn chơi game vui vẻ!" }; // Fallback
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in generateWelcomeGreetingFlow during prompt execution:', error);
+      // Return a generic fallback on any error during prompt execution
+      return { greeting: "Chào bạn! Chúc bạn có một ngày làm nông thật vui!" };
     }
-    return output;
   }
 );
 

@@ -48,7 +48,25 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "startTime",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "activeGameEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "isActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "endTime",
           "order": "DESCENDING"
         }
       ]
@@ -59,13 +77,6 @@
       "fields": [
         { "fieldPath": "category", "order": "ASCENDING" },
         { "fieldPath": "requiredLevelUnlock", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "gameDailyMissionTemplates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "title", "order": "ASCENDING" }
       ]
     },
     {
