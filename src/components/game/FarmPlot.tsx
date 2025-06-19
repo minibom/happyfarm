@@ -266,37 +266,22 @@ const FarmPlot: FC<FarmPlotProps> = ({
                         availableSeedsForPopover.map(seedId => {
                           const cropId = seedId.replace('Seed', '') as CropId;
                           const crop = cropData[cropId];
-                          const isSeedLockedByTier = playerTier < crop.unlockTier;
-                          const requiredTierName = isSeedLockedByTier ? getPlayerTierInfo( (crop.unlockTier -1) * 10 +1 ).tierName : "";
-
+                          // Tier check removed for planting from popover
                           return (
-                            <Tooltip key={seedId} delayDuration={100}>
-                              <TooltipTrigger asChild>
-                                <div className={cn("w-full", isSeedLockedByTier && "opacity-50 cursor-not-allowed")}>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (!isSeedLockedByTier) {
-                                        onPlantFromPopover(seedId);
-                                        setIsPlotPopoverOpen(false);
-                                      }
-                                    }}
-                                    className={cn("w-full justify-start", isSeedLockedByTier && "pointer-events-none")}
-                                    disabled={!crop || isSeedLockedByTier}
-                                  >
-                                    {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
-                                    Trồng {crop?.name || seedId}
-                                    {isSeedLockedByTier && <Lock className="ml-auto h-3 w-3" />}
-                                  </Button>
-                                </div>
-                              </TooltipTrigger>
-                              {isSeedLockedByTier && (
-                                <TooltipContent side="right" align="start">
-                                  <p>Mở khóa ở {requiredTierName} (Bậc {crop.unlockTier})</p>
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
+                            <Button
+                              key={seedId}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                onPlantFromPopover(seedId);
+                                setIsPlotPopoverOpen(false);
+                              }}
+                              className="w-full justify-start"
+                              disabled={!crop} // Only disable if crop details are missing for some reason
+                            >
+                              {crop?.icon && <span className="mr-2 text-lg">{crop.icon}</span>}
+                              Trồng {crop?.name || seedId}
+                            </Button>
                           );
                         })
                       ) : (
@@ -319,7 +304,7 @@ const FarmPlot: FC<FarmPlotProps> = ({
                   )}
                   {plot.state === 'ready_to_harvest' && (
                     <Button
-                      variant="default" // Or another appropriate variant like "primary" or "accent"
+                      variant="default" 
                       size="sm"
                       onClick={() => {
                         onHarvestFromPopover(plot.id);

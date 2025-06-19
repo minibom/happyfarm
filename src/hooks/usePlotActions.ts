@@ -58,7 +58,7 @@ export const usePlotActions = ({
 
   const plantCrop = useCallback((plotId: number, seedId: SeedId) => {
     const currentGameState = gameStateRef.current;
-    const currentTierInfo = getPlayerTierInfo(currentGameState.level);
+    // const currentTierInfo = getPlayerTierInfo(currentGameState.level); // Tier check removed for planting
 
     if (!cropData) {
       toast({ title: "Lỗi", description: "Dữ liệu cây trồng chưa tải xong.", variant: "destructive" });
@@ -71,10 +71,11 @@ export const usePlotActions = ({
       toast({ title: "Lỗi", description: "Loại hạt giống không hợp lệ.", variant: "destructive" });
       return;
     }
-    if (currentTierInfo.tier < cropDetail.unlockTier) {
-      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo((cropDetail.unlockTier - 1) * 10 + 1).tierName} (Bậc ${cropDetail.unlockTier}) để trồng ${cropDetail.name}.`, variant: "destructive" });
-      return;
-    }
+    // Tier check for planting removed:
+    // if (currentTierInfo.tier < cropDetail.unlockTier) {
+    //   toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo((cropDetail.unlockTier - 1) * 10 + 1).tierName} (Bậc ${cropDetail.unlockTier}) để trồng ${cropDetail.name}.`, variant: "destructive" });
+    //   return;
+    // }
     if ((currentGameState.inventory[seedId] || 0) <= 0) {
       toast({ title: "Không Đủ Hạt Giống", description: `Bạn không có hạt giống ${cropDetail.name}.`, variant: "destructive" });
       return;

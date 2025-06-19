@@ -218,11 +218,9 @@ export default function GamePage() {
     }
 
     if (currentAction === 'planting' && selectedSeedToPlant) {
-      const seedCropDetail = cropData[selectedSeedToPlant.replace('Seed','') as CropId];
-      if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
+      // Tier check for planting removed here, handled by plantCrop if necessary (but we removed it there too)
+      if (plot.state === 'empty') {
         plantCrop(plotId, selectedSeedToPlant);
-      } else if (plot.state === 'empty' && seedCropDetail && playerTierInfo.tier < seedCropDetail.unlockTier) {
-        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
       }
     } else if (currentAction === 'harvesting') {
       if (plot.state === 'ready_to_harvest') {
@@ -243,13 +241,8 @@ export default function GamePage() {
         toast({ title: "Đất Bị Khóa", description: "Không thể trồng trên ô đất bị khóa.", variant: "destructive"});
         return;
      }
-
-     const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
-     if (seedCropDetail && playerTierInfo.tier >= seedCropDetail.unlockTier) {
-        plantCrop(plotId, seedId);
-     } else if (seedCropDetail) {
-        toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier -1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để trồng ${seedCropDetail.name}.`, variant: "destructive" });
-     }
+    // Tier check for planting removed, relies on seed being available in inventory
+    plantCrop(plotId, seedId);
   };
 
   const fertilizeFromPlotPopover = (plotId: number, fertilizerId: FertilizerId) => {
@@ -287,16 +280,7 @@ export default function GamePage() {
 
 
   const handleSetPlantMode = (seedId: SeedId) => {
-    if (!cropData) return;
-    const seedCropDetail = cropData[seedId.replace('Seed','') as CropId];
-    if (!seedCropDetail || playerTierInfo.tier < seedCropDetail.unlockTier) {
-      toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (seedCropDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${seedCropDetail.unlockTier}) để chọn hạt giống ${seedCropDetail.name}.`, variant: "destructive" });
-      setCurrentAction('none');
-      setSelectedSeedToPlant(undefined);
-      setSelectedFertilizerId(undefined);
-      return;
-    }
-
+    // Tier check removed. Player can select any seed they own.
     if (currentAction === 'planting' && selectedSeedToPlant === seedId) {
       setCurrentAction('none');
       setSelectedSeedToPlant(undefined);
@@ -321,6 +305,7 @@ export default function GamePage() {
     if (!fertilizerData || !fertilizerData[fertilizerId]) return;
     const fertilizerDetail = fertilizerData[fertilizerId];
 
+    // Tier check for selecting fertilizer to use is still relevant
     if (playerTierInfo.tier < fertilizerDetail.unlockTier) {
         toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (fertilizerDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${fertilizerDetail.unlockTier}) để chọn phân bón ${fertilizerDetail.name}.`, variant: "destructive" });
         setCurrentAction('none');
@@ -346,14 +331,11 @@ export default function GamePage() {
   };
 
   const availableSeedsForPlanting = useMemo(() => {
+    // Tier check removed. Popover will show all seeds player has.
     if (!cropData) return [];
     return ALL_SEED_IDS
-      .filter(seedId => (gameState.inventory[seedId] || 0) > 0)
-      .filter(seedId => {
-          const cropDetail = cropData[seedId.replace('Seed','') as CropId];
-          return cropDetail && playerTierInfo.tier >= cropDetail.unlockTier;
-      });
-  }, [gameState.inventory, cropData, playerTierInfo.tier]);
+      .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
+  }, [gameState.inventory, cropData]);
 
   const allAvailableSeedsInInventory = useMemo(() => {
     return ALL_SEED_IDS
@@ -609,7 +591,7 @@ export default function GamePage() {
               <DialogTitle>Trò Chuyện Nông Trại</DialogTitle>
               <DialogDescription>Cửa sổ trò chuyện với những người chơi khác trong Happy Farm.</DialogDescription>
             </DialogHeader>
-            <ChatPanel isModalMode userStatus={gameState.status} onUsernameClick={handleOpenUserProfilePopup} />
+            <ChatPanel userStatus={gameState.status} onUsernameClick={handleOpenUserProfilePopup} />
           </DialogContent>
         </Dialog>
       )}
