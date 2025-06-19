@@ -35,11 +35,25 @@ export const useMarket = (): MarketData => {
           const data = docSnap.data() as MarketState;
           const validatedPrices = { ...INITIAL_MARKET_STATE.prices, ...(data.prices || {}) };
           const validatedPriceChanges = { ...INITIAL_MARKET_STATE.priceChanges, ...(data.priceChanges || {}) };
+          
+          // Ensure lastUpdated is a number (milliseconds)
+          let lastUpdatedTimestamp: number;
+          if (data.lastUpdated && typeof data.lastUpdated === 'object' && 'toMillis' in data.lastUpdated) {
+            // It's a Firestore Timestamp
+            lastUpdatedTimestamp = (data.lastUpdated as unknown as Timestamp).toMillis();
+          } else if (typeof data.lastUpdated === 'number') {
+            // It's already a number
+            lastUpdatedTimestamp = data.lastUpdated;
+          } else {
+            // Fallback
+            lastUpdatedTimestamp = INITIAL_MARKET_STATE.lastUpdated;
+          }
+
           setMarketState({
             prices: validatedPrices,
             priceChanges: validatedPriceChanges,
             currentEvent: data.currentEvent || INITIAL_MARKET_STATE.currentEvent,
-            lastUpdated: data.lastUpdated || INITIAL_MARKET_STATE.lastUpdated,
+            lastUpdated: lastUpdatedTimestamp,
           });
         } else {
           console.warn("Market state document '/marketState/global' does not exist. Using initial default state.");
@@ -86,13 +100,13 @@ export const useMarket = (): MarketData => {
   }, [toast]);
 
   const calculateEffectivePrice = useCallback((
-    basePrice: number, // The original price from constants (CROP_DATA, FERTILIZER_DATA)
-    aiAdjustedPrice: number, // Price from marketState.prices (after AI flow adjustments)
+    basePrice: number, 
+    aiAdjustedPrice: number, 
     itemId: MarketItemId,
     itemType: 'seed' | 'crop' | 'fertilizer',
-    events: ActiveGameEvent[] // All currently active game events
+    events: ActiveGameEvent[] 
   ): number => {
-    let currentPrice = aiAdjustedPrice; // Start with the AI-adjusted price
+    let currentPrice = aiAdjustedPrice; 
 
     const potentiallyApplicableEffects: Array<{ eventName: string, effect: GameEventEffect, specificity: 'item' | 'category' }> = [];
 
@@ -108,7 +122,7 @@ export const useMarket = (): MarketData => {
         if (typeMatches) {
           if (Array.isArray(effect.affectedItemIds) && effect.affectedItemIds.includes(itemId)) {
             potentiallyApplicableEffects.push({ eventName: event.name, effect, specificity: 'item' });
-          } else if (typeof effect.affectedItemIds === 'string') { // ALL_...
+          } else if (typeof effect.affectedItemIds === 'string') { 
             const categoryString = `ALL_${itemType.toUpperCase()}S`; 
             const fertilizerCategoryString = 'ALL_FERTILIZERS';
             if (effect.affectedItemIds === categoryString || (itemType === 'fertilizer' && effect.affectedItemIds === fertilizerCategoryString)) {
@@ -124,37 +138,32 @@ export const useMarket = (): MarketData => {
       const categoryEffects = potentiallyApplicableEffects.filter(e => e.specificity === 'category');
 
       let bestEffectValue: number | undefined = undefined;
-      let chosenEventName: string | undefined;
 
-      // Determine the best modifier based on item type (buy low, sell high)
       const getBestModifier = (effectsToConsider: typeof potentiallyApplicableEffects) => {
         if (effectsToConsider.length === 0) return undefined;
         let bestVal: number | undefined = undefined;
-        let bestEvtName: string | undefined;
+        // let bestEvtName: string | undefined;
 
-        if (itemType === 'seed' || itemType === 'fertilizer') { // Buying: seek lowest modifier value
+        if (itemType === 'seed' || itemType === 'fertilizer') { 
           bestVal = Math.min(...effectsToConsider.map(e => e.effect.value));
-          bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
-        } else { // Selling crops: seek highest modifier value
+          // bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
+        } else { 
           bestVal = Math.max(...effectsToConsider.map(e => e.effect.value));
-          bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
+          // bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
         }
-        return {value: bestVal, eventName: bestEvtName};
+        return bestVal; // Only return the value for simplicity in choosing
       };
 
-      const specificResult = getBestModifier(specificEffects);
-      const categoryResult = getBestModifier(categoryEffects);
+      const specificBestValue = getBestModifier(specificEffects);
+      const categoryBestValue = getBestModifier(categoryEffects);
 
-      if (specificResult?.value !== undefined) {
-        bestEffectValue = specificResult.value;
-        chosenEventName = specificResult.eventName;
-      } else if (categoryResult?.value !== undefined) {
-        bestEffectValue = categoryResult.value;
-        chosenEventName = categoryResult.eventName;
+      if (specificBestValue !== undefined) {
+        bestEffectValue = specificBestValue;
+      } else if (categoryBestValue !== undefined) {
+        bestEffectValue = categoryBestValue;
       }
       
       if (bestEffectValue !== undefined) {
-        // console.log(`Applying event "${chosenEventName}" modifier ${bestEffectValue} to ${itemId}`);
         currentPrice *= bestEffectValue;
       }
     }

@@ -1,7 +1,6 @@
 
 'use client';
 
-import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -20,18 +19,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import type { TierDataFromFirestore } from '@/types';
 
-export const metadata: Metadata = {
-  title: 'Các Cấp Bậc - Thư Viện Happy Farm',
-  description: 'Tìm hiểu về hệ thống cấp bậc trong Happy Farm, bao gồm các lợi ích (buff) và yêu cầu cấp độ để thăng hạng.',
-  alternates: {
-    canonical: '/library/tiers',
-  },
-  openGraph: {
-    title: 'Hệ Thống Cấp Bậc trong Happy Farm',
-    description: 'Chi tiết về các bậc và lợi ích tương ứng trong game Happy Farm.',
-    url: '/library/tiers',
-  },
-};
+// Removed metadata export
 
 interface TierDisplayData extends TierDetail {
   tierNumber: number;

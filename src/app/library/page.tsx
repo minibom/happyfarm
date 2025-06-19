@@ -1,25 +1,13 @@
 
 'use client';
 
-import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Users, Sprout, Gift, BarChart3, Zap, ListChecks, Info, ShoppingCart, TrendingUp, Compass } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Giới Thiệu Game - Thư Viện Happy Farm',
-  description: 'Khám phá tổng quan về game Happy Farm, cách chơi, các tính năng chính và mẹo để trở thành một nông dân tài ba.',
-  alternates: {
-    canonical: '/library',
-  },
-  openGraph: {
-    title: 'Giới Thiệu Game Happy Farm',
-    description: 'Tìm hiểu mọi thứ bạn cần biết để bắt đầu hành trình nông trại tại Happy Farm.',
-    url: '/library',
-  },
-};
+// Removed metadata export
 
 export default function LibraryIntroductionPage() {
   return (

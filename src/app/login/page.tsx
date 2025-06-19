@@ -1,7 +1,6 @@
 
 'use client';
 
-import type { Metadata } from 'next';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -13,14 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Đăng Nhập - Happy Farm',
-  description: 'Đăng nhập vào tài khoản Happy Farm của bạn để tiếp tục quản lý nông trại.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+// Removed metadata export
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

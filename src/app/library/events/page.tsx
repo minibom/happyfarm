@@ -1,7 +1,6 @@
 
 'use client';
 
-import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,19 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-export const metadata: Metadata = {
-  title: 'Sự Kiện Game - Thư Viện Happy Farm',
-  description: 'Theo dõi các sự kiện đặc biệt đang diễn ra trong Happy Farm. Tìm hiểu về hiệu ứng, thời gian và các vật phẩm bị ảnh hưởng.',
-  alternates: {
-    canonical: '/library/events',
-  },
-  openGraph: {
-    title: 'Sự Kiện Game Đặc Biệt tại Happy Farm',
-    description: 'Thông tin về các sự kiện đang hoạt động trong game Happy Farm.',
-    url: '/library/events',
-  },
-};
-
+// Removed metadata export
 
 export default function LibraryEventsPage() {
   const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]);
