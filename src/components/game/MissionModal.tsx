@@ -42,9 +42,9 @@ const MissionModal: FC<MissionModalProps> = ({
       .filter(pm => pm.category === categoryFilter)
       .sort((a, b) => {
         const statusOrder: Record<MissionStatus, number> = {
-          active: 1,
-          completed_pending_claim: 2,
-          locked: 3, // Should ideally not be in activeMissions if truly locked by level
+          completed_pending_claim: 1, // Priority 1
+          active: 2,                  // Priority 2
+          locked: 3,
           claimed: 4,
           expired: 5,
         };
@@ -66,8 +66,9 @@ const MissionModal: FC<MissionModalProps> = ({
     const isClaimable = mission.status === 'completed_pending_claim';
     const isClaimed = mission.status === 'claimed';
     const isActive = mission.status === 'active';
-    const isLockedByLevel = mission.requiredLevelUnlock && gameStateRef.current.level < mission.requiredLevelUnlock; // Assuming gameStateRef is accessible or player level is passed
-    const isLocked = mission.status === 'locked' || isLockedByLevel;
+    // Assuming gameStateRef is accessible or player level is passed for isLockedByLevel
+    // For simplicity, we'll rely on the status field from PlayerMissionProgress
+    const isLocked = mission.status === 'locked'; 
     const isExpired = mission.status === 'expired';
 
 
@@ -193,5 +194,8 @@ const MissionModal: FC<MissionModalProps> = ({
   );
 };
 // Temporary gameStateRef for isLockedByLevel check until player level is passed or accessed globally
-const gameStateRef = { current: { level: 1 } }; 
+// This line was problematic as gameStateRef is not defined here.
+// Removed as isLockedByLevel check now relies on mission.status === 'locked'
+// const gameStateRef = { current: { level: 1 } }; 
 export default MissionModal;
+
