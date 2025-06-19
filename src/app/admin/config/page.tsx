@@ -40,10 +40,9 @@ export default function AdminConfigPage() {
     dataArray: any[],
     collectionName: string,
     docIdField: string,
-    dataTypeLabel: string,
-    setLoadingState?: (loading: boolean) => void
+    dataTypeLabel: string
   ) => {
-    setLoadingState?.(true);
+    // setLoadingState?.(true); // Removed: loading state managed by caller
     toast({
       title: "Đang Xử Lý...",
       description: `Bắt đầu đẩy dữ liệu ${dataTypeLabel} lên Firestore...`,
@@ -61,7 +60,6 @@ export default function AdminConfigPage() {
         }
         const itemRef = doc(db, collectionName, item[docIdField]);
         
-        // Create a clean version of the item, removing undefined fields
         const cleanItem: Record<string, any> = {};
         for (const key in item) {
             if (Object.prototype.hasOwnProperty.call(item, key) && item[key] !== undefined) {
@@ -69,7 +67,7 @@ export default function AdminConfigPage() {
             }
         }
         
-        batch.set(itemRef, cleanItem); // Use the clean item
+        batch.set(itemRef, cleanItem);
         itemCount++;
       }
 
@@ -81,15 +79,20 @@ export default function AdminConfigPage() {
         className: "bg-green-500 text-white"
       });
     } catch (error) {
-      console.error(`Error pushing ${dataTypeLabel} to Firestore:`, error);
+      console.error(`Error pushing ${dataTypeLabel} to Firestore. Raw error object:`, error);
+      if (error instanceof Error && 'code' in error) {
+        console.error(`Firebase error code: ${(error as any).code}`);
+      }
       toast({
         title: `Lỗi Đẩy Dữ Liệu ${dataTypeLabel}`,
-        description: `Không thể đẩy dữ liệu. Lỗi: ${(error as Error).message}`,
+        description: `Không thể đẩy dữ liệu. Lỗi: ${String((error as Error)?.message || 'Unknown error')}`,
         variant: "destructive",
       });
-    } finally {
-      setLoadingState?.(false);
-    }
+      throw error; // Re-throw the error so the caller's catch block can handle it
+    } 
+    // finally { // Removed: loading state managed by caller
+    //   setLoadingState?.(false);
+    // }
   };
 
 
@@ -136,7 +139,7 @@ export default function AdminConfigPage() {
       console.error("Error pushing crop/fertilizer data to Firestore:", error);
       toast({
         title: "Lỗi Đẩy Dữ Liệu",
-        description: `Không thể đẩy dữ liệu Cây Trồng/Phân Bón. Lỗi: ${(error as Error).message}`,
+        description: `Không thể đẩy dữ liệu Cây Trồng/Phân Bón. Lỗi: ${String((error as Error)?.message || 'Unknown error')}`,
         variant: "destructive",
       });
     } finally {
@@ -175,7 +178,7 @@ export default function AdminConfigPage() {
       console.error("Error pushing tier data to Firestore:", error);
        toast({
         title: "Lỗi Đẩy Dữ Liệu Cấp Bậc",
-        description: `Không thể đẩy dữ liệu cấp bậc. Lỗi: ${(error as Error).message}`,
+        description: `Không thể đẩy dữ liệu cấp bậc. Lỗi: ${String((error as Error)?.message || 'Unknown error')}`,
         variant: "destructive",
       });
     } finally {
@@ -206,7 +209,7 @@ export default function AdminConfigPage() {
       console.error("Error initializing/resetting market state:", error);
        toast({
         title: "Lỗi Khởi Tạo Chợ",
-        description: `Không thể khởi tạo/đặt lại trạng thái chợ. Lỗi: ${(error as Error).message}`,
+        description: `Không thể khởi tạo/đặt lại trạng thái chợ. Lỗi: ${String((error as Error)?.message || 'Unknown error')}`,
         variant: "destructive",
       });
     } finally {
@@ -217,10 +220,10 @@ export default function AdminConfigPage() {
   const handlePushAllMissionData = async () => {
     setIsSyncingMissions(true);
     try {
-      await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính', setIsSyncingMissions); // Pass correct setter
-      await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày', setIsSyncingMissions);
-      await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần', setIsSyncingMissions);
-      await handlePushGenericData(RANDOM_MISSION_POOL_DATA, 'gameRandomMissionPool', 'id', 'NV Ngẫu Nhiên', setIsSyncingMissions);
+      await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính');
+      await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày');
+      await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần');
+      await handlePushGenericData(RANDOM_MISSION_POOL_DATA, 'gameRandomMissionPool', 'id', 'NV Ngẫu Nhiên');
       toast({
         title: "Đồng Bộ Hoàn Tất!",
         description: "Tất cả dữ liệu nhiệm vụ đã được đồng bộ lên Firestore.",
@@ -228,13 +231,35 @@ export default function AdminConfigPage() {
         duration: 7000,
       });
     } catch (error) {
+      // Error is already toasted by handlePushGenericData if it throws
+      // We can add a more general error message here if needed, or rely on the specific one.
       toast({
         title: "Lỗi Đồng Bộ Tổng Thể Nhiệm Vụ",
-        description: "Một hoặc nhiều loại nhiệm vụ không thể đồng bộ. Kiểm tra console.",
+        description: "Một hoặc nhiều loại nhiệm vụ không thể đồng bộ. Kiểm tra console để biết thêm chi tiết.",
         variant: "destructive",
       });
     } finally {
       setIsSyncingMissions(false);
+    }
+  };
+
+
+  const handlePushDataWithSetState = async (
+    dataArray: any[],
+    collectionName: string,
+    docIdField: string,
+    dataTypeLabel: string,
+    setLoadingState: (loading: boolean) => void // Specific setLoading function for this button
+  ) => {
+    setLoadingState(true);
+    try {
+        await handlePushGenericData(dataArray, collectionName, docIdField, dataTypeLabel);
+        // Success is toasted within handlePushGenericData
+    } catch (error) {
+        // Error is toasted within handlePushGenericData
+        // No need to re-toast here unless we want a more generic message
+    } finally {
+        setLoadingState(false);
     }
   };
 
@@ -280,7 +305,11 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(BONUS_CONFIGURATIONS_DATA, 'gameBonusConfigurations', 'id', 'Cấu Hình Bonus', setIsSyncingBonuses)} className="bg-purple-500 hover:bg-purple-600 text-white" disabled={isSyncingBonuses}>
+                <Button 
+                    onClick={() => handlePushDataWithSetState(BONUS_CONFIGURATIONS_DATA, 'gameBonusConfigurations', 'id', 'Cấu Hình Bonus', setIsSyncingBonuses)} 
+                    className="bg-purple-500 hover:bg-purple-600 text-white" 
+                    disabled={isSyncingBonuses}
+                >
                   {isSyncingBonuses ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                   Đẩy Cấu Hình Bonus
                 </Button>
@@ -327,7 +356,11 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(MAIL_TEMPLATES_DATA, 'gameMailTemplates', 'id', 'Thư Mẫu', setIsSyncingMailTemplates)} className="bg-teal-500 hover:bg-teal-600 text-white" disabled={isSyncingMailTemplates}>
+                <Button 
+                    onClick={() => handlePushDataWithSetState(MAIL_TEMPLATES_DATA, 'gameMailTemplates', 'id', 'Thư Mẫu', setIsSyncingMailTemplates)} 
+                    className="bg-teal-500 hover:bg-teal-600 text-white" 
+                    disabled={isSyncingMailTemplates}
+                >
                     {isSyncingMailTemplates ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                     Đồng Bộ Thư Mẫu
                 </Button>
@@ -352,7 +385,11 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(GAME_EVENT_TEMPLATES_DATA, 'gameEventTemplates', 'id', 'Mẫu Sự Kiện', setIsSyncingEventTemplates)} className="bg-blue-500 hover:bg-blue-600 text-white" disabled={isSyncingEventTemplates}>
+                <Button 
+                    onClick={() => handlePushDataWithSetState(GAME_EVENT_TEMPLATES_DATA, 'gameEventTemplates', 'id', 'Mẫu Sự Kiện', setIsSyncingEventTemplates)} 
+                    className="bg-blue-500 hover:bg-blue-600 text-white" 
+                    disabled={isSyncingEventTemplates}
+                >
                     {isSyncingEventTemplates ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                     Đồng Bộ Mẫu Sự Kiện
                 </Button>
@@ -433,3 +470,5 @@ export default function AdminConfigPage() {
     </div>
   );
 }
+
+    
