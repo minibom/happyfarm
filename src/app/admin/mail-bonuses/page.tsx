@@ -64,7 +64,6 @@ const MailManagementView = () => {
   }, []);
 
   useEffect(() => {
-    // Check for mail draft from event in localStorage
     const mailDraftString = localStorage.getItem('happyFarmAdminMailDraftFromEvent');
     const mailDraftSource = localStorage.getItem('happyFarmAdminMailDraftSource');
 
@@ -74,9 +73,9 @@ const MailManagementView = () => {
         if (mailDraft.subject && mailDraft.body) {
           setMailSubject(mailDraft.subject);
           setMailBody(mailDraft.body);
-          setActiveMailSubView('compose'); // Switch to compose tab
-          setSelectedTemplateId('__clear_template__'); // Ensure no template is "selected"
-          setRewards([]); // Clear any rewards from a previously selected template
+          setActiveMailSubView('compose'); 
+          setSelectedTemplateId('__clear_template__'); 
+          setRewards([]); 
           toast({ title: "Bản Nháp Đã Tải", description: "Nội dung thư từ sự kiện đã được điền. Hãy kiểm tra và gửi." });
         }
       } catch (e) {
@@ -86,13 +85,12 @@ const MailManagementView = () => {
         localStorage.removeItem('happyFarmAdminMailDraftSource');
       }
     } else if (searchParams && searchParams.has('subject') && searchParams.has('body')) {
-        // Fallback for query params, though localStorage is preferred
         setMailSubject(searchParams.get('subject') || '');
         setMailBody(searchParams.get('body') || '');
         setActiveMailSubView('compose');
         setSelectedTemplateId('__clear_template__');
         setRewards([]);
-        router.replace('/admin/mail-bonuses', { scroll: false }); // Clean URL
+        router.replace('/admin/mail-bonuses', { scroll: false }); 
     }
   }, [searchParams, router, toast]);
 
@@ -240,7 +238,7 @@ const MailManagementView = () => {
       const mailPromises = uidsToSend.map(async (uid) => {
         const userGameStateRef = doc(db, 'users', uid, 'gameState', 'data');
         const userGameStateSnap = await getDoc(userGameStateRef);
-        let recipientDisplayName = 'Nông Dân'; // Default
+        let recipientDisplayName = 'Nông Dân'; 
 
         if (userGameStateSnap.exists()) {
           const gs = userGameStateSnap.data() as GameState;
@@ -274,8 +272,8 @@ const MailManagementView = () => {
 
       const logEntry: AdminMailLogEntry = {
         sentAt: serverTimestamp(),
-        mailSubject: mailSubject, // Log original subject
-        mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''), // Log original body preview
+        mailSubject: mailSubject, 
+        mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''), 
         targetAudience: targetAudience,
         specificUidsPreview: targetAudience === 'specific'
             ? (uidsToSend.slice(0,2).join(', ') + (uidsToSend.length > 2 ? `, (+${uidsToSend.length - 2} more)`: ''))
@@ -405,7 +403,7 @@ const MailManagementView = () => {
                                 <ul className="list-disc list-inside">
                                     {selectedTemplatePlaceholders.map(ph => <li key={ph}>{ph}</li>)}
                                 </ul>
-                                <p className="italic">Lưu ý: `{{`playerName`}}` sẽ được tự động thay thế bằng tên người nhận.</p>
+                                <p className="italic">Lưu ý: `{"{{playerName}}"}}` sẽ được tự động thay thế bằng tên người nhận.</p>
                             </div>
                         )}
                     </div>
@@ -717,5 +715,4 @@ export default function AdminMailBonusesPage() {
     </Card>
   );
 }
-
     
