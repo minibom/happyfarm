@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { MailMessage, RewardItem, RewardItemType, InventoryItem, AdminUserView, BonusConfiguration, BonusTriggerType, AdminMailLogEntry } from '@/types';
+import type { MailMessage, RewardItem, RewardItemType, InventoryItem, AdminUserView, BonusConfiguration, BonusTriggerType, AdminMailLogEntry, GameState } from '@/types';
 import { Eye, Edit, Trash2, Loader2, PlusCircle, Mail, Gift, Send, History, Package, Coins, Star, XCircle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -212,7 +212,7 @@ const MailManagementView = () => {
     }
 
     setIsSending(true);
-    const batch = writeBatch(db);
+    
     let uidsToSend: string[] = [];
 
     if (targetAudience === 'all') {
@@ -237,27 +237,45 @@ const MailManagementView = () => {
     }
 
     try {
-      uidsToSend.forEach(uid => {
+      const mailPromises = uidsToSend.map(async (uid) => {
+        const userGameStateRef = doc(db, 'users', uid, 'gameState', 'data');
+        const userGameStateSnap = await getDoc(userGameStateRef);
+        let recipientDisplayName = 'Nông Dân'; // Default
+
+        if (userGameStateSnap.exists()) {
+          const gs = userGameStateSnap.data() as GameState;
+          recipientDisplayName = gs.displayName || gs.email?.split('@')[0] || 'Nông Dân';
+        }
+
+        const finalMailSubject = mailSubject.replace(/{{playerName}}/g, recipientDisplayName);
+        const finalMailBody = mailBody.replace(/{{playerName}}/g, recipientDisplayName);
+
         const mailRef = doc(collection(db, 'users', uid, 'mail'));
-        const newMail: Omit<MailMessage, 'id' | 'recipientUid'> = {
+        const newMail: Omit<MailMessage, 'id'> = {
           senderType: 'admin',
           senderName: user.displayName || user.email || 'Quản Trị Viên HappyFarm',
-          subject: mailSubject,
-          body: mailBody,
+          subject: finalMailSubject,
+          body: finalMailBody,
           rewards: rewards,
           isRead: false,
           isClaimed: false,
           createdAt: serverTimestamp(),
         };
-        batch.set(mailRef, newMail);
+        return { mailRef, newMail };
       });
 
+      const mailsToCommit = await Promise.all(mailPromises);
+      
+      const batch = writeBatch(db);
+      mailsToCommit.forEach(({ mailRef, newMail }) => {
+        batch.set(mailRef, newMail);
+      });
       await batch.commit();
 
       const logEntry: AdminMailLogEntry = {
         sentAt: serverTimestamp(),
-        mailSubject: mailSubject,
-        mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''),
+        mailSubject: mailSubject, // Log original subject
+        mailBodyPreview: mailBody.substring(0, 100) + (mailBody.length > 100 ? '...' : ''), // Log original body preview
         targetAudience: targetAudience,
         specificUidsPreview: targetAudience === 'specific'
             ? (uidsToSend.slice(0,2).join(', ') + (uidsToSend.length > 2 ? `, (+${uidsToSend.length - 2} more)`: ''))
@@ -276,7 +294,7 @@ const MailManagementView = () => {
       setMailSubject(''); setMailBody(''); setRewards([]); setSpecificUids(''); setSelectedTemplateId('__clear_template__'); setSelectedTemplatePlaceholders([]);
     } catch (error) {
       console.error("Error sending mail:", error);
-      toast({ title: "Lỗi Gửi Thư", description: `Không thể gửi thư. Lỗi: ${(error as Error).message}`, variant: "destructive" });
+      toast({ title: "Lỗi Gửi Thư", description: `Không thể gửi thư. Lỗi: ${String((error as Error)?.message)}`, variant: "destructive" });
     } finally {
       setIsSending(false);
     }
@@ -387,6 +405,7 @@ const MailManagementView = () => {
                                 <ul className="list-disc list-inside">
                                     {selectedTemplatePlaceholders.map(ph => <li key={ph}>{ph}</li>)}
                                 </ul>
+                                <p className="italic">Lưu ý: `{{`playerName`}}` sẽ được tự động thay thế bằng tên người nhận.</p>
                             </div>
                         )}
                     </div>
