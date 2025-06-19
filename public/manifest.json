@@ -1,0 +1,21 @@
+{
+  "name": "Happy Farm",
+  "short_name": "HappyFarm",
+  "description": "A cheerful farming game by Firebase Studio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF7EB",
+  "theme_color": "#E0B319",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

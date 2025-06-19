@@ -7,6 +7,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 export const metadata: Metadata = {
   title: 'Happy Farm',
   description: 'A cheerful farming game by Firebase Studio',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
