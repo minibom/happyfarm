@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserCircle2, UserPlus, UserX, MessageSquareOff, Ban, Loader2, CheckSquare, ShieldQuestion } from 'lucide-react';
+import { UserCircle2, UserPlus, UserX, MessageSquareOff, Ban, Loader2, CheckSquare, ShieldQuestion, Hourglass } from 'lucide-react'; // Added Hourglass
 import type { GameState, TierInfo, FriendInfo, FriendRequestReceived, FriendRequestSent } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase'; // For fetching target user's basic info
