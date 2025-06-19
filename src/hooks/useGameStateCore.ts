@@ -17,13 +17,14 @@ import {
   MAIN_MISSIONS_DATA,
   DAILY_MISSION_TEMPLATES_DATA,
   WEEKLY_MISSION_TEMPLATES_DATA,
-  BONUS_CONFIGURATIONS_DATA, 
+  BONUS_CONFIGURATIONS_DATA,
   NUMBER_OF_DAILY_MISSIONS,
   NUMBER_OF_WEEKLY_MISSIONS
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
-import { db } from '@/lib/firebase';
+import { db, analytics } from '@/lib/firebase';
+import { logEvent } from 'firebase/analytics';
 import { doc, setDoc, onSnapshot, type Unsubscribe, Timestamp, collection, query, where, addDoc, serverTimestamp as firestoreServerTimestamp } from 'firebase/firestore';
 import { assignMainMissions, refreshTimedMissions } from '@/lib/mission-logic';
 import { checkAndApplyFirstLoginBonus, checkAndApplyTierUpBonus, checkAndApplyPlotUnlockBonus } from '@/lib/bonus-logic';
@@ -45,10 +46,10 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
   const prevLevelRef = useRef(gameState.level);
   const prevUnlockedPlotsCountRef = useRef(gameState.unlockedPlotsCount);
-  const gameStateRef = useRef(gameState); 
+  const gameStateRef = useRef(gameState);
 
   useEffect(() => {
-    gameStateRef.current = gameState; 
+    gameStateRef.current = gameState;
     setPlayerTierInfo(getPlayerTierInfo(gameState.level));
   }, [gameState]);
 
@@ -61,13 +62,13 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
-          const stateToSave = { ...gameStateRef.current }; 
+          const stateToSave = { ...gameStateRef.current };
 
           if (stateToSave.email === undefined) delete (stateToSave as any).email;
           if (stateToSave.displayName === undefined) delete (stateToSave as any).displayName;
-          
+
           await setDoc(gameDocRef, JSON.parse(JSON.stringify(stateToSave, (key, value) => {
-             return value === undefined ? null : value; 
+             return value === undefined ? null : value;
           })));
         } catch (error) {
           console.error("Failed to save game state:", error);
@@ -83,7 +84,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }
   }, [gameState, gameDataLoaded, itemDataLoaded, fertilizerDataLoaded, userId, saveGameStateToFirestore]);
 
-  
+
   useEffect(() => {
     if (!userId) return;
 
@@ -98,18 +99,18 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
         const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        
+
         const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
           ? (eventDocData.startTime as unknown as Timestamp).toMillis()
           : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
-        
+
         const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
           ? (eventDocData.endTime as unknown as Timestamp).toMillis()
           : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000;
 
         if (endTimeMillis > now.toMillis()) {
-           fetchedEvents.push({ 
-            id: docSnap.id, 
+           fetchedEvents.push({
+            id: docSnap.id,
             ...eventDocData,
             startTime: startTimeMillis,
             endTime: endTimeMillis,
@@ -138,7 +139,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
       setGameDataLoaded(false);
       return;
     }
-    
+
     if (userId && itemDataLoaded && fertilizerDataLoaded) {
       const gameDocRef = doc(db, 'users', userId, 'gameState', 'data');
       unsubscribeGameState = onSnapshot(gameDocRef, (docSnap) => {
@@ -147,15 +148,15 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
         if (docSnap.exists()) {
           const firestoreData = docSnap.data() as Partial<GameState>;
-          let loadedState: GameState = { 
-            ...INITIAL_GAME_STATE, 
+          let loadedState: GameState = {
+            ...INITIAL_GAME_STATE,
             ...firestoreData,
             activeMissions: firestoreData.activeMissions || {},
             claimedBonuses: firestoreData.claimedBonuses || {},
             lastDailyMissionRefresh: firestoreData.lastDailyMissionRefresh || 0,
             lastWeeklyMissionRefresh: firestoreData.lastWeeklyMissionRefresh || 0,
           };
-          
+
           let plots = (firestoreData.plots && Array.isArray(firestoreData.plots) && firestoreData.plots.length === TOTAL_PLOTS)
             ? firestoreData.plots.map((loadedPlotData: any, index: number) => {
                 const basePlot = INITIAL_GAME_STATE.plots[index] || { id: index, state: 'empty' as PlotState };
@@ -164,12 +165,20 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
                   state: loadedPlotData.state || basePlot.state,
                 };
                 if (loadedPlotData.cropId) newPlot.cropId = loadedPlotData.cropId;
-                if (loadedPlotData.plantedAt) newPlot.plantedAt = loadedPlotData.plantedAt;
+                if (loadedPlotData.plantedAt) {
+                  if (typeof loadedPlotData.plantedAt === 'number') {
+                    newPlot.plantedAt = loadedPlotData.plantedAt;
+                  } else if (typeof loadedPlotData.plantedAt === 'object' && 'toMillis' in loadedPlotData.plantedAt) {
+                    newPlot.plantedAt = (loadedPlotData.plantedAt as unknown as Timestamp).toMillis();
+                  } else {
+                    newPlot.plantedAt = undefined;
+                  }
+                }
                 return newPlot;
               })
             : INITIAL_GAME_STATE.plots.map((p,i) => ({ ...p, id: i}));
           loadedState.plots = plots;
-          
+
           const validatedInventory: GameState['inventory'] = {};
           ALL_SEED_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
           ALL_CROP_IDS.forEach(id => validatedInventory[id] = INITIAL_GAME_STATE.inventory[id] || 0);
@@ -187,14 +196,14 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.gold = typeof firestoreData.gold === 'number' ? firestoreData.gold : INITIAL_GAME_STATE.gold;
           loadedState.xp = typeof firestoreData.xp === 'number' ? firestoreData.xp : INITIAL_GAME_STATE.xp;
           loadedState.level = typeof firestoreData.level === 'number' ? firestoreData.level : INITIAL_GAME_STATE.level;
-          loadedState.unlockedPlotsCount = typeof firestoreData.unlockedPlotsCount === 'number' && firestoreData.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && firestoreData.unlockedPlotsCount <= TOTAL_PLOTS 
-            ? firestoreData.unlockedPlotsCount 
+          loadedState.unlockedPlotsCount = typeof firestoreData.unlockedPlotsCount === 'number' && firestoreData.unlockedPlotsCount >= INITIAL_UNLOCKED_PLOTS && firestoreData.unlockedPlotsCount <= TOTAL_PLOTS
+            ? firestoreData.unlockedPlotsCount
             : INITIAL_UNLOCKED_PLOTS;
 
           loadedState.email = firestoreData.email || user?.email || INITIAL_GAME_STATE.email;
           loadedState.displayName = firestoreData.displayName || user?.displayName || INITIAL_GAME_STATE.displayName;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
-          
+
           loadedState.lastLogin = firestoreData.lastLogin && typeof firestoreData.lastLogin === 'object' && 'toMillis' in (firestoreData.lastLogin as any)
             ? (firestoreData.lastLogin as unknown as Timestamp).toMillis()
             : typeof firestoreData.lastLogin === 'number' ? firestoreData.lastLogin : Date.now();
@@ -202,7 +211,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.lastUpdate = firestoreData.lastUpdate && typeof firestoreData.lastUpdate === 'object' && 'toMillis' in (firestoreData.lastUpdate as any)
             ? (firestoreData.lastUpdate as unknown as Timestamp).toMillis()
             : typeof firestoreData.lastUpdate === 'number' ? firestoreData.lastUpdate : gameStateRef.current.lastUpdate || Date.now();
-          
+
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {}, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           if (dailyResult.missionsChanged) {
@@ -217,7 +226,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.activeMissions = newActiveMissions;
           finalStateToSet = loadedState;
 
-        } else { 
+        } else {
           const newInitialUserState: GameState = {
             ...INITIAL_GAME_STATE,
             inventory: { ...INITIAL_GAME_STATE.inventory },
@@ -228,12 +237,12 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
             lastUpdate: Date.now(),
             unlockedPlotsCount: INITIAL_UNLOCKED_PLOTS,
             status: 'active' as const,
-            claimedBonuses: {}, 
+            claimedBonuses: {},
             activeMissions: {},
             lastDailyMissionRefresh: 0,
             lastWeeklyMissionRefresh: 0,
           };
-          
+
           let newActiveMissions = assignMainMissions(newInitialUserState.level, newInitialUserState.activeMissions, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
           newActiveMissions = dailyResult.updatedMissions;
@@ -242,11 +251,11 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           const weeklyResult = refreshTimedMissions(newActiveMissions, newInitialUserState.lastWeeklyMissionRefresh, WEEKLY_MISSION_TEMPLATES_DATA, NUMBER_OF_WEEKLY_MISSIONS, 'weekly');
           newActiveMissions = weeklyResult.updatedMissions;
           newInitialUserState.lastWeeklyMissionRefresh = weeklyResult.newRefreshTime;
-          
+
           newInitialUserState.activeMissions = newActiveMissions;
           finalStateToSet = newInitialUserState;
         }
-        
+
         if (isNewUser && userId) {
           checkAndApplyFirstLoginBonus(userId, finalStateToSet, setGameState, db, toast, BONUS_CONFIGURATIONS_DATA);
         }
@@ -276,7 +285,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }
   }, [userId, authLoading, itemDataLoaded, fertilizerDataLoaded, user, toast, gameDataLoaded]);
 
-  
+
   useEffect(() => {
     if (gameDataLoaded && gameState.level > prevLevelRef.current && prevLevelRef.current !== INITIAL_GAME_STATE.level && userId) {
         const oldLevel = prevLevelRef.current;
@@ -285,7 +294,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     if (gameDataLoaded) {
         prevLevelRef.current = gameState.level;
     }
-  }, [gameState.level, gameDataLoaded, toast, userId, setGameState]); 
+  }, [gameState.level, gameDataLoaded, toast, userId, setGameState]);
 
 
   useEffect(() => {
@@ -315,10 +324,9 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
           let totalGrowthTimeReduction = currentTierInfo.growthTimeReductionPercent;
           activeGameEvents.forEach(event => {
-            // Check if event.startTime and event.endTime are numbers
             const eventStartTime = typeof event.startTime === 'number' ? event.startTime : 0;
             const eventEndTime = typeof event.endTime === 'number' ? event.endTime : 0;
-            
+
             if (now >= eventStartTime && now <= eventEndTime) {
               if (event.effects.some(eff => eff.type === 'CROP_GROWTH_TIME_REDUCTION')) {
                    event.effects.forEach(eff => {
@@ -337,7 +345,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
           const effectiveTimeToGrowing = cropDetail.timeToGrowing * (1 - totalGrowthTimeReduction);
           const effectiveTimeToReady = cropDetail.timeToReady * (1 - totalGrowthTimeReduction);
-          
+
           let newPlotState = plot.state;
           if (plot.state === 'planted' && plot.plantedAt && now >= plot.plantedAt + effectiveTimeToGrowing) {
             newPlotState = 'growing';
@@ -359,7 +367,7 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }, 1000);
 
     return () => clearInterval(gameLoopInterval);
-  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]); // playerTierInfo was missing
+  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]);
 
   const isInitialized = gameDataLoaded && itemDataLoaded && fertilizerDataLoaded && !!userId && !authLoading && !!cropData;
 
