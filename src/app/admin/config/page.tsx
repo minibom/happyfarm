@@ -60,7 +60,16 @@ export default function AdminConfigPage() {
           continue;
         }
         const itemRef = doc(db, collectionName, item[docIdField]);
-        batch.set(itemRef, item);
+        
+        // Create a clean version of the item, removing undefined fields
+        const cleanItem: Record<string, any> = {};
+        for (const key in item) {
+            if (Object.prototype.hasOwnProperty.call(item, key) && item[key] !== undefined) {
+                cleanItem[key] = item[key];
+            }
+        }
+        
+        batch.set(itemRef, cleanItem); // Use the clean item
         itemCount++;
       }
 
@@ -208,14 +217,10 @@ export default function AdminConfigPage() {
   const handlePushAllMissionData = async () => {
     setIsSyncingMissions(true);
     try {
-      // These calls now pass setIsSyncingMissions to handle loading state,
-      // but it will be set to false after the first call.
-      // A more robust solution would manage loading for each sub-type or have a global "is any mission syncing" state.
-      // For simplicity, we'll accept this behavior for now.
-      await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính');
-      await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày');
-      await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần');
-      await handlePushGenericData(RANDOM_MISSION_POOL_DATA, 'gameRandomMissionPool', 'id', 'NV Ngẫu Nhiên');
+      await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính', setIsSyncingMissions); // Pass correct setter
+      await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày', setIsSyncingMissions);
+      await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần', setIsSyncingMissions);
+      await handlePushGenericData(RANDOM_MISSION_POOL_DATA, 'gameRandomMissionPool', 'id', 'NV Ngẫu Nhiên', setIsSyncingMissions);
       toast({
         title: "Đồng Bộ Hoàn Tất!",
         description: "Tất cả dữ liệu nhiệm vụ đã được đồng bộ lên Firestore.",
