@@ -1,9 +1,10 @@
 
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog, Store, ListChecks } from 'lucide-react'; // Added Store icon and ListChecks
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog, Store, ListChecks, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   CROP_DATA,
@@ -13,28 +14,36 @@ import {
   MAIL_TEMPLATES_DATA,
   GAME_EVENT_TEMPLATES_DATA,
   INITIAL_MARKET_STATE,
-  MAIN_MISSIONS_DATA,                 // New Mission Data
-  DAILY_MISSION_TEMPLATES_DATA,     // New Mission Data
-  WEEKLY_MISSION_TEMPLATES_DATA,    // New Mission Data
-  RANDOM_MISSION_POOL_DATA,         // New Mission Data
+  MAIN_MISSIONS_DATA,
+  DAILY_MISSION_TEMPLATES_DATA,
+  WEEKLY_MISSION_TEMPLATES_DATA,
+  RANDOM_MISSION_POOL_DATA,
 } from '@/lib/constants';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, writeBatch, getDoc } from 'firebase/firestore';
-import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig, MarketState, Mission } from '@/types'; // Added Mission type
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig, MarketState, Mission } from '@/types';
 import type { TierDetail } from '@/lib/tier-data';
 import type { MailTemplate } from '@/lib/mail-templates';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
   const [isSyncingMissions, setIsSyncingMissions] = useState(false);
+  const [isSyncingItems, setIsSyncingItems] = useState(false);
+  const [isSyncingBonuses, setIsSyncingBonuses] = useState(false);
+  const [isSyncingTiers, setIsSyncingTiers] = useState(false);
+  const [isSyncingMailTemplates, setIsSyncingMailTemplates] = useState(false);
+  const [isSyncingEventTemplates, setIsSyncingEventTemplates] = useState(false);
+  const [isInitializingMarket, setIsInitializingMarket] = useState(false);
 
 
   const handlePushGenericData = async (
     dataArray: any[],
     collectionName: string,
-    docIdField: string, // Field in the data object to use as Document ID
-    dataTypeLabel: string
+    docIdField: string,
+    dataTypeLabel: string,
+    setLoadingState?: (loading: boolean) => void
   ) => {
+    setLoadingState?.(true);
     toast({
       title: "Đang Xử Lý...",
       description: `Bắt đầu đẩy dữ liệu ${dataTypeLabel} lên Firestore...`,
@@ -69,11 +78,14 @@ export default function AdminConfigPage() {
         description: `Không thể đẩy dữ liệu. Lỗi: ${(error as Error).message}`,
         variant: "destructive",
       });
+    } finally {
+      setLoadingState?.(false);
     }
   };
 
 
   const handlePushCropFertilizerData = async () => {
+    setIsSyncingItems(true);
     toast({
       title: "Đang Xử Lý...",
       description: "Bắt đầu đẩy dữ liệu Cây Trồng & Phân Bón lên Firestore...",
@@ -118,10 +130,13 @@ export default function AdminConfigPage() {
         description: `Không thể đẩy dữ liệu Cây Trồng/Phân Bón. Lỗi: ${(error as Error).message}`,
         variant: "destructive",
       });
+    } finally {
+      setIsSyncingItems(false);
     }
   };
 
   const handlePushTierData = async () => {
+    setIsSyncingTiers(true);
     toast({
       title: "Đang Xử Lý...",
       description: "Bắt đầu đẩy dữ liệu Cấp Bậc (Tiers) lên Firestore...",
@@ -154,11 +169,14 @@ export default function AdminConfigPage() {
         description: `Không thể đẩy dữ liệu cấp bậc. Lỗi: ${(error as Error).message}`,
         variant: "destructive",
       });
+    } finally {
+      setIsSyncingTiers(false);
     }
   };
 
 
   const handleInitializeMarketState = async () => {
+    setIsInitializingMarket(true);
     toast({
       title: "Đang Xử Lý...",
       description: "Khởi tạo/Đặt lại trạng thái Chợ...",
@@ -182,12 +200,18 @@ export default function AdminConfigPage() {
         description: `Không thể khởi tạo/đặt lại trạng thái chợ. Lỗi: ${(error as Error).message}`,
         variant: "destructive",
       });
+    } finally {
+      setIsInitializingMarket(false);
     }
   };
 
   const handlePushAllMissionData = async () => {
     setIsSyncingMissions(true);
     try {
+      // These calls now pass setIsSyncingMissions to handle loading state,
+      // but it will be set to false after the first call.
+      // A more robust solution would manage loading for each sub-type or have a global "is any mission syncing" state.
+      // For simplicity, we'll accept this behavior for now.
       await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính');
       await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày');
       await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần');
@@ -199,9 +223,8 @@ export default function AdminConfigPage() {
         duration: 7000,
       });
     } catch (error) {
-      // Individual errors are handled by handlePushGenericData
       toast({
-        title: "Lỗi Đồng Bộ Tổng Thể",
+        title: "Lỗi Đồng Bộ Tổng Thể Nhiệm Vụ",
         description: "Một hoặc nhiều loại nhiệm vụ không thể đồng bộ. Kiểm tra console.",
         variant: "destructive",
       });
@@ -224,14 +247,14 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Cây Trồng & Phân Bón</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>constants.ts</code> lên <code>gameItems</code>
-                  VÀ Phân Bón lên <code>gameFertilizers</code>.
+                  Đẩy TOÀN BỘ cấu hình Cây Trồng từ <code>crop-data.ts</code> lên <code>gameItems</code>
+                  VÀ Phân Bón từ <code>fertilizer-data.ts</code> lên <code>gameFertilizers</code>.
                   Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu trên database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushCropFertilizerData} className="bg-accent hover:bg-accent/90">
-                  <UploadCloud className="mr-2 h-5 w-5" />
+                <Button onClick={handlePushCropFertilizerData} className="bg-accent hover:bg-accent/90" disabled={isSyncingItems}>
+                  {isSyncingItems ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                   Đẩy Dữ Liệu Cây Trồng & Phân Bón
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -247,13 +270,13 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Cấu Hình Bonus</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ cấu hình Bonus từ <code>constants.ts</code>
+                  Đẩy TOÀN BỘ cấu hình Bonus từ <code>bonus-configurations.ts</code>
                   lên collection <code>gameBonusConfigurations</code> trong Firestore.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(BONUS_CONFIGURATIONS_DATA, 'gameBonusConfigurations', 'id', 'Cấu Hình Bonus')} className="bg-purple-500 hover:bg-purple-600 text-white">
-                  <UploadCloud className="mr-2 h-5 w-5" />
+                <Button onClick={() => handlePushGenericData(BONUS_CONFIGURATIONS_DATA, 'gameBonusConfigurations', 'id', 'Cấu Hình Bonus', setIsSyncingBonuses)} className="bg-purple-500 hover:bg-purple-600 text-white" disabled={isSyncingBonuses}>
+                  {isSyncingBonuses ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                   Đẩy Cấu Hình Bonus
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -272,13 +295,13 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cấp Bậc (Tiers)</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code>
+                  Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>tier-data.ts</code>
                   lên collection <code>gameTiers</code> trong Firestore.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushTierData} className="bg-sky-500 hover:bg-sky-600 text-white">
-                  <UploadCloud className="mr-2 h-5 w-5" />
+                <Button onClick={handlePushTierData} className="bg-sky-500 hover:bg-sky-600 text-white" disabled={isSyncingTiers}>
+                  {isSyncingTiers ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                   Đẩy Dữ Liệu Cấp Bậc
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -299,8 +322,8 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(MAIL_TEMPLATES_DATA, 'gameMailTemplates', 'id', 'Thư Mẫu')} className="bg-teal-500 hover:bg-teal-600 text-white">
-                    <UploadCloud className="mr-2 h-5 w-5" />
+                <Button onClick={() => handlePushGenericData(MAIL_TEMPLATES_DATA, 'gameMailTemplates', 'id', 'Thư Mẫu', setIsSyncingMailTemplates)} className="bg-teal-500 hover:bg-teal-600 text-white" disabled={isSyncingMailTemplates}>
+                    {isSyncingMailTemplates ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                     Đồng Bộ Thư Mẫu
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -324,8 +347,8 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => handlePushGenericData(GAME_EVENT_TEMPLATES_DATA, 'gameEventTemplates', 'id', 'Mẫu Sự Kiện')} className="bg-blue-500 hover:bg-blue-600 text-white">
-                    <UploadCloud className="mr-2 h-5 w-5" />
+                <Button onClick={() => handlePushGenericData(GAME_EVENT_TEMPLATES_DATA, 'gameEventTemplates', 'id', 'Mẫu Sự Kiện', setIsSyncingEventTemplates)} className="bg-blue-500 hover:bg-blue-600 text-white" disabled={isSyncingEventTemplates}>
+                    {isSyncingEventTemplates ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                     Đồng Bộ Mẫu Sự Kiện
                 </Button>
                  <p className="mt-2 text-sm text-muted-foreground">
@@ -341,12 +364,12 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Khởi Tạo Trạng Thái Chợ</CardTitle>
                   </div>
                   <CardDescription>
-                  Khởi tạo hoặc đặt lại tài liệu <code>marketState/global</code> với dữ liệu mặc định.
+                  Khởi tạo hoặc đặt lại tài liệu <code>marketState/global</code> với dữ liệu mặc định từ <code>initial-states.ts</code>.
                   </CardDescription>
               </CardHeader>
               <CardContent>
-                  <Button onClick={handleInitializeMarketState} className="bg-orange-400 hover:bg-orange-500 text-white">
-                    <UploadCloud className="mr-2 h-5 w-5" />
+                  <Button onClick={handleInitializeMarketState} className="bg-orange-400 hover:bg-orange-500 text-white" disabled={isInitializingMarket}>
+                    {isInitializingMarket ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
                     Khởi Tạo/Reset Chợ
                   </Button>
                    <p className="mt-2 text-sm text-muted-foreground">
@@ -358,7 +381,7 @@ export default function AdminConfigPage() {
 
            {/* New Row for Missions */}
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="border-indigo-500/50 md:col-span-2"> {/* Make this card span 2 columns on md+ screens */}
+            <Card className="border-indigo-500/50 md:col-span-2">
               <CardHeader>
                 <div className="flex items-center gap-2">
                     <ListChecks className="h-6 w-6 text-indigo-500" />
@@ -367,6 +390,7 @@ export default function AdminConfigPage() {
                 <CardDescription>
                   Đẩy TOÀN BỘ cấu hình Nhiệm Vụ từ <code>mission-data.ts</code> (thông qua <code>constants.ts</code>)
                   lên các collection tương ứng (<code>gameMainMissions</code>, <code>gameDailyMissionTemplates</code>, etc.) trong Firestore.
+                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu trên database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -379,12 +403,7 @@ export default function AdminConfigPage() {
                 </p>
               </CardContent>
             </Card>
-            {/* Placeholder for another card if needed, or leave one empty
-            This div will be empty on md+ screens because the mission card spans 2 columns.
-            On smaller screens, it will just be an empty div below the mission card. */}
-            <div></div>
           </div>
-
 
           <div className="grid md:grid-cols-2 gap-6">
              <Card className="border-gray-500/50">
@@ -409,5 +428,3 @@ export default function AdminConfigPage() {
     </div>
   );
 }
-
-  
