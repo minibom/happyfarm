@@ -13,7 +13,7 @@ interface ResourceBarProps {
   xp: number;
   level: number;
   playerTierInfo: TierInfo;
-  playerDisplayName?: string; 
+  playerDisplayName?: string;
 }
 
 const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level, playerTierInfo, playerDisplayName }) => {
@@ -23,54 +23,61 @@ const ResourceBar: FC<ResourceBarProps> = ({ gold, xp, level, playerTierInfo, pl
 
   return (
     <Card className="w-full sticky top-0 z-50 shadow-md">
-      <CardContent className="p-2 sm:p-3 flex flex-col sm:flex-row justify-between items-center gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3">
-        
-        {/* Left Section: Player Name & Gold */}
-        <div className="flex flex-col items-center sm:items-start order-1 sm:order-1 text-center sm:text-left">
-          <div className="text-md sm:text-lg font-semibold text-foreground truncate max-w-[130px] sm:max-w-[180px]" title={displayNameOrDefault}>
+      <CardContent className="p-2 flex flex-col sm:flex-row justify-between items-center gap-x-2 gap-y-1">
+
+        {/* Player Name & Gold */}
+        <div className="flex flex-row items-center justify-center sm:justify-start sm:flex-col sm:items-start order-1 sm:order-1 text-center sm:text-left gap-x-2 sm:gap-x-0">
+          <div className="text-sm sm:text-base lg:text-lg font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] lg:max-w-[180px]" title={displayNameOrDefault}>
             {displayNameOrDefault}
           </div>
-          <div className="flex items-center space-x-1 text-sm sm:text-md text-muted-foreground">
-            <Coins className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+          <div className="flex items-center space-x-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
+            <Coins className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-primary" />
             <span className="font-medium">{gold.toLocaleString()}</span>
           </div>
         </div>
 
-        {/* Center Section: Game Title */}
-        <div className="order-2 sm:order-2 text-xl sm:text-2xl font-bold text-primary font-headline">
+        {/* "Happy Farm" Title - Hidden on xs, sm. Visible md+ */}
+        <div className="order-3 sm:order-2 text-lg sm:text-xl md:text-2xl font-bold text-primary font-headline hidden md:block">
           Happy Farm
         </div>
 
-        {/* Right Section: Tier, Level & XP */}
-        <div className="flex flex-col sm:flex-row items-center gap-x-3 sm:gap-x-4 gap-y-2 order-3 sm:order-3">
-          {/* Tier Display */}
-          <div className="flex items-center space-x-1">
-            <Badge 
-              variant="outline" 
-              className={cn(
-                "px-2 py-0.5 sm:px-2.5 sm:py-1 text-xs sm:text-sm font-semibold border-current flex items-center gap-1",
-                playerTierInfo.colorClass
-              )}
-            >
-              <span className="text-md sm:text-lg">{playerTierInfo.icon}</span>
-              {playerTierInfo.tierName}
-            </Badge>
-          </div>
-
+        {/* Level, XP, Tier Block */}
+        {/* On xs, this is order-2 (middle). On sm+, order-3 (right) */}
+        {/* On xs, elements within are selectively hidden */}
+        <div className="flex flex-row-reverse sm:flex-row items-center justify-between sm:justify-end w-full sm:w-auto order-2 sm:order-3 gap-x-2 sm:gap-x-3">
+          
           {/* Level & XP Block */}
           <div className="flex flex-col items-center sm:items-end">
-            <div className="flex items-center space-x-1 text-base sm:text-lg">
-              <Award className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" />
+            {/* Level Display (Always Visible) */}
+            <div className="flex items-center space-x-1 text-xs sm:text-sm lg:text-base">
+              <Award className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-blue-500" />
               <span className="font-semibold">Cấp: {level}</span>
             </div>
-            <div className="flex flex-col items-center sm:items-end mt-0.5 w-full min-w-[100px] sm:min-w-[120px] max-w-[130px] sm:max-w-[150px]">
-              <Progress value={xpProgress} className="h-1.5 sm:h-2 w-full" />
-              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">
+
+            {/* XP Progress (Hidden on xs) */}
+            <div className="hidden sm:flex flex-col items-center sm:items-end mt-0.5 w-full min-w-[60px] sm:min-w-[80px] lg:min-w-[100px] max-w-[100px] sm:max-w-[120px] lg:max-w-[150px]">
+              <Progress value={xpProgress} className="h-1 sm:h-1.5 lg:h-2 w-full" />
+              <span className="text-[8px] sm:text-[10px] lg:text-xs font-medium text-muted-foreground mt-0.5">
                 {xp.toLocaleString()} / {nextLevelXp > 0 ? nextLevelXp.toLocaleString() : "MAX"} XP
               </span>
             </div>
           </div>
+
+          {/* Tier Display (Hidden on xs, sm. Visible md+) */}
+          <div className="hidden md:flex items-center">
+            <Badge
+              variant="outline"
+              className={cn(
+                "px-1.5 py-0.5 text-[9px] sm:px-2 sm:py-1 sm:text-xs lg:text-sm font-semibold border-current flex items-center gap-1",
+                playerTierInfo.colorClass
+              )}
+            >
+              <span className="text-xs sm:text-sm lg:text-lg">{playerTierInfo.icon}</span>
+              {playerTierInfo.tierName}
+            </Badge>
+          </div>
         </div>
+
       </CardContent>
     </Card>
   );
