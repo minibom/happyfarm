@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation'; 
 import {
   Dialog,
   DialogContent,
@@ -52,20 +52,26 @@ const eventTypes: GameEventType[] = [
   'ITEM_SELL_PRICE_MODIFIER'
 ];
 
-// const affectedItemOptions: GameEventEffect['affectedItemIds'][] = [
-//     'ALL_CROPS', 'ALL_SEEDS', 'ALL_FERTILIZERS'
-// ];
 
 const formatTimestampForDisplay = (timestamp: any): string => {
     if (!timestamp) return 'N/A';
-    if (timestamp.toDate) { // Check if it's a Firestore Timestamp
-      return format(timestamp.toDate(), "HH:mm 'ngày' dd/MM/yyyy");
+    let dateToFormat: Date;
+
+    if (timestamp.toDate) { // Firestore Timestamp
+      dateToFormat = timestamp.toDate();
+    } else if (typeof timestamp === 'number') { // Milliseconds
+      dateToFormat = new Date(timestamp);
+    } else if (timestamp instanceof Date) {
+      dateToFormat = timestamp;
+    } else {
+      try { // Try to parse if it's a string date
+        dateToFormat = new Date(timestamp);
+        if (isNaN(dateToFormat.getTime())) return 'Ngày không hợp lệ';
+      } catch (e) {
+        return 'Ngày không hợp lệ';
+      }
     }
-    try {
-      return format(new Date(timestamp), "HH:mm 'ngày' dd/MM/yyyy");
-    } catch (e) {
-      return 'Ngày không hợp lệ';
-    }
+    return format(dateToFormat, "HH:mm 'ngày' dd/MM/yyyy");
   };
 
 const formatEffectsForMail = (effects: GameEventEffect[]): string => {
@@ -96,7 +102,7 @@ export const EventActionModal: FC<EventModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<ActiveGameEvent>(initialEventData);
   const [currentEventId, setCurrentEventId] = useState<string | undefined>(initialEventId);
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter(); 
 
   const [currentEffectType, setCurrentEffectType] = useState<GameEventType>(eventTypes[0]);
   const [currentEffectValue, setCurrentEffectValue] = useState<number>(0.1);
@@ -107,19 +113,41 @@ export const EventActionModal: FC<EventModalProps> = ({
   const { toast } = useToast();
 
   useEffect(() => {
-    setFormData(initialEventData);
-    setCurrentEventId(mode === 'create' ? initialEventData.id : initialEventId);
+    // Convert Timestamps to Dates for initial form data if they are Timestamps
+    const convertTimestampFields = (data: ActiveGameEvent): ActiveGameEvent => {
+        let startTime = data.startTime;
+        let endTime = data.endTime;
+
+        if (startTime && typeof startTime === 'object' && 'toDate' in startTime) {
+            startTime = (startTime as unknown as Timestamp).toDate();
+        } else if (typeof startTime === 'number') {
+            startTime = new Date(startTime);
+        }
+
+        if (endTime && typeof endTime === 'object' && 'toDate' in endTime) {
+            endTime = (endTime as unknown as Timestamp).toDate();
+        } else if (typeof endTime === 'number') {
+            endTime = new Date(endTime);
+        }
+        
+        return { ...data, startTime, endTime };
+    };
+
+
+    const processedInitialData = convertTimestampFields(initialEventData);
+    setFormData(processedInitialData);
+    setCurrentEventId(mode === 'create' ? processedInitialData.id : initialEventId);
     setSelectedTemplateId('__clear_event_template__');
   }, [initialEventData, initialEventId, mode]);
 
   const handleTemplateChange = (templateIdValue: string) => {
     if (templateIdValue === "__clear_event_template__") {
         setSelectedTemplateId('__clear_event_template__');
-        const now = Timestamp.now();
-        const oneDayLater = Timestamp.fromMillis(now.toMillis() + 24 * 60 * 60 * 1000);
+        const now = new Date(); // Use Date object
+        const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         setFormData(prev => ({
             ...prev,
-            id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`, // Reset ID if not creating
+            id: mode === 'create' ? prev.id : `event_${Date.now().toString().slice(-6)}`, 
             name: 'Sự Kiện Mới',
             description: 'Mô tả sự kiện...',
             effects: [],
@@ -133,18 +161,20 @@ export const EventActionModal: FC<EventModalProps> = ({
         setSelectedTemplateId(templateIdValue);
         const template = eventTemplates.find(t => t.id === templateIdValue);
         if (template && (mode === 'create' || mode === 'edit')) {
-        const now = Timestamp.now();
+        const now = new Date();
         const durationMillis = (template.defaultDurationHours || 24) * 60 * 60 * 1000;
         const newEventId = mode === 'create' ? (formData.id || `event_${Date.now().toString().slice(-6)}`) : currentEventId;
+        
+        const currentStartTime = formData.startTime instanceof Date ? formData.startTime : now;
 
         setFormData(prev => ({
             ...prev,
             id: newEventId || `event_tpl_${template.id}_${Date.now().toString().slice(-4)}`,
             name: template.templateName,
             description: template.description,
-            effects: template.defaultEffects.map(eff => ({...eff})), // Deep copy effects
-            startTime: prev.startTime || now, // Preserve existing times if editing, else use now
-            endTime: prev.endTime || Timestamp.fromMillis((prev.startTime || now).toMillis() + durationMillis),
+            effects: template.defaultEffects.map(eff => ({...eff})), 
+            startTime: currentStartTime, 
+            endTime: new Date(currentStartTime.getTime() + durationMillis),
             configId: template.id,
             isActive: prev.isActive !== undefined ? prev.isActive : true,
         }));
@@ -165,7 +195,8 @@ export const EventActionModal: FC<EventModalProps> = ({
 
   const handleDateChange = (field: 'startTime' | 'endTime', date: Date | undefined) => {
     if (date) {
-      setFormData(prev => ({ ...prev, [field]: Timestamp.fromDate(date) }));
+      // Ensure we're setting a Date object here. Firestore Timestamps will be converted on save.
+      setFormData(prev => ({ ...prev, [field]: date }));
     }
   };
 
@@ -224,15 +255,25 @@ export const EventActionModal: FC<EventModalProps> = ({
         toast({ title: "Lỗi", description: "Sự kiện phải có ít nhất một hiệu ứng.", variant: "destructive" });
         return;
     }
-    if (formData.endTime.toMillis() <= formData.startTime.toMillis()) {
+    
+    const startTimeMillis = formData.startTime instanceof Date ? formData.startTime.getTime() : 0;
+    const endTimeMillis = formData.endTime instanceof Date ? formData.endTime.getTime() : 0;
+
+    if (endTimeMillis <= startTimeMillis) {
         toast({ title: "Lỗi Ngày", description: "Ngày kết thúc phải sau ngày bắt đầu.", variant: "destructive" });
         return;
     }
 
-    const finalData = {...formData, id: currentEventId };
+    // Convert Dates back to Firestore Timestamps before saving
+    const dataToSave: ActiveGameEvent = {
+        ...formData,
+        id: currentEventId,
+        startTime: Timestamp.fromDate(formData.startTime instanceof Date ? formData.startTime : new Date()),
+        endTime: Timestamp.fromDate(formData.endTime instanceof Date ? formData.endTime : new Date()),
+    };
 
     if (onSave) {
-      onSave(finalData, currentEventId, initialEventId);
+      onSave(dataToSave, currentEventId, initialEventId);
     }
     onClose();
   };
@@ -249,7 +290,6 @@ export const EventActionModal: FC<EventModalProps> = ({
         }
     }
 
-    // Replace placeholders
     let finalSubject = baseSubject.replace(/{{eventName}}/g, formData.name);
     
     let finalBody = baseBody
@@ -342,15 +382,15 @@ export const EventActionModal: FC<EventModalProps> = ({
                     <PopoverContent className="w-auto p-0">
                     <CalendarPicker
                         mode="single"
-                        selected={formData.startTime instanceof Timestamp ? formData.startTime.toDate() : undefined}
+                        selected={formData.startTime instanceof Date ? formData.startTime : undefined}
                         onSelect={(date) => handleDateChange('startTime', date)}
                         initialFocus
                     />
-                    <Input type="time" className="mt-1" defaultValue={formData.startTime ? format(formData.startTime.toDate(), "HH:mm") : "00:00"}
+                    <Input type="time" className="mt-1" defaultValue={formData.startTime instanceof Date ? format(formData.startTime, "HH:mm") : "00:00"}
                         onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const newDate = formData.startTime ? formData.startTime.toDate() : new Date();
-                            newDate.setHours(hours, minutes);
+                            const newDate = formData.startTime instanceof Date ? new Date(formData.startTime.getTime()) : new Date();
+                            newDate.setHours(hours, minutes, 0, 0); // Set seconds and ms to 0 for consistency
                             handleDateChange('startTime', newDate);
                         }}
                         disabled={isReadOnly}/>
@@ -373,15 +413,15 @@ export const EventActionModal: FC<EventModalProps> = ({
                     <PopoverContent className="w-auto p-0">
                     <CalendarPicker
                         mode="single"
-                        selected={formData.endTime instanceof Timestamp ? formData.endTime.toDate() : undefined}
+                        selected={formData.endTime instanceof Date ? formData.endTime : undefined}
                         onSelect={(date) => handleDateChange('endTime', date)}
                         initialFocus
                     />
-                     <Input type="time" className="mt-1" defaultValue={formData.endTime ? format(formData.endTime.toDate(), "HH:mm") : "00:00"}
+                     <Input type="time" className="mt-1" defaultValue={formData.endTime instanceof Date ? format(formData.endTime, "HH:mm") : "00:00"}
                         onChange={(e) => {
                             const [hours, minutes] = e.target.value.split(':').map(Number);
-                            const newDate = formData.endTime ? formData.endTime.toDate() : new Date();
-                            newDate.setHours(hours, minutes);
+                            const newDate = formData.endTime instanceof Date ? new Date(formData.endTime.getTime()) : new Date();
+                            newDate.setHours(hours, minutes, 0, 0);
                             handleDateChange('endTime', newDate);
                         }}
                         disabled={isReadOnly}/>
@@ -471,3 +511,4 @@ export const EventActionModal: FC<EventModalProps> = ({
     </Dialog>
   );
 };
+

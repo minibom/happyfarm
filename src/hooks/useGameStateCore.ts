@@ -18,8 +18,8 @@ import {
   DAILY_MISSION_TEMPLATES_DATA,
   WEEKLY_MISSION_TEMPLATES_DATA,
   BONUS_CONFIGURATIONS_DATA, 
-  NUMBER_OF_DAILY_MISSIONS, // Import from constants
-  NUMBER_OF_WEEKLY_MISSIONS // Import from constants
+  NUMBER_OF_DAILY_MISSIONS,
+  NUMBER_OF_WEEKLY_MISSIONS
 } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from './useAuth';
@@ -97,9 +97,23 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     const unsubscribeEvents = onSnapshot(q, (snapshot) => {
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
-        const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        if (data.endTime.toMillis() > now.toMillis()) {
-          fetchedEvents.push({ id: docSnap.id, ...data });
+        const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+        
+        const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
+          ? (eventDocData.startTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
+        
+        const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
+          ? (eventDocData.endTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000;
+
+        if (endTimeMillis > now.toMillis()) {
+           fetchedEvents.push({ 
+            id: docSnap.id, 
+            ...eventDocData,
+            startTime: startTimeMillis,
+            endTime: endTimeMillis,
+          });
         }
       });
       setActiveGameEvents(fetchedEvents);
@@ -181,8 +195,13 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
           loadedState.displayName = firestoreData.displayName || user?.displayName || INITIAL_GAME_STATE.displayName;
           loadedState.status = firestoreData.status || INITIAL_GAME_STATE.status;
           
-          loadedState.lastLogin = firestoreData.lastLogin || Date.now();
-          loadedState.lastUpdate = firestoreData.lastUpdate || gameStateRef.current.lastUpdate || Date.now();
+          loadedState.lastLogin = firestoreData.lastLogin && typeof firestoreData.lastLogin === 'object' && 'toMillis' in (firestoreData.lastLogin as any)
+            ? (firestoreData.lastLogin as unknown as Timestamp).toMillis()
+            : typeof firestoreData.lastLogin === 'number' ? firestoreData.lastLogin : Date.now();
+
+          loadedState.lastUpdate = firestoreData.lastUpdate && typeof firestoreData.lastUpdate === 'object' && 'toMillis' in (firestoreData.lastUpdate as any)
+            ? (firestoreData.lastUpdate as unknown as Timestamp).toMillis()
+            : typeof firestoreData.lastUpdate === 'number' ? firestoreData.lastUpdate : gameStateRef.current.lastUpdate || Date.now();
           
           let newActiveMissions = assignMainMissions(loadedState.level, loadedState.activeMissions || {}, MAIN_MISSIONS_DATA);
           const dailyResult = refreshTimedMissions(newActiveMissions, loadedState.lastDailyMissionRefresh, DAILY_MISSION_TEMPLATES_DATA, NUMBER_OF_DAILY_MISSIONS, 'daily');
@@ -296,16 +315,22 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
 
           let totalGrowthTimeReduction = currentTierInfo.growthTimeReductionPercent;
           activeGameEvents.forEach(event => {
-            if (event.effects.some(eff => eff.type === 'CROP_GROWTH_TIME_REDUCTION')) {
-                 event.effects.forEach(eff => {
-                    if (eff.type === 'CROP_GROWTH_TIME_REDUCTION') {
-                        const affectsAllCrops = eff.affectedItemIds === 'ALL_CROPS';
-                        const affectsSpecificCrop = Array.isArray(eff.affectedItemIds) && eff.affectedItemIds.includes(plot.cropId!);
-                        if (affectsAllCrops || affectsSpecificCrop) {
-                            totalGrowthTimeReduction += eff.value;
-                        }
-                    }
-                 });
+            // Check if event.startTime and event.endTime are numbers
+            const eventStartTime = typeof event.startTime === 'number' ? event.startTime : 0;
+            const eventEndTime = typeof event.endTime === 'number' ? event.endTime : 0;
+            
+            if (now >= eventStartTime && now <= eventEndTime) {
+              if (event.effects.some(eff => eff.type === 'CROP_GROWTH_TIME_REDUCTION')) {
+                   event.effects.forEach(eff => {
+                      if (eff.type === 'CROP_GROWTH_TIME_REDUCTION') {
+                          const affectsAllCrops = eff.affectedItemIds === 'ALL_CROPS';
+                          const affectsSpecificCrop = Array.isArray(eff.affectedItemIds) && eff.affectedItemIds.includes(plot.cropId!);
+                          if (affectsAllCrops || affectsSpecificCrop) {
+                              totalGrowthTimeReduction += eff.value;
+                          }
+                      }
+                   });
+              }
             }
           });
           totalGrowthTimeReduction = Math.min(totalGrowthTimeReduction, MAX_GROWTH_TIME_REDUCTION_CAP);
@@ -334,9 +359,10 @@ export const useGameStateCore = ({ cropData, itemDataLoaded, fertilizerDataLoade
     }, 1000);
 
     return () => clearInterval(gameLoopInterval);
-  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]);
+  }, [gameDataLoaded, itemDataLoaded, userId, cropData, activeGameEvents, playerTierInfo]); // playerTierInfo was missing
 
   const isInitialized = gameDataLoaded && itemDataLoaded && fertilizerDataLoaded && !!userId && !authLoading && !!cropData;
 
   return { gameState, setGameState, isInitialized, playerTierInfo, gameDataLoaded, activeGameEvents };
 };
+

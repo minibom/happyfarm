@@ -1,10 +1,10 @@
 
 'use client';
 
-// Removed: import type { Metadata } from 'next';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
+import { db, analytics } from '@/lib/firebase'; // Added analytics
+import { logEvent } from 'firebase/analytics'; // Added logEvent
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, where, getDocs } from 'firebase/firestore';
 
 import ResourceBar from '@/components/game/ResourceBar';
@@ -38,15 +38,6 @@ import { useToast } from '@/hooks/use-toast';
 import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
 import { useFriends } from '@/hooks/useFriends';
 
-// Removed metadata export:
-// export const metadata: Metadata = {
-//   title: 'Chơi Game Happy Farm',
-//   description: 'Vào game Happy Farm và bắt đầu hành trình nông trại của bạn.',
-//   robots: {
-//     index: false,
-//     follow: false,
-//   },
-// };
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
@@ -148,19 +139,16 @@ export default function GamePage() {
             const greetingOutput = await generateWelcomeGreeting();
             setAiGreeting(greetingOutput.greeting);
           } catch (aiError) {
-            console.error("AI greeting generation failed:", aiError);
             setAiGreeting("Chào mừng bạn trở lại Happy Farm! Chúc bạn một ngày vui vẻ!");
           }
         }
         setShowWelcomePopup(true);
         sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
       } catch (error) {
-        console.error("Error fetching active events for popup:", error);
         try {
             const greetingOutput = await generateWelcomeGreeting();
             setAiGreeting(greetingOutput.greeting);
         } catch (aiError) {
-            console.error("AI greeting generation failed after event error:", aiError);
             setAiGreeting("Chào bạn! Nông trại luôn chào đón bạn!");
         }
         setShowWelcomePopup(true);
@@ -194,7 +182,6 @@ export default function GamePage() {
       });
       setMailMessages(mails);
     }, (error) => {
-      console.error("Error fetching mail:", error);
       toast({ title: "Lỗi Hộp Thư", description: "Không thể tải thư của bạn.", variant: "destructive" });
     });
 
@@ -360,7 +347,6 @@ export default function GamePage() {
     try {
       await updateDoc(mailRef, { isRead: true });
     } catch (error) {
-      console.error("Error marking mail as read:", error);
       toast({ title: "Lỗi", description: "Không thể đánh dấu thư đã đọc.", variant: "destructive"});
     }
   };
@@ -379,7 +365,7 @@ export default function GamePage() {
      if (mailToClaim.bonusId && gameState.claimedBonuses[mailToClaim.bonusId]) {
       toast({ title: "Bonus Đã Nhận", description: "Bạn đã nhận phần thưởng bonus này rồi.", variant: "default" });
       const mailRef = doc(db, 'users', userId, 'mail', mailId);
-      try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { console.error("Error updating mail for already claimed bonus:", e);}
+      try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { console.warn("Error updating mail for already claimed bonus:", e);}
       return;
     }
 
@@ -389,10 +375,12 @@ export default function GamePage() {
       try {
         await updateDoc(mailRef, { isClaimed: true, isRead: true });
       } catch (error) {
-        console.error("Error marking mail as claimed (no rewards):", error);
+        console.warn("Error marking mail as claimed (no rewards):", error);
       }
       return;
     }
+
+    let claimedRewardsAnalytics: { type: string, value?: number, item_id?: string, quantity?: number }[] = [];
 
     setGameState(prev => {
       if (!prev) return INITIAL_GAME_STATE;
@@ -403,10 +391,17 @@ export default function GamePage() {
       const newClaimedBonuses = { ...newState.claimedBonuses };
 
       mailToClaim.rewards.forEach(reward => {
-        if (reward.type === 'gold' && reward.amount) goldReward += reward.amount;
-        if (reward.type === 'xp' && reward.amount) xpReward += reward.amount;
+        if (reward.type === 'gold' && reward.amount) {
+          goldReward += reward.amount;
+          claimedRewardsAnalytics.push({ type: 'gold', value: reward.amount });
+        }
+        if (reward.type === 'xp' && reward.amount) {
+          xpReward += reward.amount;
+          claimedRewardsAnalytics.push({ type: 'xp', value: reward.amount });
+        }
         if (reward.type === 'item' && reward.itemId && reward.quantity) {
           newInventory[reward.itemId] = (newInventory[reward.itemId] || 0) + reward.quantity;
+          claimedRewardsAnalytics.push({ type: 'item', item_id: reward.itemId, quantity: reward.quantity });
         }
       });
 
@@ -436,8 +431,24 @@ export default function GamePage() {
     try {
       await updateDoc(mailRef, { isClaimed: true, isRead: true });
       toast({ title: "Đã Nhận Quà!", description: `Bạn đã nhận quà từ thư: ${mailToClaim.subject}`, className: "bg-accent text-accent-foreground" });
+      if (analytics) {
+        logEvent(analytics, 'claim_mail_reward', {
+          mail_id: mailId,
+          mail_subject: mailToClaim.subject,
+          rewards_count: claimedRewardsAnalytics.length,
+          source: mailToClaim.bonusId || mailToClaim.senderType,
+        });
+        claimedRewardsAnalytics.forEach(reward => {
+          if (reward.type === 'gold') {
+            logEvent(analytics, 'earn_virtual_currency', { virtual_currency_name: 'gold', value: reward.value });
+          } else if (reward.type === 'xp') {
+            logEvent(analytics, 'earn_virtual_currency', { virtual_currency_name: 'xp', value: reward.value });
+          } else if (reward.type === 'item' && reward.item_id && reward.quantity) {
+            logEvent(analytics, 'receive_item', { item_id: reward.item_id, quantity: reward.quantity, source: 'mail_reward' });
+          }
+        });
+      }
     } catch (error) {
-      console.error("Error claiming rewards in Firestore:", error);
       toast({ title: "Lỗi Nhận Quà", description: "Không thể cập nhật trạng thái thư. Vui lòng thử lại.", variant: "destructive"});
     }
   };
@@ -449,7 +460,6 @@ export default function GamePage() {
       await deleteDoc(mailRef);
       toast({ title: "Đã Xóa Thư", description: "Thư đã được xóa." });
     } catch (error) {
-      console.error("Error deleting mail:", error);
       toast({ title: "Lỗi", description: "Không thể xóa thư.", variant: "destructive"});
     }
   };

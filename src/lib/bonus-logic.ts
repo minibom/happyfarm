@@ -1,16 +1,17 @@
 
 import type { GameState, BonusConfiguration, MailMessage, TierInfo, Mission, PlayerMissionProgress } from '@/types';
-import { db } from '@/lib/firebase';
+import { db, analytics } from '@/lib/firebase'; // Added analytics
+import { logEvent } from 'firebase/analytics'; // Added logEvent
 import { collection, addDoc, serverTimestamp as firestoreServerTimestamp } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { getPlayerTierInfo, INITIAL_UNLOCKED_PLOTS } from './constants';
-import { assignMainMissions } from './mission-logic'; // Import assignMainMissions
+import { assignMainMissions } from './mission-logic'; 
 
 export const sendBonusMail = async (
   userIdForMail: string,
   bonus: BonusConfiguration,
-  dbInstance: Firestore, // Pass db instance
-  toastInstance: Function // Pass toast instance
+  dbInstance: Firestore, 
+  toastInstance: Function 
 ): Promise<void> => {
   if (!userIdForMail) return;
 
@@ -50,6 +51,11 @@ export const checkAndApplyFirstLoginBonus = async (
       tempClaimedBonuses[bonus.id] = true;
       sendBonusMail(userId, bonus, dbInstance, toastInstance);
       firstLoginBonusFoundAndApplied = true;
+      if (analytics) {
+        logEvent(analytics, 'apply_first_login_bonus', {
+            bonus_id: bonus.id,
+        });
+      }
     }
   });
 
@@ -68,13 +74,12 @@ const updateReachLevelMissionProgress = (
   Object.keys(updatedMissions).forEach(key => {
     const mission = updatedMissions[key];
     if (mission.status === 'active' && mission.type === 'reach_level') {
-      // For "reach_level", progress is simply the current level if it's not yet met.
-      // Once targetQuantity (target level) is met or exceeded, it's completed.
       if (newPlayerLevel >= mission.targetQuantity) {
-        updatedMissions[key] = { ...mission, progress: mission.targetQuantity, status: 'completed_pending_claim' };
-        missionChanged = true;
+        if (mission.status !== 'completed_pending_claim') { // Avoid re-triggering if already completed
+            updatedMissions[key] = { ...mission, progress: mission.targetQuantity, status: 'completed_pending_claim' };
+            missionChanged = true;
+        }
       } else {
-        // Update progress to current level if it changed but not yet met target
         if (mission.progress !== newPlayerLevel) {
           updatedMissions[key] = { ...mission, progress: newPlayerLevel };
           missionChanged = true;
@@ -90,11 +95,11 @@ export const checkAndApplyTierUpBonus = async (
   userId: string,
   oldLevel: number,
   newLevel: number,
-  currentGameState: GameState, // Pass the most current game state
+  currentGameState: GameState, 
   setGameState: React.Dispatch<React.SetStateAction<GameState>>,
   dbInstance: Firestore,
   toastInstance: Function,
-  tierDataDefinitions: TierInfo[], // Using TierInfo as it aligns with getPlayerTierInfo structure
+  tierDataDefinitions: TierInfo[], 
   bonusDefinitions: BonusConfiguration[],
   mainMissionDefinitions: Mission[]
 ) => {
@@ -102,6 +107,12 @@ export const checkAndApplyTierUpBonus = async (
   const newTierInfo = getPlayerTierInfo(newLevel);
   
   toastInstance({ title: "Lên Cấp!", description: `Chúc mừng! Bạn đã đạt cấp ${newLevel}!`, className: "bg-primary text-primary-foreground" });
+  if (analytics && userId) {
+    logEvent(analytics, 'level_up', {
+      level: newLevel,
+      character: userId, // Using userId as character identifier
+    });
+  }
   
   let bonusStateChanged = false;
   let tempClaimedBonuses = { ...(currentGameState.claimedBonuses || {}) };
@@ -109,6 +120,13 @@ export const checkAndApplyTierUpBonus = async (
 
   if (newTierInfo.tier > oldTierInfo.tier) {
     toastInstance({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
+    if (analytics && userId) {
+      logEvent(analytics, 'tier_up', { // Custom event
+        tier: newTierInfo.tier,
+        tier_name: newTierInfo.tierName,
+        character: userId,
+      });
+    }
 
     bonusDefinitions.forEach(bonus => {
       if (
@@ -120,13 +138,17 @@ export const checkAndApplyTierUpBonus = async (
         tempClaimedBonuses[bonus.id] = true;
         sendBonusMail(userId, bonus, dbInstance, toastInstance); 
         bonusStateChanged = true;
+        if (analytics) {
+            logEvent(analytics, 'apply_tier_up_bonus', {
+                bonus_id: bonus.id,
+                tier: newTierInfo.tier,
+            });
+        }
       }
     });
   }
   
-  // Update main missions based on new level
   activeMissionsAfterLevelUp = assignMainMissions(newLevel, activeMissionsAfterLevelUp, mainMissionDefinitions);
-  // Update reach_level mission progress
   activeMissionsAfterLevelUp = updateReachLevelMissionProgress(activeMissionsAfterLevelUp, newLevel);
 
   const missionsChanged = JSON.stringify(activeMissionsAfterLevelUp) !== JSON.stringify(currentGameState.activeMissions || {});
@@ -163,6 +185,12 @@ export const checkAndApplyPlotUnlockBonus = async (
         tempClaimedBonuses[bonus.id] = true;
         sendBonusMail(userId, bonus, dbInstance, toastInstance);
         bonusStateChanged = true;
+        if (analytics) {
+            logEvent(analytics, 'apply_plot_unlock_bonus', {
+                bonus_id: bonus.id,
+                trigger_type: 'firstPlotUnlock',
+            });
+        }
       }
     });
   }
@@ -174,6 +202,14 @@ export const checkAndApplyPlotUnlockBonus = async (
           tempClaimedBonuses[plots15Bonus.id] = true;
           sendBonusMail(userId, plots15Bonus, dbInstance, toastInstance);
           bonusStateChanged = true;
+           if (analytics) {
+            logEvent(analytics, 'apply_plot_unlock_bonus', {
+                bonus_id: plots15Bonus.id,
+                trigger_type: 'specialEvent',
+                trigger_value: 'plots_15',
+                unlocked_plots: newUnlockedPlotsCount,
+            });
+          }
       }
   }
   

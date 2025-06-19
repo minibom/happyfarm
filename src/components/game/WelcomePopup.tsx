@@ -36,14 +36,19 @@ const WelcomePopup: FC<WelcomePopupProps> = ({
 
   const formatTimestampForDisplay = (timestamp: any): string => {
     if (!timestamp) return 'N/A';
-    if (timestamp.toDate) {
+    // Assuming timestamp is already a number (milliseconds) as handled in useMarket and useGameStateCore
+    if (typeof timestamp === 'number') {
+        try {
+            return format(new Date(timestamp), "HH:mm 'ngày' dd/MM/yyyy");
+        } catch (e) {
+            return 'Ngày không hợp lệ';
+        }
+    }
+    // Fallback for direct Firestore Timestamp object (should ideally not happen in this component)
+    if (timestamp.toDate) { 
       return format(timestamp.toDate(), "HH:mm 'ngày' dd/MM/yyyy");
     }
-    try {
-      return format(new Date(timestamp), "HH:mm 'ngày' dd/MM/yyyy");
-    } catch (e) {
-      return 'Ngày không hợp lệ';
-    }
+    return 'Ngày không hợp lệ';
   };
 
   const getEffectSummary = (effects: ActiveGameEvent['effects']) => {
@@ -129,3 +134,4 @@ const WelcomePopup: FC<WelcomePopupProps> = ({
 };
 
 export default WelcomePopup;
+

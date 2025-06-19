@@ -4,7 +4,8 @@
 import type { ReactNode } from 'react';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, analytics } from '@/lib/firebase'; // Added analytics
+import { logEvent } from 'firebase/analytics'; // Added logEvent
 import type { User as FirebaseUser, AuthError } from 'firebase/auth';
 import {
   createUserWithEmailAndPassword,
@@ -12,7 +13,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import type { GameState } from '@/types';
 import { INITIAL_GAME_STATE } from '@/lib/constants';
 import { generateDisplayName } from '@/ai/flows/generate-display-name';
@@ -50,13 +51,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserId(firebaseUser.uid);
         setError(null);
 
-        // Update lastLogin for the top-level user document
         try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         } catch (e) {
           console.error("Failed to update lastLogin for user:", e);
-          // Non-critical error, app can continue
         }
 
         if (pathname === '/login' || pathname === '/register') {
@@ -87,8 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             finalDisplayName = aiNameOutput.displayName;
             toast({ title: "Tên AI Đã Tạo!", description: `Tên của bạn là: ${finalDisplayName}`, className: "bg-accent text-accent-foreground" });
         } catch (aiError) {
-            console.error("AI name generation failed:", aiError);
-            finalDisplayName = email.split('@')[0] || `Farmer${Date.now().toString().slice(-4)}`; // Fallback name
+            finalDisplayName = email.split('@')[0] || `Farmer${Date.now().toString().slice(-4)}`; 
             toast({ title: "Lỗi Tạo Tên AI", description: `Sử dụng tên tạm: ${finalDisplayName}`, variant: "destructive" });
         }
       }
@@ -97,14 +95,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const uid = userCredential.user.uid;
       const userEmail = userCredential.user.email;
 
-      // Create GameState in subcollection
       const initialGs: GameState = {
         ...INITIAL_GAME_STATE,
         inventory: { ...INITIAL_GAME_STATE.inventory }, 
         plots: INITIAL_GAME_STATE.plots.map(p => ({ ...p })), 
         email: userEmail || undefined,
         displayName: finalDisplayName,
-        lastLogin: Date.now(), // Use client-side timestamp for initial GameState consistency
+        lastLogin: Date.now(), 
         lastUpdate: Date.now(),
         status: 'active',
         unlockedPlotsCount: INITIAL_GAME_STATE.unlockedPlotsCount,
@@ -113,15 +110,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const gameDocRef = doc(db, 'users', uid, 'gameState', 'data');
       await setDoc(gameDocRef, initialGs);
 
-      // Create top-level user document for admin querying
       const userDocRef = doc(db, 'users', uid);
       await setDoc(userDocRef, {
         email: userEmail,
         displayName: finalDisplayName,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(), 
-        uid: uid, // Often useful to have uid also in the document
+        uid: uid, 
       });
+
+      if (analytics) {
+        logEvent(analytics, 'sign_up', { method: 'email' });
+      }
 
     } catch (e) {
       setError(e as AuthError);
@@ -134,8 +134,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
-      // onAuthStateChanged will handle updating lastLogin for the top-level doc
       await signInWithEmailAndPassword(auth, email, password);
+      if (analytics) {
+        logEvent(analytics, 'login', { method: 'email' });
+      }
     } catch (e) {
       setError(e as AuthError);
       setLoading(false);
@@ -149,6 +151,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signOut(auth);
       setInitialGameState(undefined);
+      // No specific Firebase Analytics 'log_out' event, session end is tracked automatically
+      // If a custom event is desired, it could be added here:
+      // if (analytics) { logEvent(analytics, 'custom_logout'); }
     } catch (e) {
       setError(e as AuthError);
     }

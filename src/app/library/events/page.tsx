@@ -13,13 +13,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-// Removed metadata export
 
 export default function LibraryEventsPage() {
   const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getItemDetails } = useMarket();
+  const { getItemDetails } = useMarket(); // Using market hook to get consistent item details
 
   useEffect(() => {
     const now = Timestamp.now();
@@ -33,16 +32,31 @@ export default function LibraryEventsPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
-        const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        if (data.endTime.toMillis() > now.toMillis()) {
-          fetchedEvents.push({ id: docSnap.id, ...data });
+        const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+        
+        // Ensure startTime and endTime are numbers (milliseconds)
+        const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
+          ? (eventDocData.startTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
+        
+        const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
+          ? (eventDocData.endTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000;
+
+        if (endTimeMillis > now.toMillis()) {
+          fetchedEvents.push({ 
+            id: docSnap.id, 
+            ...eventDocData,
+            startTime: startTimeMillis,
+            endTime: endTimeMillis,
+          });
         }
       });
-      setActiveEvents(fetchedEvents.sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis()));
+      setActiveEvents(fetchedEvents.sort((a,b) => (a.startTime as number) - (b.startTime as number)));
       setIsLoading(false);
       setError(null);
     }, (err) => {
-      console.error("Error fetching active game events:", err);
+      console.error("Error fetching active game events for library:", err);
       setError("Không thể tải thông tin sự kiện. Vui lòng thử lại sau.");
       setIsLoading(false);
       setActiveEvents([]);
@@ -51,7 +65,7 @@ export default function LibraryEventsPage() {
     return () => unsubscribe();
   }, []);
 
-  const getAffectedItemInfo = (itemId?: MarketItemId | 'ALL_CROPS' | 'ALL_SEEDS' | 'ALL_FERTILIZERS' | InventoryItem[]) => {
+  const getAffectedItemInfoDisplay = (itemId?: MarketItemId | 'ALL_CROPS' | 'ALL_SEEDS' | 'ALL_FERTILIZERS' | InventoryItem[]) => {
     if (!itemId) return null;
     if (typeof itemId === 'string' && itemId.startsWith('ALL_')) {
         return { name: itemId.replace('ALL_', 'Tất Cả ').toLowerCase(), icon: '🏷️', type: 'Danh Mục' };
@@ -139,7 +153,7 @@ export default function LibraryEventsPage() {
           </div>
         ) : (
           activeEvents.map(event => {
-            const affectedItemInfo = event.effects.length > 0 ? getAffectedItemInfo(event.effects[0].affectedItemIds) : null;
+            const affectedItemInfo = event.effects.length > 0 ? getAffectedItemInfoDisplay(event.effects[0].affectedItemIds) : null;
             const displayEffect = getEffectDisplayInfo(event);
             return (
               <Card key={event.id} className="bg-gradient-to-br from-primary/10 via-background to-accent/10 border-primary/30 shadow-lg">
@@ -173,7 +187,7 @@ export default function LibraryEventsPage() {
                       <CalendarDays className="w-4 h-4 text-muted-foreground" />
                       <span>
                         <span className="font-semibold">Kết thúc vào: </span> 
-                        {new Date(event.endTime.toDate()).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(event.endTime as number).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   )}
@@ -189,3 +203,4 @@ export default function LibraryEventsPage() {
     </Card>
   );
 }
+

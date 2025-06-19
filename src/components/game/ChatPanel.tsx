@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { rtdb } from '@/lib/firebase';
+import { rtdb, analytics } from '@/lib/firebase'; // Added analytics
+import { logEvent } from 'firebase/analytics'; // Added logEvent
 import { ref, onValue, push, serverTimestamp, query, orderByChild, limitToLast } from 'firebase/database';
 import type { ChatMessage, GameState } from '@/types';
 import { cn } from '@/lib/utils';
@@ -70,18 +71,25 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
       return;
     }
 
-    if (newMessage.trim() === '') return;
+    const trimmedMessage = newMessage.trim();
+    if (trimmedMessage === '') return;
 
     const senderDisplayName = gameState.displayName || user.email?.split('@')[0] || 'AnonymousFarmer';
 
     const messageData: Omit<ChatMessage, 'id'> = {
       senderUid: user.uid,
       senderDisplayName: senderDisplayName,
-      text: newMessage.trim(),
+      text: trimmedMessage,
       timestamp: serverTimestamp() as any,
     };
 
     push(ref(rtdb, 'messages'), messageData);
+    if (analytics) {
+      logEvent(analytics, 'send_chat_message', {
+        message_length: trimmedMessage.length,
+        // character: user.uid (optional, for tying event to user if not auto-tracked)
+      });
+    }
     setNewMessage('');
   };
 
@@ -135,14 +143,14 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
                     className={cn(
                       "text-xs font-semibold mb-0.5 p-0 h-auto leading-none",
                       msg.senderUid === user?.uid ? "text-primary-foreground/90 hover:text-primary-foreground" : "text-accent hover:text-accent/80",
-                      !onUsernameClick && "pointer-events-none" // Disable button style if no handler
+                      !onUsernameClick && "pointer-events-none" 
                     )}
                     onClick={() => {
                       if (onUsernameClick) {
                         onUsernameClick(msg.senderUid, msg.senderDisplayName);
                       }
                     }}
-                    disabled={!onUsernameClick} // Semantically disable if no handler
+                    disabled={!onUsernameClick} 
                   >
                     {msg.senderDisplayName || 'Người chơi'}
                   </Button>

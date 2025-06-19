@@ -36,23 +36,27 @@ export const useMarket = (): MarketData => {
           const validatedPrices = { ...INITIAL_MARKET_STATE.prices, ...(data.prices || {}) };
           const validatedPriceChanges = { ...INITIAL_MARKET_STATE.priceChanges, ...(data.priceChanges || {}) };
           
-          // Ensure lastUpdated is a number (milliseconds)
           let lastUpdatedTimestamp: number;
           if (data.lastUpdated && typeof data.lastUpdated === 'object' && 'toMillis' in data.lastUpdated) {
-            // It's a Firestore Timestamp
             lastUpdatedTimestamp = (data.lastUpdated as unknown as Timestamp).toMillis();
           } else if (typeof data.lastUpdated === 'number') {
-            // It's already a number
             lastUpdatedTimestamp = data.lastUpdated;
           } else {
-            // Fallback
             lastUpdatedTimestamp = INITIAL_MARKET_STATE.lastUpdated;
+          }
+
+          let currentEventData: MarketEventData | null = data.currentEvent || INITIAL_MARKET_STATE.currentEvent;
+          if (currentEventData && currentEventData.expiresAt && typeof currentEventData.expiresAt === 'object' && 'toMillis' in currentEventData.expiresAt) {
+            currentEventData = {
+              ...currentEventData,
+              expiresAt: (currentEventData.expiresAt as unknown as Timestamp).toMillis()
+            };
           }
 
           setMarketState({
             prices: validatedPrices,
             priceChanges: validatedPriceChanges,
-            currentEvent: data.currentEvent || INITIAL_MARKET_STATE.currentEvent,
+            currentEvent: currentEventData,
             lastUpdated: lastUpdatedTimestamp,
           });
         } else {
@@ -78,9 +82,23 @@ export const useMarket = (): MarketData => {
     const unsubscribeEvents = onSnapshot(q, (snapshot) => {
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
-        const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        if (data.endTime.toMillis() > now.toMillis()) {
-          fetchedEvents.push({ id: docSnap.id, ...data });
+        const eventDocData = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
+        // Ensure startTime and endTime are numbers (milliseconds) in the ActiveGameEvent state
+        const startTimeMillis = eventDocData.startTime && typeof eventDocData.startTime === 'object' && 'toMillis' in eventDocData.startTime
+          ? (eventDocData.startTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.startTime === 'number' ? eventDocData.startTime : Date.now();
+        
+        const endTimeMillis = eventDocData.endTime && typeof eventDocData.endTime === 'object' && 'toMillis' in eventDocData.endTime
+          ? (eventDocData.endTime as unknown as Timestamp).toMillis()
+          : typeof eventDocData.endTime === 'number' ? eventDocData.endTime : Date.now() + 24 * 60 * 60 * 1000; // Default to 1 day from now if invalid
+
+        if (endTimeMillis > now.toMillis()) {
+          fetchedEvents.push({ 
+            id: docSnap.id, 
+            ...eventDocData,
+            startTime: startTimeMillis, // Store as number
+            endTime: endTimeMillis,     // Store as number
+          });
         }
       });
       setActiveMarketEvents(fetchedEvents);
@@ -142,16 +160,13 @@ export const useMarket = (): MarketData => {
       const getBestModifier = (effectsToConsider: typeof potentiallyApplicableEffects) => {
         if (effectsToConsider.length === 0) return undefined;
         let bestVal: number | undefined = undefined;
-        // let bestEvtName: string | undefined;
-
+        
         if (itemType === 'seed' || itemType === 'fertilizer') { 
           bestVal = Math.min(...effectsToConsider.map(e => e.effect.value));
-          // bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
         } else { 
           bestVal = Math.max(...effectsToConsider.map(e => e.effect.value));
-          // bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
         }
-        return bestVal; // Only return the value for simplicity in choosing
+        return bestVal;
       };
 
       const specificBestValue = getBestModifier(specificEffects);
@@ -216,3 +231,4 @@ export const useMarket = (): MarketData => {
     getItemDetails,
   };
 };
+
