@@ -1,94 +1,181 @@
 
-import type { Mission, MissionReward } from '@/types';
+import type { Mission, MissionReward, InventoryItem } from '@/types';
 
 const GOLD = (amount: number): MissionReward => ({ type: 'gold', amount });
 const XP = (amount: number): MissionReward => ({ type: 'xp', amount });
-const ITEM = (itemId: MissionReward['itemId'], quantity: number): MissionReward => ({ type: 'item', itemId, quantity });
+const ITEM = (itemId: InventoryItem, quantity: number): MissionReward => ({ type: 'item', itemId, quantity });
 
 export const MAIN_MISSIONS_DATA: Mission[] = [
-  // Level 1-5 Introduction
-  { id: 'main_harvest_tomato_10', title: 'Nông Dân Tập Sự', description: 'Thu hoạch 10 Cà Chua đầu tiên.', category: 'main', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 10, requiredLevelUnlock: 1, rewards: [GOLD(50), XP(20)] },
-  { id: 'main_plant_carrot_5', title: 'Gieo Mầm Hy Vọng', description: 'Trồng 5 hạt Cà Rốt.', category: 'main', type: 'plant_seed', targetItemId: 'carrotSeed', targetQuantity: 5, requiredLevelUnlock: 1, rewards: [GOLD(30), XP(15), ITEM('tomatoSeed', 2)] },
-  { id: 'main_reach_level_2', title: 'Bước Đầu Khởi Nghiệp', description: 'Đạt cấp độ 2.', category: 'main', type: 'reach_level', targetQuantity: 2, requiredLevelUnlock: 1, rewards: [GOLD(100), ITEM('t1_basicGrow', 1)] },
-  { id: 'main_sell_corn_5', title: 'Giao Thương Đầu Tiên', description: 'Bán 5 bắp Ngô tại chợ.', category: 'main', type: 'sell_item', targetItemId: 'corn', targetQuantity: 5, requiredLevelUnlock: 2, rewards: [GOLD(75), XP(30)] },
-  { id: 'main_unlock_plots_2', title: 'Mở Mang Bờ Cõi', description: 'Mở khóa thêm 2 ô đất (ngoài các ô ban đầu).', category: 'main', type: 'unlock_plots', targetQuantity: 2, requiredLevelUnlock: 3, rewards: [GOLD(150), ITEM('strawberrySeed', 5)] },
+  // --- Tutorial & Early Game (Levels 1-10) ---
+  { id: 'main_harvest_tomato_5', title: 'Những Trái Cà Chua Đầu Tiên', description: 'Thu hoạch 5 Cà Chua đầu tiên từ nông trại của bạn.', category: 'main', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 5, requiredLevelUnlock: 1, rewards: [GOLD(20), XP(10)], icon: '🍅' },
+  { id: 'main_plant_carrot_3', title: 'Gieo Mầm Cà Rốt', description: 'Trồng 3 hạt Cà Rốt xuống ô đất trống.', category: 'main', type: 'plant_seed', targetItemId: 'carrotSeed', targetQuantity: 3, requiredLevelUnlock: 1, rewards: [GOLD(15), XP(8), ITEM('tomatoSeed', 2)], icon: '🥕' },
+  { id: 'main_sell_corn_2', title: 'Thương Vụ Đầu Tay', description: 'Bán 2 bắp Ngô tại chợ để làm quen.', category: 'main', type: 'sell_item', targetItemId: 'corn', targetQuantity: 2, requiredLevelUnlock: 1, rewards: [GOLD(30), XP(10)], icon: '🌽' },
+  { id: 'main_reach_level_2', title: 'Bước Tiến Nhỏ', description: 'Đạt được cấp độ 2.', category: 'main', type: 'reach_level', targetQuantity: 2, requiredLevelUnlock: 1, rewards: [GOLD(50), ITEM('t1_basicGrow', 1)], icon: '📈' },
+  { id: 'main_buy_seeds_strawberry', title: 'Hạt Giống Mới', description: 'Mua 5 hạt Dâu Tây từ chợ.', category: 'main', type: 'buy_item', targetItemId: 'strawberrySeed', targetQuantity: 5, requiredLevelUnlock: 2, rewards: [XP(20)], icon: '🍓' },
+  { id: 'main_unlock_first_new_plot', title: 'Mở Rộng Đất Đai', description: 'Mở khóa ô đất mới đầu tiên (ô thứ 11).', category: 'main', type: 'unlock_plots', targetQuantity: 1, requiredLevelUnlock: 3, rewards: [GOLD(100), XP(30)], icon: '🏞️' }, // TargetQuantity refers to "new" plots unlocked beyond initial
+  { id: 'main_harvest_potato_10', title: 'Thu Hoạch Khoai Tây', description: 'Thu hoạch 10 củ Khoai Tây.', category: 'main', type: 'harvest_crop', targetItemId: 'potato', targetQuantity: 10, requiredLevelUnlock: 4, rewards: [GOLD(80), XP(25)], icon: '🥔' },
+  { id: 'main_use_fertilizer_basic_1', title: 'Chăm Sóc Cây Trồng', description: 'Sử dụng Phân Bón Thường (t1_basicGrow) 1 lần.', category: 'main', type: 'use_fertilizer', targetItemId: 't1_basicGrow', targetQuantity: 1, requiredLevelUnlock: 5, rewards: [ITEM('t1_quickSoil', 1)], icon: '🧪' },
+  { id: 'main_earn_gold_500', title: 'Tích Lũy Vốn Liếng', description: 'Kiếm được tổng cộng 500 vàng.', category: 'main', type: 'earn_gold', targetQuantity: 500, requiredLevelUnlock: 6, rewards: [GOLD(100), XP(50)], icon: '💰' },
+  { id: 'main_reach_level_5', title: 'Nông Dân Chăm Chỉ', description: 'Đạt được cấp độ 5.', category: 'main', type: 'reach_level', targetQuantity: 5, requiredLevelUnlock: 4, rewards: [GOLD(150), ITEM('lettuceSeed', 5)], icon: '🧑‍🌾' },
 
-  // Level 6-10
-  { id: 'main_harvest_strawberry_20', title: 'Vườn Dâu Trĩu Quả', description: 'Thu hoạch 20 Dâu Tây.', category: 'main', type: 'harvest_crop', targetItemId: 'strawberry', targetQuantity: 20, requiredLevelUnlock: 5, rewards: [GOLD(120), XP(50)] },
-  { id: 'main_use_fertilizer_t1_basicGrow_3', title: 'Chăm Sóc Đất Đai', description: 'Sử dụng Phân Bón Thường 3 lần.', category: 'main', type: 'use_fertilizer', targetItemId: 't1_basicGrow', targetQuantity: 3, requiredLevelUnlock: 6, rewards: [GOLD(80), ITEM('t1_quickSoil', 2)] },
-  { id: 'main_reach_level_10', title: 'Chủ Vườn Tiềm Năng', description: 'Đạt cấp độ 10.', category: 'main', type: 'reach_level', targetQuantity: 10, requiredLevelUnlock: 8, rewards: [GOLD(300), XP(100), ITEM('blueberrySeed', 3)] },
-  { id: 'main_buy_potatoSeed_10', title: 'Đầu Tư Hạt Giống', description: 'Mua 10 hạt Khoai Tây.', category: 'main', type: 'buy_item', targetItemId: 'potatoSeed', targetQuantity: 10, requiredLevelUnlock: 7, rewards: [XP(40)] },
-  { id: 'main_earn_gold_1000', title: 'Tích Lũy Của Cải', description: 'Kiếm được tổng cộng 1000 vàng.', category: 'main', type: 'earn_gold', targetQuantity: 1000, requiredLevelUnlock: 9, rewards: [GOLD(200), ITEM('t2_farmBoost', 1)] },
+  // --- Mid Game Progression (Levels 11-30) ---
+  { id: 'main_plant_blueberry_8', title: 'Vườn Việt Quất', description: 'Trồng 8 hạt Việt Quất.', category: 'main', type: 'plant_seed', targetItemId: 'blueberrySeed', targetQuantity: 8, requiredLevelUnlock: 11, rewards: [GOLD(100), XP(40)], icon: '🫐' },
+  { id: 'main_sell_onion_20', title: 'Chuyên Gia Hành Tây', description: 'Bán 20 củ Hành Tây.', category: 'main', type: 'sell_item', targetItemId: 'onion', targetQuantity: 20, requiredLevelUnlock: 12, rewards: [GOLD(200), XP(60)], icon: '🧅' },
+  { id: 'main_reach_level_10', title: 'Tay Nghề Vững Vàng', description: 'Đạt cấp độ 10.', category: 'main', type: 'reach_level', targetQuantity: 10, requiredLevelUnlock: 9, rewards: [GOLD(250), XP(100), ITEM('t2_farmBoost', 1)], icon: '🏆' },
+  { id: 'main_use_fertilizer_t2_3', title: 'Nâng Cấp Phân Bón', description: 'Sử dụng 3 lần phân bón bậc 2 (vd: Phân Chuồng Cao Cấp).', category: 'main', type: 'use_fertilizer', targetItemId: 't2_farmBoost', targetQuantity: 3, requiredLevelUnlock: 13, rewards: [GOLD(150), XP(70)], icon: '💩' },
+  { id: 'main_unlock_plots_5_new', title: 'Mở Rộng Hơn Nữa', description: 'Mở khóa thêm 5 ô đất mới (tổng cộng 5 ô mới sau ô ban đầu).', category: 'main', type: 'unlock_plots', targetQuantity: 5, requiredLevelUnlock: 15, rewards: [GOLD(500), XP(150)], icon: '🗺️' },
+  { id: 'main_harvest_lemon_15', title: 'Vườn Chanh Trái Vụ', description: 'Thu hoạch 15 quả Chanh Vàng.', category: 'main', type: 'harvest_crop', targetItemId: 'lemon', targetQuantity: 15, requiredLevelUnlock: 16, rewards: [GOLD(300), XP(120)], icon: '🍋' },
+  { id: 'main_reach_level_15', title: 'Nhà Nông Có Tiếng', description: 'Đạt cấp độ 15.', category: 'main', type: 'reach_level', targetQuantity: 15, requiredLevelUnlock: 14, rewards: [GOLD(400), ITEM('eggplantSeed', 5), ITEM('t3_powerGro', 1)], icon: '🌟' },
+  { id: 'main_earn_gold_2500', title: 'Thương Gia Nông Sản', description: 'Kiếm được tổng cộng 2500 vàng.', category: 'main', type: 'earn_gold', targetQuantity: 2500, requiredLevelUnlock: 18, rewards: [GOLD(500), XP(200)], icon: '💼' },
+  { id: 'main_plant_mango_5', title: 'Thử Thách Xoài Cát', description: 'Trồng 5 hạt Xoài.', category: 'main', type: 'plant_seed', targetItemId: 'mangoSeed', targetQuantity: 5, requiredLevelUnlock: 21, rewards: [GOLD(250), XP(100)], icon: '🥭' },
+  { id: 'main_reach_level_20', title: 'Bậc Thầy Canh Tác', description: 'Đạt cấp độ 20.', category: 'main', type: 'reach_level', targetQuantity: 20, requiredLevelUnlock: 19, rewards: [GOLD(600), XP(250), ITEM('t4_superFert', 1)], icon: '🥇' },
+
+  // --- Advanced Game (Levels 31-50) ---
+  { id: 'main_sell_kiwi_20', title: 'Đặc Sản Kiwi', description: 'Bán 20 quả Kiwi.', category: 'main', type: 'sell_item', targetItemId: 'kiwi', targetQuantity: 20, requiredLevelUnlock: 26, rewards: [GOLD(800), XP(300)], icon: '🥝' },
+  { id: 'main_unlock_plots_total_20', title: 'Chủ Đồn Điền', description: 'Mở khóa tổng cộng 20 ô đất.', category: 'main', type: 'unlock_plots', targetQuantity: 20, requiredLevelUnlock: 28, rewards: [GOLD(1000), XP(400)], icon: '🏰' },
+  { id: 'main_reach_level_30', title: 'Lão Nông Triệu Phú', description: 'Đạt cấp độ 30.', category: 'main', type: 'reach_level', targetQuantity: 30, requiredLevelUnlock: 29, rewards: [GOLD(1500), ITEM('t5_ultraNutrient', 1), ITEM('appleSeed', 5)], icon: '🧐' },
+  { id: 'main_harvest_grapes_50', title: 'Mùa Nho Bội Thu', description: 'Thu hoạch 50 chùm Nho.', category: 'main', type: 'harvest_crop', targetItemId: 'grapes', targetQuantity: 50, requiredLevelUnlock: 31, rewards: [GOLD(1200), XP(500)], icon: '🍇' },
+  { id: 'main_use_fertilizer_t5_5', title: 'Dinh Dưỡng Thượng Hạng', description: 'Sử dụng 5 lần phân bón bậc 5 (vd: Dinh Dưỡng Tối Ưu).', category: 'main', type: 'use_fertilizer', targetItemId: 't5_ultraNutrient', targetQuantity: 5, requiredLevelUnlock: 33, rewards: [GOLD(750), XP(300)], icon: '✨🧪' },
+  { id: 'main_earn_gold_10000', title: 'Đại Gia Nông Nghiệp', description: 'Kiếm được tổng cộng 10,000 vàng.', category: 'main', type: 'earn_gold', targetQuantity: 10000, requiredLevelUnlock: 35, rewards: [GOLD(2000), XP(800)], icon: '🤑' },
+  { id: 'main_reach_level_40', title: 'Huyền Thoại Nông Dân', description: 'Đạt cấp độ 40.', category: 'main', type: 'reach_level', targetQuantity: 40, requiredLevelUnlock: 39, rewards: [GOLD(2500), ITEM('t6_gigaGro', 2), ITEM('peachSeed', 3)], icon: '📜' },
+  { id: 'main_plant_pineapple_3', title: 'Vua Dứa', description: 'Trồng 3 hạt Dứa.', category: 'main', type: 'plant_seed', targetItemId: 'pineappleSeed', targetQuantity: 3, requiredLevelUnlock: 41, rewards: [GOLD(1000), XP(400)], icon: '🍍' },
+  { id: 'main_sell_durian_5', title: 'Thử Thách Sầu Riêng', description: 'Bán 5 quả Sầu Riêng.', category: 'main', type: 'sell_item', targetItemId: 'durian', targetQuantity: 5, requiredLevelUnlock: 45, rewards: [GOLD(3000), XP(1000)], icon: '🤢👑' },
+  { id: 'main_reach_level_50', title: 'Đỉnh Cao Danh Vọng', description: 'Đạt cấp độ 50.', category: 'main', type: 'reach_level', targetQuantity: 50, requiredLevelUnlock: 49, rewards: [GOLD(5000), XP(2000), ITEM('t10_hyperHarvest', 1)], icon: '🌌' },
   
-  // ... Add 40 more main missions, increasing complexity and rewards with level
-  // Example structure for higher level missions:
-  { id: 'main_harvest_blueberry_50', title: 'Chuyên Gia Việt Quất', description: 'Thu hoạch 50 Việt Quất.', category: 'main', type: 'harvest_crop', targetItemId: 'blueberry', targetQuantity: 50, requiredLevelUnlock: 11, rewards: [GOLD(250), XP(120), ITEM('onionSeed', 5)] },
-  { id: 'main_reach_level_20', title: 'Nhà Nông Lão Luyện', description: 'Đạt cấp độ 20.', category: 'main', type: 'reach_level', targetQuantity: 20, requiredLevelUnlock: 18, rewards: [GOLD(1000), XP(500), ITEM('t3_powerGro', 2)] },
-  { id: 'main_sell_lemon_30', title: 'Thương Nhân Chanh Vàng', description: 'Bán 30 quả Chanh Vàng.', category: 'main', type: 'sell_item', targetItemId: 'lemon', targetQuantity: 30, requiredLevelUnlock: 22, rewards: [GOLD(600), XP(250)] },
-  { id: 'main_unlock_plots_total_15', title: 'Bá Chủ Đất Đai', description: 'Mở khóa tổng cộng 15 ô đất.', category: 'main', type: 'unlock_plots', targetQuantity: 15, requiredLevelUnlock: 25, rewards: [GOLD(800), ITEM('mangoSeed', 3)] },
-  { id: 'main_harvest_mango_10', title: 'Vườn Xoài Trái Mùa', description: 'Thu hoạch 10 quả Xoài.', category: 'main', type: 'harvest_crop', targetItemId: 'mango', targetQuantity: 10, requiredLevelUnlock: 30, rewards: [GOLD(1200), XP(400)] },
-  // Placeholder for more main missions
-  ...Array.from({ length: 45 - 5 }, (_, i) => ({
-    id: `main_placeholder_${i + 5}`,
-    title: `Nhiệm Vụ Chính ${i + 6}`,
-    description: `Mô tả cho nhiệm vụ chính thứ ${i + 6}.`,
+  // Additional 20 Main Missions (Placeholder for future expansion, making it 50 total)
+  // For now, these will be challenging and high-reward.
+  ...Array.from({ length: 20 }, (_, i) => ({
+    id: `main_epic_quest_${i + 1}`,
+    title: `Chinh Phục Huyền Thoại ${i + 1}`,
+    description: `Hoàn thành thử thách nông trại vĩ đại thứ ${i + 1}.`,
     category: 'main' as const,
-    type: 'reach_level' as const,
-    targetQuantity: 25 + i * 2, // Example progression
-    requiredLevelUnlock: 10 + i * 2,
-    rewards: [GOLD(200 + i * 50), XP(100 + i * 20)],
+    type: (['harvest_crop', 'earn_gold', 'reach_level'] as const)[i % 3],
+    targetItemId: (['pineapple', undefined, undefined] as const)[i % 3] as InventoryItem | undefined,
+    targetQuantity: 50 + i * 10,
+    requiredLevelUnlock: 50 + i * 2, // Start unlocking after level 50
+    rewards: [GOLD(5000 + i * 1000), XP(2000 + i * 500), ITEM('t10_hyperHarvest', 1)],
+    icon: (['🌠', '💎', '💫'] as const)[i % 3],
   })),
 ];
 
 export const DAILY_MISSION_TEMPLATES_DATA: Mission[] = [
-  { id: 'daily_harvest_any_20', title: 'Thu Hoạch Nhanh', description: 'Thu hoạch 20 cây trồng bất kỳ.', category: 'daily', type: 'harvest_crop', targetQuantity: 20, rewards: [GOLD(50), XP(20)], icon: '🌾' },
-  { id: 'daily_plant_any_10', title: 'Gieo Mầm Xanh', description: 'Trồng 10 hạt giống bất kỳ.', category: 'daily', type: 'plant_seed', targetQuantity: 10, rewards: [GOLD(40), XP(15)], icon: '🌱' },
-  { id: 'daily_sell_any_100g', title: 'Buôn Bán Nhỏ', description: 'Bán nông sản và kiếm được 100 vàng.', category: 'daily', type: 'earn_gold', targetQuantity: 100, rewards: [ITEM('tomatoSeed', 3), XP(10)], icon: '💰' },
-  { id: 'daily_use_fertilizer_any_2', title: 'Bón Phân Cho Cây', description: 'Sử dụng 2 lần phân bón bất kỳ.', category: 'daily', type: 'use_fertilizer', targetQuantity: 2, rewards: [GOLD(30), ITEM('t1_basicGrow', 1)], icon: '🧪' },
-  { id: 'daily_harvest_specific_tomato_5', title: 'Ngày Cà Chua', description: 'Thu hoạch 5 Cà Chua.', category: 'daily', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 5, rewards: [GOLD(60), XP(25)], icon: '🍅' },
-  { id: 'daily_buy_seeds_3_types', title: 'Đa Dạng Hóa', description: 'Mua ít nhất 3 loại hạt giống khác nhau (mỗi loại ít nhất 1).', category: 'daily', type: 'buy_item', targetQuantity: 3, rewards: [XP(50)], icon: '🛍️' }, // This type might need specific logic for "types"
-  { id: 'daily_reach_xp_50', title: 'Chăm Chỉ Mỗi Ngày', description: 'Kiếm thêm 50 XP.', category: 'daily', type: 'earn_gold', targetQuantity: 50, rewards: [GOLD(70)], icon: '⭐' }, // Reusing earn_gold for XP gain for simplicity, could be 'earn_xp'
-  { id: 'daily_plant_tier1_5', title: 'Vun Trồng Cơ Bản', description: 'Trồng 5 hạt giống bậc 1.', category: 'daily', type: 'plant_seed', targetQuantity: 5, rewards: [ITEM('carrotSeed', 2)], icon: '🥕' }, // Requires logic to check seed tier
-  { id: 'daily_sell_corn_10', title: 'Chợ Ngô Nhộn Nhịp', description: 'Bán 10 bắp Ngô.', category: 'daily', type: 'sell_item', targetItemId: 'corn', targetQuantity: 10, rewards: [GOLD(80)], icon: '🌽' },
-  { id: 'daily_login_streak_dummy', title: 'Điểm Danh Chuyên Cần', description: 'Đăng nhập vào game (Phần thưởng này tượng trưng cho việc hoàn thành 1 NV ngày).', category: 'daily', type: 'reach_level', targetQuantity: 1, rewards: [GOLD(20)], icon: '📅' }, // Dummy for completing a daily task
+  { id: 'daily_harvest_common_15', title: 'Nông Sản Hàng Ngày', description: 'Thu hoạch 15 cây trồng bậc 1 (Cà Chua, Cà Rốt, Ngô, Dâu Tây, Khoai Tây hoặc Xà Lách).', category: 'daily', type: 'harvest_crop', targetQuantity: 15, rewards: [GOLD(60), XP(25)], icon: '🧺' },
+  { id: 'daily_plant_any_8', title: 'Vườn Ươm Mỗi Ngày', description: 'Trồng 8 hạt giống bất kỳ.', category: 'daily', type: 'plant_seed', targetQuantity: 8, rewards: [GOLD(50), XP(20)], icon: '🌱' },
+  { id: 'daily_sell_for_gold_150', title: 'Giao Dịch Sáng Sớm', description: 'Bán nông sản tại chợ và kiếm được 150 vàng.', category: 'daily', type: 'earn_gold', targetQuantity: 150, rewards: [ITEM('tomatoSeed', 4), XP(15)], icon: '💰' },
+  { id: 'daily_use_fertilizer_any_1', title: 'Dưỡng Chất Cho Đất', description: 'Sử dụng 1 lần phân bón bất kỳ.', category: 'daily', type: 'use_fertilizer', targetQuantity: 1, rewards: [GOLD(25), ITEM('t1_basicGrow', 1)], icon: '🧪' },
+  { id: 'daily_harvest_specific_carrot_7', title: 'Ngày Vàng Cà Rốt', description: 'Thu hoạch 7 Cà Rốt.', category: 'daily', type: 'harvest_crop', targetItemId: 'carrot', targetQuantity: 7, rewards: [GOLD(70), XP(30)], icon: '🥕' },
+  { id: 'daily_buy_seeds_any_5', title: 'Mua Sắm Hạt Giống', description: 'Mua 5 hạt giống bất kỳ từ chợ.', category: 'daily', type: 'buy_item', targetQuantity: 5, rewards: [XP(40)], icon: '🛍️' },
+  { id: 'daily_harvest_strawberry_5', title: 'Dâu Tây Ngọt Ngào', description: 'Thu hoạch 5 Dâu Tây.', category: 'daily', type: 'harvest_crop', targetItemId: 'strawberry', targetQuantity: 5, rewards: [GOLD(65), XP(28)], icon: '🍓' },
+  { id: 'daily_plant_corn_4', title: 'Gieo Hạt Ngô Vàng', description: 'Trồng 4 hạt Ngô.', category: 'daily', type: 'plant_seed', targetItemId: 'cornSeed', targetQuantity: 4, rewards: [ITEM('t1_quickSoil', 1)], icon: '🌽' },
+  { id: 'daily_sell_lettuce_3', title: 'Xà Lách Tươi Xanh', description: 'Bán 3 cây Xà Lách.', category: 'daily', type: 'sell_item', targetItemId: 'lettuce', targetQuantity: 3, rewards: [GOLD(55)], icon: '🥬' },
+  { id: 'daily_xp_boost_30', title: 'Nỗ Lực Mỗi Ngày', description: 'Kiếm thêm 30 XP từ các hoạt động.', category: 'daily', type: 'earn_gold', targetQuantity: 30, rewards: [GOLD(45)], icon: '⭐' }, // Reusing earn_gold type for simplicity for now
 ];
 
 export const WEEKLY_MISSION_TEMPLATES_DATA: Mission[] = [
-  { id: 'weekly_harvest_any_100', title: 'Nông Sản Tuần Hoàn', description: 'Thu hoạch 100 cây trồng bất kỳ trong tuần.', category: 'weekly', type: 'harvest_crop', targetQuantity: 100, rewards: [GOLD(300), XP(100), ITEM('t1_quickSoil', 2)], icon: '🧺' },
-  { id: 'weekly_earn_gold_1000', title: 'Thương Nhân Tuần', description: 'Kiếm được 1000 vàng từ việc bán nông sản trong tuần.', category: 'weekly', type: 'earn_gold', targetQuantity: 1000, rewards: [GOLD(200), ITEM('t2_farmBoost', 1)], icon: '🏆' },
-  { id: 'weekly_plant_tier2_20', title: 'Mở Rộng Canh Tác', description: 'Trồng 20 hạt giống bậc 2 trở lên trong tuần.', category: 'weekly', type: 'plant_seed', targetQuantity: 20, rewards: [XP(150), ITEM('blueberrySeed', 5)], icon: '🌳' }, // Requires logic for seed tier
-  { id: 'weekly_use_fertilizer_any_10', title: 'Dưỡng Đất Tuần Hoàn', description: 'Sử dụng 10 lần phân bón bất kỳ.', category: 'weekly', type: 'use_fertilizer', targetQuantity: 10, rewards: [GOLD(150), ITEM('t2_richEarth', 2)], icon: '✨' },
-  { id: 'weekly_complete_daily_3', title: 'Chuyên Gia Hàng Ngày', description: 'Hoàn thành 3 nhiệm vụ hàng ngày trong tuần này.', category: 'weekly', type: 'complete_daily_missions', targetQuantity: 3, rewards: [GOLD(250), XP(80)], icon: '🎯' },
-  { id: 'weekly_sell_specific_strawberry_50', title: 'Vựa Dâu Tuần', description: 'Bán 50 Dâu Tây trong tuần.', category: 'weekly', type: 'sell_item', targetItemId: 'strawberry', targetQuantity: 50, rewards: [GOLD(400)], icon: '🍓' },
-  { id: 'weekly_unlock_plots_1', title: 'Mở Rộng Đất Tuần', description: 'Mở khóa ít nhất 1 ô đất mới trong tuần.', category: 'weekly', type: 'unlock_plots', targetQuantity: 1, rewards: [XP(200), ITEM('cornSeed', 10)], icon: '🏞️' },
-  { id: 'weekly_buy_fertilizer_tier2_5', title: 'Nâng Cấp Phân Bón', description: 'Mua 5 phân bón bậc 2 trở lên.', category: 'weekly', type: 'buy_item', targetQuantity: 5, rewards: [GOLD(100)], icon: '🛍️' }, // Requires logic for fertilizer tier
-  { id: 'weekly_harvest_diverse_5_types', title: 'Đa Canh Đa Lợi', description: 'Thu hoạch ít nhất 5 loại cây trồng khác nhau.', category: 'weekly', type: 'harvest_crop', targetQuantity: 5, rewards: [XP(250), ITEM('t3_powerGro',1)], icon: ' разнообразие' }, // Requires logic for diverse types
-  { id: 'weekly_reach_level_plus_2', title: 'Tiến Bộ Vượt Bậc', description: 'Tăng ít nhất 2 cấp độ trong tuần.', category: 'weekly', type: 'reach_level', targetQuantity: 2, rewards: [GOLD(500), ITEM('t3_wonderSoil', 1)], icon: '🚀' }, // Target quantity is "levels gained"
+  { id: 'weekly_harvest_any_tier1_75', title: 'Đại Thu Hoạch Bậc 1', description: 'Thu hoạch 75 cây trồng bậc 1 trong tuần.', category: 'weekly', type: 'harvest_crop', targetQuantity: 75, rewards: [GOLD(350), XP(120), ITEM('t2_farmBoost', 1)], icon: '🚜' },
+  { id: 'weekly_earn_gold_1200', title: 'Thương Nhân Đại Tài', description: 'Kiếm được 1200 vàng từ việc bán nông sản trong tuần.', category: 'weekly', type: 'earn_gold', targetQuantity: 1200, rewards: [GOLD(250), ITEM('blueberrySeed', 3)], icon: '🏆' },
+  { id: 'weekly_plant_tier2_or_higher_15', title: 'Mở Rộng Giống Mới', description: 'Trồng 15 hạt giống bậc 2 trở lên trong tuần.', category: 'weekly', type: 'plant_seed', targetQuantity: 15, rewards: [XP(180), ITEM('t2_richEarth', 2)], icon: '🌳' },
+  { id: 'weekly_use_fertilizer_any_7', title: 'Tuần Lễ Phân Bón', description: 'Sử dụng 7 lần phân bón bất kỳ (có thể cùng loại).', category: 'weekly', type: 'use_fertilizer', targetQuantity: 7, rewards: [GOLD(180), ITEM('t3_powerGro', 1)], icon: '✨🧪' },
+  { id: 'weekly_complete_daily_missions_4', title: 'Siêng Năng Cả Tuần', description: 'Hoàn thành 4 nhiệm vụ hàng ngày trong tuần này.', category: 'weekly', type: 'complete_daily_missions', targetQuantity: 4, rewards: [GOLD(300), XP(100)], icon: '🎯' },
+  { id: 'weekly_sell_specific_potato_40', title: 'Vựa Khoai Tây Tuần Này', description: 'Bán 40 củ Khoai Tây trong tuần.', category: 'weekly', type: 'sell_item', targetItemId: 'potato', targetQuantity: 40, rewards: [GOLD(450)], icon: '🥔🧺' },
+  { id: 'weekly_unlock_plot_if_possible', title: 'Khai Hoang Mở Đất', description: 'Mở khóa ít nhất 1 ô đất mới trong tuần (nếu có thể).', category: 'weekly', type: 'unlock_plots', targetQuantity: 1, rewards: [XP(250), ITEM('onionSeed', 5)], icon: '🏞️⛏️' },
+  { id: 'weekly_buy_fertilizer_tier2_or_higher_3', title: 'Đầu Tư Thông Minh', description: 'Mua 3 phân bón bậc 2 trở lên.', category: 'weekly', type: 'buy_item', targetQuantity: 3, rewards: [GOLD(120)], icon: '🛍️💪' },
+  { id: 'weekly_harvest_diverse_crops_4_types', title: 'Vườn Cây Đa Dạng', description: 'Thu hoạch ít nhất 4 loại cây trồng khác nhau trong tuần.', category: 'weekly', type: 'harvest_crop', targetQuantity: 4, rewards: [XP(300), ITEM('t3_wonderSoil',1)], icon: '🍎🥕🌽🍓' },
+  { id: 'weekly_reach_level_plus_1', title: 'Thăng Tiến Trong Tuần', description: 'Tăng ít nhất 1 cấp độ trong tuần.', category: 'weekly', type: 'reach_level', targetQuantity: 1, rewards: [GOLD(550), ITEM('lemonSeed', 2)], icon: '🚀⭐' },
 ];
 
-// For random missions, we can have a larger pool with varying difficulty.
-// The system would pick one or a few at a time for the player.
 export const RANDOM_MISSION_POOL_DATA: Mission[] = [
-  // Short & Easy
-  { id: 'random_harvest_tomato_3', title: 'Cà Chua Chín Mọng', category: 'random', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 3, rewards: [GOLD(10), XP(5)] },
-  { id: 'random_plant_carrot_2', title: 'Gieo Hạt Cà Rốt', category: 'random', type: 'plant_seed', targetItemId: 'carrotSeed', targetQuantity: 2, rewards: [XP(10)] },
-  { id: 'random_sell_corn_1', title: 'Bán Ngô Nhanh', category: 'random', type: 'sell_item', targetItemId: 'corn', targetQuantity: 1, rewards: [GOLD(15)] },
-  { id: 'random_use_fertilizer_t1_any_1', title: 'Thử Phân Bón', category: 'random', type: 'use_fertilizer', targetItemId: 't1_basicGrow', targetQuantity: 1, rewards: [XP(5)] },
-  // Medium
-  { id: 'random_harvest_strawberry_10', title: 'Rổ Dâu Tây', category: 'random', type: 'harvest_crop', targetItemId: 'strawberry', targetQuantity: 10, rewards: [GOLD(40), XP(15)] },
-  { id: 'random_plant_potato_5', title: 'Trồng Khoai Tây', category: 'random', type: 'plant_seed', targetItemId: 'potatoSeed', targetQuantity: 5, rewards: [GOLD(30)] },
-  { id: 'random_earn_gold_50_selling', title: 'Thương Lái Nhỏ', description: 'Kiếm 50 vàng từ bán nông sản.', category: 'random', type: 'earn_gold', targetQuantity: 50, rewards: [ITEM('tomatoSeed', 2)] },
-  // ... Add up to 100 diverse random mission templates
-  ...Array.from({ length: 100 - 7 }, (_, i) => ({
-    id: `random_placeholder_${i}`,
-    title: `Nhiệm Vụ Ngẫu Nhiên ${i + 1}`,
-    description: `Mô tả cho nhiệm vụ ngẫu nhiên thứ ${i + 1}.`,
-    category: 'random' as const,
-    type: (['harvest_crop', 'plant_seed', 'sell_item'] as const)[i % 3], // Cycle through types
-    targetItemId: (['tomato', 'carrotSeed', 'corn'] as const)[i % 3],
-    targetQuantity: 5 + (i % 10), // Vary quantity
-    rewards: [GOLD(20 + (i % 5) * 5), XP(10 + (i % 5) * 2)],
-  })),
+  // Very Short & Easy
+  { id: 'random_harvest_tomato_2', title: 'Hái Vội Cà Chua', category: 'random', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 2, rewards: [GOLD(8), XP(4)], icon: '🍅' },
+  { id: 'random_plant_carrot_1', title: 'Thả Giống Cà Rốt', category: 'random', type: 'plant_seed', targetItemId: 'carrotSeed', targetQuantity: 1, rewards: [XP(6)], icon: '🥕' },
+  { id: 'random_sell_corn_1', title: 'Bán Vội Ngô', category: 'random', type: 'sell_item', targetItemId: 'corn', targetQuantity: 1, rewards: [GOLD(12)], icon: '🌽' },
+  { id: 'random_use_fertilizer_t1_basicGrow_1', title: 'Thử Phân Bón Nhẹ', category: 'random', type: 'use_fertilizer', targetItemId: 't1_basicGrow', targetQuantity: 1, rewards: [XP(7)], icon: '🧪' },
+  { id: 'random_buy_tomatoSeed_1', title: 'Mua Hạt Cà Chua', category: 'random', type: 'buy_item', targetItemId: 'tomatoSeed', targetQuantity: 1, rewards: [GOLD(5)] , icon: '🛍️'},
+  { id: 'random_harvest_strawberry_1', title: 'Trái Dâu Ngọt', category: 'random', type: 'harvest_crop', targetItemId: 'strawberry', targetQuantity: 1, rewards: [XP(8)], icon: '🍓' },
+  { id: 'random_plant_lettuce_1', title: 'Xà Lách Mơn Mởn', category: 'random', type: 'plant_seed', targetItemId: 'lettuceSeed', targetQuantity: 1, rewards: [GOLD(10)], icon: '🥬' },
+  { id: 'random_earn_gold_20', title: 'Kiếm Chút Vàng', category: 'random', type: 'earn_gold', targetQuantity: 20, rewards: [XP(5)], icon: '💰' },
+  { id: 'random_harvest_potato_1', title: 'Củ Khoai Tây Con', category: 'random', type: 'harvest_crop', targetItemId: 'potato', targetQuantity: 1, rewards: [GOLD(7)], icon: '🥔' },
+  { id: 'random_plant_any_1', title: 'Gieo Một Hạt Bất Kỳ', category: 'random', type: 'plant_seed', targetQuantity: 1, rewards: [XP(5)], icon: '🌱' },
+  // ... (10 easy missions)
+
+  // Medium Difficulty (Expanding variety and quantity)
+  { id: 'random_harvest_tomato_8', title: 'Thu Hoạch Cà Chua', category: 'random', type: 'harvest_crop', targetItemId: 'tomato', targetQuantity: 8, rewards: [GOLD(25), XP(12)], icon: '🍅🧺' },
+  { id: 'random_plant_carrot_5', title: 'Trồng Vài Luống Cà Rốt', category: 'random', type: 'plant_seed', targetItemId: 'carrotSeed', targetQuantity: 5, rewards: [GOLD(20), XP(10)], icon: '🥕🌱' },
+  { id: 'random_sell_corn_7', title: 'Bán Thêm Ngô', category: 'random', type: 'sell_item', targetItemId: 'corn', targetQuantity: 7, rewards: [GOLD(70), XP(15)], icon: '🌽💰' },
+  { id: 'random_use_fertilizer_t1_quickSoil_2', title: 'Cải Tạo Đất Nhanh', category: 'random', type: 'use_fertilizer', targetItemId: 't1_quickSoil', targetQuantity: 2, rewards: [GOLD(30), XP(18)], icon: '✨🧪' },
+  { id: 'random_buy_strawberrySeed_3', title: 'Thêm Hạt Dâu Tây', category: 'random', type: 'buy_item', targetItemId: 'strawberrySeed', targetQuantity: 3, rewards: [XP(15)], icon: '🍓🛍️' },
+  { id: 'random_harvest_strawberry_7', title: 'Một Rổ Dâu Tươi', category: 'random', type: 'harvest_crop', targetItemId: 'strawberry', targetQuantity: 7, rewards: [GOLD(50), XP(20)], icon: '🍓🧺' },
+  { id: 'random_plant_lettuce_4', title: 'Vườn Xà Lách', category: 'random', type: 'plant_seed', targetItemId: 'lettuceSeed', targetQuantity: 4, rewards: [GOLD(35), XP(16)], icon: '🥬🌱' },
+  { id: 'random_earn_gold_75', title: 'Gom Vàng', category: 'random', type: 'earn_gold', targetQuantity: 75, rewards: [ITEM('cornSeed', 2)], icon: '💰✨' },
+  { id: 'random_harvest_potato_6', title: 'Thu Khoai Tây', category: 'random', type: 'harvest_crop', targetItemId: 'potato', targetQuantity: 6, rewards: [GOLD(40), XP(18)], icon: '🥔🧺' },
+  { id: 'random_plant_any_5', title: 'Gieo Trồng Mở Rộng', category: 'random', type: 'plant_seed', targetQuantity: 5, rewards: [GOLD(25), XP(12)], icon: '🌱➕' },
+  { id: 'random_sell_carrot_10', title: 'Chợ Cà Rốt', category: 'random', type: 'sell_item', targetItemId: 'carrot', targetQuantity: 10, rewards: [GOLD(60), XP(20)], icon: '🥕💰' },
+  { id: 'random_buy_fertilizer_any_1', title: 'Thử Phân Bón Mới', category: 'random', type: 'buy_item', targetQuantity: 1, rewards: [XP(10)], icon: '🧪🛍️' }, // Player buys any 1 fertilizer
+  { id: 'random_harvest_onion_3', title: 'Hành Tây Thơm Lừng', category: 'random', type: 'harvest_crop', targetItemId: 'onion', targetQuantity: 3, requiredLevelUnlock: 5, rewards: [GOLD(30), XP(15)], icon: '🧅' },
+  { id: 'random_plant_blueberry_2', title: 'Ươm Mầm Việt Quất', category: 'random', type: 'plant_seed', targetItemId: 'blueberrySeed', targetQuantity: 2, requiredLevelUnlock: 5, rewards: [GOLD(25), XP(12)], icon: '🫐' },
+  { id: 'random_use_fertilizer_t2_any_1', title: 'Dùng Phân Tốt', category: 'random', type: 'use_fertilizer', targetQuantity: 1, requiredLevelUnlock: 5, rewards: [GOLD(35), XP(20)], icon: '💩✨' }, // Use any T2 fertilizer
+  // ... (15 more medium missions)
+
+  // Adding the rest with varied parameters to reach 100
+  ...Array.from({ length: 100 - 25 }, (_, i) => {
+    const types: Mission['type'][] = ['harvest_crop', 'plant_seed', 'sell_item', 'earn_gold', 'use_fertilizer', 'buy_item'];
+    const type = types[i % types.length];
+    const itemCategories = [
+      { crop: 'tomato', seed: 'tomatoSeed', fertilizer: 't1_basicGrow', tier: 1, icon: '🍅' },
+      { crop: 'carrot', seed: 'carrotSeed', fertilizer: 't1_quickSoil', tier: 1, icon: '🥕' },
+      { crop: 'corn', seed: 'cornSeed', fertilizer: 't2_farmBoost', tier: 1, icon: '🌽' },
+      { crop: 'strawberry', seed: 'strawberrySeed', fertilizer: 't2_richEarth', tier: 2, icon: '🍓' },
+      { crop: 'potato', seed: 'potatoSeed', fertilizer: 't3_powerGro', tier: 2, icon: '🥔' },
+      { crop: 'lettuce', seed: 'lettuceSeed', fertilizer: 't3_wonderSoil', tier: 3, icon: '🥬' },
+      { crop: 'blueberry', seed: 'blueberrySeed', fertilizer: 't4_superFert', tier: 3, icon: '🫐' },
+      { crop: 'onion', seed: 'onionSeed', fertilizer: 't5_ultraNutrient', tier: 4, icon: '🧅' },
+      { crop: 'lemon', seed: 'lemonSeed', fertilizer: 't6_gigaGro', tier: 4, icon: '🍋' },
+      { crop: 'mango', seed: 'mangoSeed', fertilizer: 't10_hyperHarvest', tier: 5, icon: '🥭' }
+    ];
+    const itemCat = itemCategories[i % itemCategories.length];
+    
+    let targetItemId: InventoryItem | undefined = undefined;
+    let quantity = 1 + (i % 5); // 1 to 5
+    let missionIcon = itemCat.icon;
+
+    switch (type) {
+      case 'harvest_crop':
+        targetItemId = itemCat.crop as InventoryItem;
+        quantity = 3 + (i % 7); // 3 to 9
+        break;
+      case 'plant_seed':
+        targetItemId = itemCat.seed as InventoryItem;
+        break;
+      case 'sell_item':
+        targetItemId = itemCat.crop as InventoryItem;
+        quantity = 2 + (i % 6); // 2 to 7
+        break;
+      case 'earn_gold':
+        quantity = 25 + (i % 10) * 5; // 25 to 70
+        missionIcon = '💰';
+        break;
+      case 'use_fertilizer':
+        targetItemId = itemCat.fertilizer as InventoryItem;
+        missionIcon = '🧪';
+        break;
+      case 'buy_item':
+        targetItemId = (i % 2 === 0 ? itemCat.seed : itemCat.fertilizer) as InventoryItem;
+        missionIcon = '🛍️';
+        break;
+    }
+
+    return {
+      id: `random_pool_${i + 10}`, // Ensure unique IDs
+      title: `Thử Thách Nông Trại ${i + 1}`,
+      category: 'random' as const,
+      type,
+      targetItemId,
+      targetQuantity: quantity,
+      requiredLevelUnlock: Math.max(1, itemCat.tier -1), // ensure min level 1
+      rewards: [GOLD(10 + (i % 8) * 3), XP(5 + (i % 6) * 2)],
+      icon: missionIcon,
+    };
+  }),
 ];
 
   
