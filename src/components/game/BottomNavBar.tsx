@@ -266,7 +266,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
+          
           <Tooltip>
             <TooltipTrigger asChild>
             <Button
@@ -283,6 +283,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             <p>Mở Trò Chuyện</p>
             </TooltipContent>
           </Tooltip>
+
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -396,23 +397,19 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
           </div>
 
           {/* ---- Mobile Specific "More" Dropdown ---- */}
-          <div className="block md:hidden">
+          <div className="block md:hidden relative"> {/* Added relative here */}
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
                       <Button
                           variant="outline"
-                          className={cn(buttonBaseClass, "relative")}
+                          className={cn(buttonBaseClass)} 
                           aria-label="Thêm tùy chọn"
                       >
                           <Menu className={iconClass} />
                           <span className={labelClass}>Thêm</span>
-                          {unreadMailCount > 0 && (
-                            <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
-                                {unreadMailCount > 9 ? '9+' : unreadMailCount}
-                            </Badge>
-                          )}
+                          {/* Badge moved out of button */}
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -462,6 +459,12 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {/* Badge is now a direct child of the relative div */}
+            {unreadMailCount > 0 && (
+              <Badge className="absolute top-1 right-1 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-20 pointer-events-none">
+                  {unreadMailCount > 9 ? '9+' : unreadMailCount}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -470,4 +473,3 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
-
