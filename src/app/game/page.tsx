@@ -13,7 +13,7 @@ import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import LeaderboardModal from '@/components/game/LeaderboardModal';
 import MailModal from '@/components/game/MailModal';
-import MissionModal from '@/components/game/MissionModal'; // New Mission Modal
+import MissionModal from '@/components/game/MissionModal';
 import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
 import WelcomePopup from '@/components/game/WelcomePopup';
@@ -45,7 +45,7 @@ export default function GamePage() {
     playerTierInfo,
     cropData,
     fertilizerData,
-    // claimMissionReward, // Will be added in Phase 2
+    claimMissionReward, // Now available from useGameLogic
   } = useGameLogic();
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
@@ -55,7 +55,7 @@ export default function GamePage() {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
-  const [isMissionModalOpen, setIsMissionModalOpen] = useState(false); // New state for MissionModal
+  const [isMissionModalOpen, setIsMissionModalOpen] = useState(false);
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -433,14 +433,6 @@ export default function GamePage() {
     }
   };
 
-  // Placeholder for claimMissionReward - to be implemented in Phase 2
-  const claimMissionReward = useCallback(async (missionId: string) => {
-    console.log("Attempting to claim mission:", missionId);
-    toast({ title: "Tính năng sắp ra mắt", description: `Chức năng nhận thưởng cho nhiệm vụ ${missionId} sẽ sớm được cập nhật.`});
-    // Actual logic will modify gameState and playerMissionState
-  }, [toast]);
-
-
   if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
@@ -485,7 +477,7 @@ export default function GamePage() {
         onOpenChatModal={() => setIsChatModalOpen(true)}
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onOpenMailModal={() => setIsMailModalOpen(true)}
-        onOpenMissionModal={() => setIsMissionModalOpen(true)} // Pass handler for Mission Modal
+        onOpenMissionModal={() => setIsMissionModalOpen(true)}
         unreadMailCount={unreadMailCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
@@ -544,12 +536,11 @@ export default function GamePage() {
         onDeleteMail={handleDeleteMail}
       />
 
-      {/* New Mission Modal */}
       <MissionModal
         isOpen={isMissionModalOpen}
         onClose={() => setIsMissionModalOpen(false)}
-        playerMissionState={gameState.activeMissions || {}} // Pass player's mission state
-        onClaimMissionReward={claimMissionReward} // Pass claim function
+        playerMissionState={gameState.activeMissions || {}}
+        onClaimMissionReward={claimMissionReward}
       />
 
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
@@ -570,5 +561,3 @@ export default function GamePage() {
     </div>
   );
 }
-
-  

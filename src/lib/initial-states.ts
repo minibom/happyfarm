@@ -38,6 +38,9 @@ export const INITIAL_GAME_STATE: GameState = {
   displayName: undefined,
   // mail: [], // Mail is now a subcollection, removed from GameState document
   claimedBonuses: {}, // Initialize empty claimed bonuses
+  activeMissions: {}, // Initialize empty active missions
+  lastDailyMissionRefresh: 0, // Initialize timestamp
+  lastWeeklyMissionRefresh: 0, // Initialize timestamp
 };
 
 const initialMarketPrices: MarketState['prices'] = {};
@@ -59,3 +62,4 @@ export const INITIAL_MARKET_STATE: MarketState = {
   currentEvent: null,
   lastUpdated: Date.now(),
 };
+

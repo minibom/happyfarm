@@ -2,7 +2,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { GameState, SeedId, CropId, PlotState, TierInfo, FertilizerId, CropDetails, FertilizerDetails } from '@/types';
+import type { GameState, SeedId, CropId, PlotState, TierInfo, FertilizerId, CropDetails, FertilizerDetails, InventoryItem, PlayerMissionProgress } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { getPlayerTierInfo, LEVEL_UP_XP_THRESHOLD, TOTAL_PLOTS, getPlotUnlockCost } from '@/lib/constants';
 
@@ -11,8 +11,42 @@ interface UsePlotActionsProps {
   gameStateRef: React.MutableRefObject<GameState>; // To get current state in callbacks
   cropData: Record<CropId, CropDetails> | null;
   fertilizerData: Record<FertilizerId, FertilizerDetails> | null;
-  // playerTierInfo is derived from gameState.level, so we use gameStateRef
 }
+
+const updateMissionProgress = (
+  currentActiveMissions: Record<string, PlayerMissionProgress>,
+  missionType: PlayerMissionProgress['type'],
+  itemId?: InventoryItem,
+  quantity: number = 1
+): Record<string, PlayerMissionProgress> => {
+  const updatedMissions = { ...currentActiveMissions };
+  let missionChanged = false;
+
+  Object.keys(updatedMissions).forEach(key => {
+    const mission = updatedMissions[key];
+    if (mission.status === 'active' && mission.type === missionType) {
+      let match = false;
+      if (mission.targetItemId) {
+        if (mission.targetItemId === itemId) {
+          match = true;
+        }
+      } else { // For missions without specific item ID (e.g., harvest_any_X)
+        match = true;
+      }
+
+      if (match) {
+        const newProgress = mission.progress + quantity;
+        updatedMissions[key] = { ...mission, progress: newProgress };
+        missionChanged = true;
+        if (newProgress >= mission.targetQuantity) {
+          updatedMissions[key].status = 'completed_pending_claim';
+        }
+      }
+    }
+  });
+  return missionChanged ? updatedMissions : currentActiveMissions;
+};
+
 
 export const usePlotActions = ({
   setGameState,
@@ -57,12 +91,15 @@ export const usePlotActions = ({
 
     setGameState(prev => {
       const plotToUpdate = prev.plots.find(p => p.id === plotId);
-      if (!plotToUpdate) return prev; // Should not happen if logic above is correct
+      if (!plotToUpdate) return prev;
       const newPlots = prev.plots.map(p =>
         p.id === plotId ? { ...plotToUpdate, state: 'planted' as const, cropId, plantedAt: Date.now() } : p
       );
       const newInventory = { ...prev.inventory, [seedId]: (prev.inventory[seedId] || 0) - 1 };
-      return { ...prev, plots: newPlots, inventory: newInventory, lastUpdate: Date.now() };
+      
+      const updatedMissions = updateMissionProgress(prev.activeMissions, 'plant_seed', seedId, 1);
+
+      return { ...prev, plots: newPlots, inventory: newInventory, activeMissions: updatedMissions, lastUpdate: Date.now() };
     });
     toast({ title: "Đã Trồng!", description: `Đã trồng ${cropDetail.name} trên thửa đất ${plotId + 1}.` });
   }, [setGameState, gameStateRef, cropData, toast]);
@@ -94,7 +131,6 @@ export const usePlotActions = ({
     setGameState(prev => {
       const newPlots = prev.plots.map(p => {
         if (p.id === plotId) {
-          // Reset plot state correctly
           const { cropId: oldCropId, plantedAt, ...restOfPlot } = p;
           return { ...restOfPlot, state: 'empty' as const, cropId: undefined, plantedAt: undefined };
         }
@@ -108,12 +144,19 @@ export const usePlotActions = ({
       let newLevel = prev.level;
 
       let xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
-      while (newXp >= xpThreshold) {
+      while (newXp >= xpThreshold && xpThreshold > 0) {
         newXp -= xpThreshold;
         newLevel += 1;
-        xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel); // Recalculate for next potential level up
+        xpThreshold = LEVEL_UP_XP_THRESHOLD(newLevel);
       }
-      return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel, lastUpdate: Date.now() };
+      
+      let updatedMissions = updateMissionProgress(prev.activeMissions, 'harvest_crop', plotToHarvest.cropId!, cropDetail.harvestYield);
+      if (newLevel > prev.level) {
+        updatedMissions = updateMissionProgress(updatedMissions, 'reach_level', undefined, newLevel - prev.level);
+      }
+
+
+      return { ...prev, plots: newPlots, inventory: newInventory, xp: newXp, level: newLevel, activeMissions: updatedMissions, lastUpdate: Date.now() };
     });
 
     toast({ title: "Đã Thu Hoạch!", description: `Thu hoạch được ${cropDetail.harvestYield} ${cropDetail.name} và nhận được ${earnedXp} XP.`, className: "bg-accent text-accent-foreground" });
@@ -130,18 +173,22 @@ export const usePlotActions = ({
       return;
     }
 
-    const cost = getPlotUnlockCost(plotIdToUnlock); // Using the centralized function
+    const cost = getPlotUnlockCost(plotIdToUnlock);
     if (currentGameState.gold < cost) {
       toast({ title: "Không Đủ Vàng", description: `Bạn cần ${cost} vàng để mở ô đất này.`, variant: "destructive" });
       return;
     }
 
-    setGameState(prev => ({
-      ...prev,
-      gold: prev.gold - cost,
-      unlockedPlotsCount: prev.unlockedPlotsCount + 1,
-      lastUpdate: Date.now(),
-    }));
+    setGameState(prev => {
+      const updatedMissions = updateMissionProgress(prev.activeMissions, 'unlock_plots', undefined, 1);
+      return {
+        ...prev,
+        gold: prev.gold - cost,
+        unlockedPlotsCount: prev.unlockedPlotsCount + 1,
+        activeMissions: updatedMissions,
+        lastUpdate: Date.now(),
+      }
+    });
     toast({ title: "Mở Khóa Thành Công!", description: `Đã mở khóa ô đất ${plotIdToUnlock + 1}.`, className: "bg-accent text-accent-foreground" });
   }, [setGameState, gameStateRef, toast]);
 
@@ -217,7 +264,8 @@ export const usePlotActions = ({
         return p;
       });
       const newInventory = { ...prev.inventory, [fertilizerId]: (prev.inventory[fertilizerId] || 0) - 1 };
-      return { ...prev, plots: newPlots, inventory: newInventory, lastUpdate: Date.now() };
+      const updatedMissions = updateMissionProgress(prev.activeMissions, 'use_fertilizer', fertilizerId, 1);
+      return { ...prev, plots: newPlots, inventory: newInventory, activeMissions: updatedMissions, lastUpdate: Date.now() };
     });
 
     toast({ title: "Đã Bón Phân!", description: `${fertilizerDetail.name} đã được sử dụng, giảm thời gian chờ!`, className: "bg-accent text-accent-foreground" });

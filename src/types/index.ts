@@ -168,11 +168,21 @@ export interface Mission {
 }
 
 export interface PlayerMissionProgress {
-  missionId: string; // References a Mission.id
+  missionId: string; // References a Mission.id from constants (e.g. 'main_harvest_tomato_10')
   progress: number;
   status: MissionStatus;
   assignedAt?: number; // Timestamp when the mission was assigned (for daily/weekly)
   expiresAt?: number; // Timestamp for daily/weekly/event missions
+  // Definition fields that are useful to have directly on the player's active mission
+  title: string;
+  description?: string;
+  category: MissionCategory;
+  type: MissionType;
+  targetItemId?: InventoryItem;
+  targetQuantity: number;
+  rewards: MissionReward[];
+  icon?: string;
+  requiredLevelUnlock?: number;
 }
 // --- End Mission System Types ---
 
@@ -189,7 +199,9 @@ export interface GameState {
   email?: string;
   displayName?: string;
   claimedBonuses: Record<string, boolean>;
-  activeMissions?: Record<string, PlayerMissionProgress>; // Player's current missions
+  activeMissions: Record<string, PlayerMissionProgress>; // Keyed by mission definition ID
+  lastDailyMissionRefresh?: number; // Timestamp
+  lastWeeklyMissionRefresh?: number; // Timestamp
 }
 
 export interface ChatMessage {

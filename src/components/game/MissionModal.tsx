@@ -14,19 +14,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { PlayerMissionProgress, Mission, MissionStatus } from '@/types';
-import { CheckSquare, ListChecks, CalendarDays, Sparkles, Package, Coins, Star, Info } from 'lucide-react';
-import { MAIN_MISSIONS_DATA, DAILY_MISSION_TEMPLATES_DATA, WEEKLY_MISSION_TEMPLATES_DATA, RANDOM_MISSION_POOL_DATA } from '@/lib/constants'; // Import mission definitions
-import { Progress } from '@/components/ui/progress'; // For progress bar
+import type { PlayerMissionProgress, Mission, MissionStatus } from '@/types'; // Mission type for definitions
+import { CheckSquare, ListChecks, CalendarDays, Sparkles, Package, Coins, Star, Info, Lock } from 'lucide-react';
+// Constants are not directly needed here if playerMissionState has all necessary display info
+import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface MissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  playerMissionState: Record<string, PlayerMissionProgress>;
+  playerMissionState: Record<string, PlayerMissionProgress>; // This now contains all display info
   onClaimMissionReward: (missionId: string) => void;
-  // Potentially pass playerLevel if needed for filtering main missions
 }
 
 const MissionModal: FC<MissionModalProps> = ({
@@ -35,68 +34,64 @@ const MissionModal: FC<MissionModalProps> = ({
   playerMissionState,
   onClaimMissionReward,
 }) => {
-  // Combine player progress with mission definitions
+
   const getDisplayableMissions = (
-    definitions: Mission[],
     categoryFilter: Mission['category']
-  ): (Mission & PlayerMissionProgress & { definitionId: string })[] => {
-    return definitions
-      .filter(def => def.category === categoryFilter)
-      .map(def => {
-        const playerProgress = playerMissionState[def.id];
-        return {
-          ...def, // Spread definition first
-          missionId: def.id, // Ensure missionId from PlayerMissionProgress doesn't overwrite definition's id
-          definitionId: def.id, // Keep original definition ID
-          progress: playerProgress?.progress ?? 0,
-          status: playerProgress?.status ?? 'locked', // Default to 'locked' if not in player state
-          assignedAt: playerProgress?.assignedAt,
-          expiresAt: playerProgress?.expiresAt,
-        };
-      })
-      .sort((a, b) => { // Sort by status then by original definition order (e.g. requiredLevelUnlock)
+  ): PlayerMissionProgress[] => { // Now returns PlayerMissionProgress directly
+    return Object.values(playerMissionState)
+      .filter(pm => pm.category === categoryFilter)
+      .sort((a, b) => {
         const statusOrder: Record<MissionStatus, number> = {
           active: 1,
           completed_pending_claim: 2,
-          locked: 3,
+          locked: 3, // Should ideally not be in activeMissions if truly locked by level
           claimed: 4,
           expired: 5,
         };
         if (statusOrder[a.status] !== statusOrder[b.status]) {
           return statusOrder[a.status] - statusOrder[b.status];
         }
-        return (a.requiredLevelUnlock || 0) - (b.requiredLevelUnlock || 0);
+        // Fallback sort, e.g. by title or assignedAt if available
+        return (a.assignedAt || 0) - (b.assignedAt || 0) || a.title.localeCompare(b.title);
       });
   };
 
-  const mainMissions = useMemo(() => getDisplayableMissions(MAIN_MISSIONS_DATA, 'main'), [playerMissionState]);
-  const dailyMissions = useMemo(() => getDisplayableMissions(DAILY_MISSION_TEMPLATES_DATA, 'daily'), [playerMissionState]);
-  const weeklyMissions = useMemo(() => getDisplayableMissions(WEEKLY_MISSION_TEMPLATES_DATA, 'weekly'), [playerMissionState]);
-  // Add Random missions later if needed:
-  // const randomMissions = useMemo(() => getDisplayableMissions(RANDOM_MISSION_POOL_DATA, 'random'), [playerMissionState]);
+  const mainMissions = useMemo(() => getDisplayableMissions('main'), [playerMissionState]);
+  const dailyMissions = useMemo(() => getDisplayableMissions('daily'), [playerMissionState]);
+  const weeklyMissions = useMemo(() => getDisplayableMissions('weekly'), [playerMissionState]);
 
 
-  const renderMissionCard = (mission: Mission & PlayerMissionProgress & { definitionId: string }) => {
+  const renderMissionCard = (mission: PlayerMissionProgress) => { // Now takes PlayerMissionProgress
     const progressPercent = mission.targetQuantity > 0 ? (mission.progress / mission.targetQuantity) * 100 : 0;
     const isClaimable = mission.status === 'completed_pending_claim';
     const isClaimed = mission.status === 'claimed';
     const isActive = mission.status === 'active';
-    const isLocked = mission.status === 'locked'; // Placeholder for missions not yet available to player
+    const isLockedByLevel = mission.requiredLevelUnlock && gameStateRef.current.level < mission.requiredLevelUnlock; // Assuming gameStateRef is accessible or player level is passed
+    const isLocked = mission.status === 'locked' || isLockedByLevel;
+    const isExpired = mission.status === 'expired';
+
 
     let statusBadge;
     if (isClaimed) statusBadge = <Badge variant="outline" className="text-xs">Đã Nhận</Badge>;
     else if (isClaimable) statusBadge = <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-xs">Hoàn Thành!</Badge>;
     else if (isActive) statusBadge = <Badge variant="secondary" className="text-xs">Đang Làm</Badge>;
-    else if (isLocked) statusBadge = <Badge variant="outline" className="text-muted-foreground text-xs">Bị Khóa</Badge>;
+    else if (isLocked) statusBadge = <Badge variant="outline" className="text-muted-foreground text-xs flex items-center gap-1"><Lock className="h-3 w-3"/>Bị Khóa</Badge>;
+    else if (isExpired) statusBadge = <Badge variant="destructive" className="text-xs">Hết Hạn</Badge>;
 
 
     return (
-      <div key={mission.id} className="p-3 border rounded-lg shadow-sm bg-card flex flex-col">
+      <div key={mission.missionId} className={cn("p-3 border rounded-lg shadow-sm bg-card flex flex-col", (isLocked || isExpired) && "opacity-60")}>
         <div className="flex justify-between items-start mb-1">
           <h4 className="font-semibold text-sm text-primary mr-2">{mission.title}</h4>
           {statusBadge}
         </div>
         {mission.description && <p className="text-xs text-muted-foreground mb-2">{mission.description}</p>}
+
+        {mission.expiresAt && (mission.category === 'daily' || mission.category === 'weekly') && (
+          <p className="text-[10px] text-orange-600 mb-1.5">
+            Hết hạn: {new Date(mission.expiresAt).toLocaleString('vi-VN', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        )}
 
         {(isActive || isClaimable) && mission.targetQuantity > 0 && (
           <div className="mb-2">
@@ -129,27 +124,30 @@ const MissionModal: FC<MissionModalProps> = ({
         {isClaimable && (
           <Button
             size="sm"
-            onClick={() => onClaimMissionReward(mission.definitionId)}
+            onClick={() => onClaimMissionReward(mission.missionId)} // Use missionId from PlayerMissionProgress
             className="w-full mt-auto bg-accent hover:bg-accent/90"
           >
             Nhận Thưởng
           </Button>
         )}
-         {(isClaimed || isLocked) && (
+         {(isClaimed || isLocked || isExpired || (isActive && !isClaimable)) && (
           <Button size="sm" disabled className="w-full mt-auto">
-            {isClaimed ? 'Đã Nhận Thưởng' : 'Chưa Mở Khóa'}
+            {isClaimed ? 'Đã Nhận Thưởng' : 
+             isLocked ? 'Chưa Mở Khóa' : 
+             isExpired ? 'Đã Hết Hạn' : 
+             'Chưa Hoàn Thành'}
           </Button>
         )}
       </div>
     );
   };
 
-  const renderTabContent = (missions: (Mission & PlayerMissionProgress & { definitionId: string })[], tabName: string) => {
+  const renderTabContent = (missions: PlayerMissionProgress[], tabName: string) => {
     if (missions.length === 0) {
       return <p className="text-center text-muted-foreground py-6">Không có nhiệm vụ {tabName.toLowerCase()} nào hiện tại.</p>;
     }
     return (
-      <ScrollArea className="h-[calc(60vh-120px)] pr-2"> {/* Adjusted height */}
+      <ScrollArea className="h-[calc(60vh-120px)] pr-2">
         <div className="space-y-3">
           {missions.map(renderMissionCard)}
         </div>
@@ -175,7 +173,6 @@ const MissionModal: FC<MissionModalProps> = ({
             <TabsTrigger value="main"><CheckSquare className="w-4 h-4 mr-1.5"/>Nhiệm Vụ Chính</TabsTrigger>
             <TabsTrigger value="daily"><CalendarDays className="w-4 h-4 mr-1.5"/>Nhiệm Vụ Ngày</TabsTrigger>
             <TabsTrigger value="weekly"><CalendarDays className="w-4 h-4 mr-1.5"/>Nhiệm Vụ Tuần</TabsTrigger>
-            {/* <TabsTrigger value="random"><Sparkles className="w-4 h-4 mr-1.5"/>Ngẫu Nhiên</TabsTrigger> */}
           </TabsList>
           <TabsContent value="main" className="mt-2 flex-1 overflow-hidden">
             {renderTabContent(mainMissions, 'Chính')}
@@ -186,9 +183,6 @@ const MissionModal: FC<MissionModalProps> = ({
           <TabsContent value="weekly" className="mt-2 flex-1 overflow-hidden">
             {renderTabContent(weeklyMissions, 'Tuần')}
           </TabsContent>
-          {/* <TabsContent value="random" className="mt-2 flex-1 overflow-hidden">
-            {renderTabContent(randomMissions, 'Ngẫu Nhiên')}
-          </TabsContent> */}
         </Tabs>
 
         <DialogFooter className="mt-4">
@@ -198,7 +192,6 @@ const MissionModal: FC<MissionModalProps> = ({
     </Dialog>
   );
 };
-
+// Temporary gameStateRef for isLockedByLevel check until player level is passed or accessed globally
+const gameStateRef = { current: { level: 1 } }; 
 export default MissionModal;
-
-  

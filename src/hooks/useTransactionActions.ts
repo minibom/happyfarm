@@ -2,10 +2,10 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { GameState, InventoryItem, TierInfo, CropId, CropDetails, FertilizerId, FertilizerDetails, MarketActivityLog } from '@/types';
+import type { GameState, InventoryItem, TierInfo, CropId, CropDetails, FertilizerId, FertilizerDetails, MarketActivityLog, PlayerMissionProgress } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { getPlayerTierInfo, ALL_FERTILIZER_IDS, ALL_SEED_IDS, ALL_CROP_IDS } from '@/lib/constants';
-import { db } from '@/lib/firebase'; // For logMarketActivity, though not strictly needed if not logging for now
+import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './useAuth';
 
@@ -15,8 +15,48 @@ interface UseTransactionActionsProps {
   gameStateRef: React.MutableRefObject<GameState>;
   cropData: Record<CropId, CropDetails> | null;
   fertilizerData: Record<FertilizerId, FertilizerDetails> | null;
-  // playerTierInfo is derived from gameStateRef.current.level
 }
+
+// Shared mission progress update logic (can be moved to a utility if used elsewhere)
+const updateMissionProgressForTransaction = (
+  currentActiveMissions: Record<string, PlayerMissionProgress>,
+  missionType: PlayerMissionProgress['type'],
+  itemId?: InventoryItem,
+  quantity: number = 1,
+  value?: number // For earn_gold
+): Record<string, PlayerMissionProgress> => {
+  const updatedMissions = { ...currentActiveMissions };
+  let missionChanged = false;
+
+  Object.keys(updatedMissions).forEach(key => {
+    const mission = updatedMissions[key];
+    if (mission.status === 'active' && mission.type === missionType) {
+      let match = false;
+      if (mission.targetItemId) {
+        if (mission.targetItemId === itemId) {
+          match = true;
+        }
+      } else if (missionType === 'earn_gold' && value) { // earn_gold doesn't use itemId
+         match = true;
+      }
+       else { // For missions without specific item ID (e.g., harvest_any_X)
+        match = true;
+      }
+
+
+      if (match) {
+        const newProgress = mission.progress + (missionType === 'earn_gold' && value ? value : quantity);
+        updatedMissions[key] = { ...mission, progress: newProgress };
+        missionChanged = true;
+        if (newProgress >= mission.targetQuantity) {
+          updatedMissions[key].status = 'completed_pending_claim';
+        }
+      }
+    }
+  });
+  return missionChanged ? updatedMissions : currentActiveMissions;
+};
+
 
 export const useTransactionActions = ({
   setGameState,
@@ -25,17 +65,10 @@ export const useTransactionActions = ({
   fertilizerData,
 }: UseTransactionActionsProps) => {
   const { toast } = useToast();
-  const { userId } = useAuth(); // For logging activity
+  const { userId } = useAuth();
 
   const logMarketActivity = useCallback(async (logData: Omit<MarketActivityLog, 'timestamp' | 'logId' | 'userId'>) => {
     if (!userId) return;
-    // In a real app, this would write to Firestore. For now, console.log.
-    // Consider moving to a backend function if complex logic/validation is needed.
-    // await addDoc(collection(db, 'marketActivityLogs'), {
-    //   ...logData,
-    //   userId,
-    //   timestamp: serverTimestamp(),
-    // });
     console.log("Market Activity (simulated log):", { ...logData, userId, timestamp: Date.now() });
   }, [userId]);
 
@@ -77,10 +110,13 @@ export const useTransactionActions = ({
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev; // Double check to prevent race conditions
+      if (prev.gold < totalCost) return prev;
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
-      return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, lastUpdate: Date.now() };
+      
+      const updatedMissions = updateMissionProgressForTransaction(prev.activeMissions, 'buy_item', itemId, quantity);
+
+      return { ...prev, gold: prev.gold - totalCost, inventory: newInventory, activeMissions: updatedMissions, lastUpdate: Date.now() };
     });
 
     logMarketActivity({ itemId, quantity, pricePerUnit: priceAtTransaction, totalPrice: totalCost, type: 'buy' });
@@ -96,7 +132,6 @@ export const useTransactionActions = ({
         toast({ title: "Lỗi", description: "Dữ liệu vật phẩm cơ bản chưa tải.", variant: "destructive" });
         return;
     }
-    // Selling only applies to crops for now
     const itemDetails = cropData[itemId as CropId];
     if (!itemDetails) {
         toast({ title: "Lỗi", description: "Không tìm thấy thông tin vật phẩm để bán.", variant: "destructive" });
@@ -110,12 +145,17 @@ export const useTransactionActions = ({
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check
+      if ((prev.inventory[itemId] || 0) < quantity) return prev;
       const baseGain = quantity * priceAtTransaction;
-      const totalGain = Math.floor(baseGain * (1 + currentTierInfoValue.sellPriceBoostPercent)); // Apply tier sell bonus
+      const totalGain = Math.floor(baseGain * (1 + currentTierInfoValue.sellPriceBoostPercent));
       const newInventory = { ...prev.inventory };
       newInventory[itemId] -= quantity;
-      return { ...prev, gold: prev.gold + totalGain, inventory: newInventory, lastUpdate: Date.now() };
+
+      let updatedMissions = updateMissionProgressForTransaction(prev.activeMissions, 'sell_item', itemId, quantity);
+      updatedMissions = updateMissionProgressForTransaction(updatedMissions, 'earn_gold', undefined, 0, totalGain);
+
+
+      return { ...prev, gold: prev.gold + totalGain, inventory: newInventory, activeMissions: updatedMissions, lastUpdate: Date.now() };
     });
 
     logMarketActivity({ itemId, quantity, pricePerUnit: priceAtTransaction, totalPrice: quantity * priceAtTransaction * (1 + currentTierInfoValue.sellPriceBoostPercent), type: 'sell'});
