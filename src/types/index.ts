@@ -186,6 +186,34 @@ export interface PlayerMissionProgress {
 }
 // --- End Mission System Types ---
 
+// --- Friend System Types ---
+export interface FriendInfo {
+  uid: string;
+  displayName: string;
+  level: number;
+  avatarUrl?: string; // Optional
+  status?: 'online' | 'offline'; // From RTDB presence
+  friendSince: any; // Firestore Timestamp
+}
+
+export type FriendRequestStatus = 'pending' | 'accepted' | 'declined';
+
+export interface FriendRequestSent {
+  recipientId: string;
+  recipientName: string; // For display
+  status: FriendRequestStatus;
+  sentAt: any; // Firestore Timestamp
+}
+
+export interface FriendRequestReceived {
+  senderId: string;
+  senderName: string; // For display
+  senderLevel?: number; // Optional
+  status: FriendRequestStatus;
+  receivedAt: any; // Firestore Timestamp
+}
+// --- End Friend System Types ---
+
 export interface GameState {
   gold: number;
   xp: number;

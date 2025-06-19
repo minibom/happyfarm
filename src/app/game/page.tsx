@@ -15,8 +15,10 @@ const PlayerProfileModal = dynamic(() => import('@/components/game/PlayerProfile
 const LeaderboardModal = dynamic(() => import('@/components/game/LeaderboardModal'));
 const MailModal = dynamic(() => import('@/components/game/MailModal'));
 const MissionModal = dynamic(() => import('@/components/game/MissionModal'));
-const ChatPanel = dynamic(() => import('@/components/game/ChatPanel')); // ChatPanel itself
+const ChatPanel = dynamic(() => import('@/components/game/ChatPanel'));
 const WelcomePopup = dynamic(() => import('@/components/game/WelcomePopup'));
+const FriendsModal = dynamic(() => import('@/components/game/FriendsModal')); // New Friends Modal
+const UserProfilePopup = dynamic(() => import('@/components/game/UserProfilePopup')); // New User Profile Popup
 
 // Dynamic import for Dialog components used with ChatPanel
 const Dialog = dynamic(() => import('@/components/ui/dialog').then(mod => mod.Dialog), { ssr: false });
@@ -30,17 +32,17 @@ import BottomNavBar from '@/components/game/BottomNavBar';
 import GameArea from '@/components/game/GameArea';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
-import { usePresence } from '@/hooks/usePresence'; // Import usePresence
-import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent } from '@/types';
+import { usePresence } from '@/hooks/usePresence';
+import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent, FriendInfo, FriendRequestReceived } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'; // Now dynamically imported
 import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
+import { useFriends } from '@/hooks/useFriends'; // New useFriends hook
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
-  usePresence(); // Initialize the presence system
+  usePresence();
   const router = useRouter();
   const { toast } = useToast();
   const {
@@ -58,8 +60,22 @@ export default function GamePage() {
     playerTierInfo,
     cropData,
     fertilizerData,
-    claimMissionReward, // Now available from useGameLogic
+    claimMissionReward,
   } = useGameLogic();
+
+  const {
+    friendsList,
+    incomingRequests,
+    outgoingRequests,
+    unreadRequestCount,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    removeFriend,
+    blockUser,
+    unblockUser,
+    loadingFriendsData,
+  } = useFriends(); // Use the friends hook
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
   const [showMarket, setShowMarket] = useState(false);
@@ -69,6 +85,10 @@ export default function GamePage() {
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
   const [isMissionModalOpen, setIsMissionModalOpen] = useState(false);
+  const [showFriendsModal, setShowFriendsModal] = useState(false); // State for Friends Modal
+  const [showUserProfilePopup, setShowUserProfilePopup] = useState(false); // State for User Profile Popup
+  const [selectedUserProfileData, setSelectedUserProfileData] = useState<{ uid: string; displayName: string } | null>(null);
+
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -175,6 +195,11 @@ export default function GamePage() {
 
     return () => unsubscribe();
   }, [userId, toast]);
+
+  const handleOpenUserProfilePopup = useCallback((uid: string, displayName: string) => {
+    setSelectedUserProfileData({ uid, displayName });
+    setShowUserProfilePopup(true);
+  }, []);
 
 
   const handlePlotClick = (plotId: number) => {
@@ -446,7 +471,7 @@ export default function GamePage() {
     }
   };
 
-  if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData) {
+  if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData || loadingFriendsData) {
     return (
       <div className="flex items-center justify-center min-h-screen text-xl font-semibold bg-background">
         <Loader2 className="mr-2 h-8 w-8 animate-spin text-primary" />
@@ -491,7 +516,9 @@ export default function GamePage() {
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onOpenMailModal={() => setIsMailModalOpen(true)}
         onOpenMissionModal={() => setIsMissionModalOpen(true)}
+        onOpenFriendsModal={() => setShowFriendsModal(true)}
         unreadMailCount={unreadMailCount}
+        unreadFriendRequestCount={unreadRequestCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onSetFertilizeMode={handleSetFertilizeMode}
@@ -575,7 +602,7 @@ export default function GamePage() {
               <DialogTitle>Trò Chuyện Nông Trại</DialogTitle>
               <DialogDescription>Cửa sổ trò chuyện với những người chơi khác trong Happy Farm.</DialogDescription>
             </DialogHeader>
-            <ChatPanel isModalMode userStatus={gameState.status} data-chatpanel />
+            <ChatPanel isModalMode userStatus={gameState.status} onUsernameClick={handleOpenUserProfilePopup} />
           </DialogContent>
         </Dialog>
       )}
@@ -587,6 +614,45 @@ export default function GamePage() {
           activeEvents={activeGameEventsForPopup}
           aiGreeting={aiGreeting}
           isLoadingGreeting={isLoadingWelcomeData}
+        />
+      )}
+
+      {showFriendsModal && FriendsModal && (
+        <FriendsModal
+          isOpen={showFriendsModal}
+          onClose={() => setShowFriendsModal(false)}
+          currentUserId={userId}
+          friendsList={friendsList}
+          incomingRequests={incomingRequests}
+          outgoingRequests={outgoingRequests}
+          onAcceptRequest={acceptFriendRequest}
+          onDeclineRequest={declineFriendRequest}
+          onRemoveFriend={removeFriend}
+          onBlockUser={blockUser}
+          onUnblockUser={unblockUser}
+          onViewProfile={(friendId, friendName) => handleOpenUserProfilePopup(friendId, friendName)}
+          loading={loadingFriendsData}
+        />
+      )}
+
+      {showUserProfilePopup && UserProfilePopup && selectedUserProfileData && (
+        <UserProfilePopup
+          isOpen={showUserProfilePopup}
+          onClose={() => setShowUserProfilePopup(false)}
+          targetUserId={selectedUserProfileData.uid}
+          targetUserDisplayName={selectedUserProfileData.displayName}
+          currentUserId={userId}
+          friendsList={friendsList}
+          incomingRequests={incomingRequests}
+          outgoingRequests={outgoingRequests}
+          onSendFriendRequest={sendFriendRequest}
+          onAcceptFriendRequest={acceptFriendRequest}
+          onDeclineFriendRequest={declineFriendRequest}
+          onRemoveFriend={removeFriend}
+          onBlockUser={blockUser}
+          onUnblockUser={unblockUser}
+          // You might need to fetch more profile data for the target user here
+          // For now, it will be basic.
         />
       )}
     </div>

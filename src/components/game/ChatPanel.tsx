@@ -19,9 +19,10 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 interface ChatPanelProps {
   isModalMode?: boolean;
   userStatus: GameState['status'];
+  onUsernameClick?: (uid: string, displayName: string) => void; // New prop
 }
 
-const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
+const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUsernameClick }) => {
   const { user } = useAuth();
   const { gameState } = useGameLogic();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -87,7 +88,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
   return (
     <Card className={cn(
       "flex flex-col shadow-xl rounded-lg",
-      isModalMode ? "w-full h-full bg-background" : "w-96 h-[600px]"
+      isModalMode ? "w-full h-full bg-background" : "w-96 h-[600px]" // Adjusted modal height to h-full
     )}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
@@ -97,18 +98,18 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
       </CardHeader>
       <CardContent className={cn(
         "flex-grow flex flex-col pt-0",
-        isModalMode ? "p-2 sm:p-4" : "p-4" 
+        isModalMode ? "p-2 sm:p-2" : "p-4"  // Reduced padding for sm screens in modal mode
       )}>
         <ScrollArea 
           className={cn(
-            "flex-grow h-0 border rounded-md bg-muted/30", // h-0 allows flex-grow to work
-            isModalMode ? "mb-2 sm:mb-4" : "mb-4" 
+            "flex-grow h-0 border rounded-md bg-muted/30",
+            isModalMode ? "mb-2 sm:mb-2" : "mb-4" // Reduced margin for sm screens in modal mode
           )} 
           ref={scrollAreaRef}
         >
           <div className={cn(
             "space-y-3",
-            isModalMode ? "p-1.5 sm:p-3" : "p-3" 
+            isModalMode ? "p-1.5 sm:p-1.5" : "p-3" // Reduced padding for sm screens in modal mode
           )}>
             {messages.map((msg) => (
               <div 
@@ -116,25 +117,30 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
                 className={cn(
                   "flex w-full", 
                   msg.senderUid === user?.uid 
-                    ? (isModalMode ? "justify-end pl-6 sm:pl-8" : "justify-end pl-8 sm:pl-12") 
-                    : (isModalMode ? "justify-start pr-6 sm:pr-8" : "justify-start pr-8 sm:pr-12") 
+                    ? (isModalMode ? "justify-end pl-4 sm:pl-6" : "justify-end pl-8 sm:pl-12") // Adjusted padding
+                    : (isModalMode ? "justify-start pr-4 sm:pr-6" : "justify-start pr-8 sm:pr-12") // Adjusted padding
                 )}
               >
                 <div
                   className={cn(
                     "rounded-lg shadow text-sm max-w-[85%]", 
-                    isModalMode ? "p-1.5 sm:p-2" : "p-2", 
+                    isModalMode ? "p-1 sm:p-1.5" : "p-2", // Adjusted padding
                     msg.senderUid === user?.uid
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border" 
                   )}
                 >
-                  <p className={cn(
-                    "text-xs font-semibold mb-0.5",
-                    msg.senderUid === user?.uid ? "text-primary-foreground/90" : "text-accent"
-                  )}>
+                  <Button
+                    variant="link"
+                    className={cn(
+                      "text-xs font-semibold mb-0.5 p-0 h-auto leading-none",
+                      msg.senderUid === user?.uid ? "text-primary-foreground/90 hover:text-primary-foreground" : "text-accent hover:text-accent/80"
+                    )}
+                    onClick={() => onUsernameClick && onUsernameClick(msg.senderUid, msg.senderDisplayName)}
+                    disabled={!onUsernameClick}
+                  >
                     {msg.senderDisplayName || 'Người chơi'}
-                  </p>
+                  </Button>
                   <p className="break-words whitespace-pre-wrap">{msg.text}</p>
                   <p
                     className={cn(
@@ -174,4 +180,3 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
 };
 
 export default ChatPanel;
-

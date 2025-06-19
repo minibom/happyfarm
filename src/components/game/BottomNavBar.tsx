@@ -23,6 +23,7 @@ import {
   Menu,
   Mail as MailIcon,
   CheckSquare as MissionIcon,
+  Users, // Added Users icon for Friends
 } from 'lucide-react';
 import {
   Tooltip,
@@ -55,7 +56,9 @@ interface BottomNavBarProps {
   onOpenLeaderboard: () => void;
   onOpenMailModal: () => void;
   onOpenMissionModal: () => void;
+  onOpenFriendsModal: () => void; // New prop
   unreadMailCount: number;
+  unreadFriendRequestCount: number; // New prop
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onSetFertilizeMode: (fertilizerId: FertilizerId) => void;
@@ -79,7 +82,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenLeaderboard,
   onOpenMailModal,
   onOpenMissionModal,
+  onOpenFriendsModal, // Destructure new prop
   unreadMailCount,
+  unreadFriendRequestCount, // Destructure new prop
   onSetPlantMode,
   onToggleHarvestMode,
   onSetFertilizeMode,
@@ -167,13 +172,22 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
   const ownedAvailableFertilizers = availableFertilizers.filter(fert => (inventory[fert.id] || 0) > 0);
 
-  const UnreadMailBadgeOnMenuItem = () => (
-    unreadMailCount > 0 ? (
+  const UnreadMailBadge = ({ count }: { count: number }) => (
+    count > 0 ? (
       <Badge className="ml-auto h-4 px-1.5 text-[9px] bg-red-500 text-white">
-        {unreadMailCount > 9 ? '9+' : unreadMailCount}
+        {count > 9 ? '9+' : count}
       </Badge>
     ) : null
   );
+
+  const UnreadFriendRequestBadge = ({ count }: { count: number }) => (
+    count > 0 ? (
+        <Badge className="ml-auto h-4 px-1.5 text-[9px] bg-blue-500 text-white">
+            {count > 9 ? '9+' : count}
+        </Badge>
+    ) : null
+  );
+
 
   return (
     <TooltipProvider>
@@ -361,12 +375,19 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       <UserCircle2 className="mr-2 h-4 w-4" />
                       <span>Hồ Sơ</span>
                   </DropdownMenuItem>
+                   <DropdownMenuItem onSelect={onOpenFriendsModal} className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>Bạn Bè</span>
+                    </div>
+                    <UnreadFriendRequestBadge count={unreadFriendRequestCount} />
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
                     <div className="flex items-center">
                       <MailIcon className="mr-2 h-4 w-4" />
                       <span>Hộp Thư</span>
                     </div>
-                    <UnreadMailBadgeOnMenuItem />
+                    <UnreadMailBadge count={unreadMailCount} />
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onOpenLeaderboard}>
                       <ListOrdered className="mr-2 h-4 w-4" />
@@ -397,7 +418,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
           </div>
 
           {/* ---- Mobile Specific "More" Dropdown ---- */}
-          <div className="block md:hidden relative"> {/* Added relative here */}
+          <div className="block md:hidden relative">
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -409,7 +430,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       >
                           <Menu className={iconClass} />
                           <span className={labelClass}>Thêm</span>
-                          {/* Badge moved out of button */}
                       </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -426,12 +446,19 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                     <MissionIcon className="mr-2 h-4 w-4" />
                     <span>Nhiệm Vụ</span>
                 </DropdownMenuItem>
+                 <DropdownMenuItem onSelect={onOpenFriendsModal} className="flex justify-between items-center">
+                    <div className="flex items-center">
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Bạn Bè</span>
+                    </div>
+                     <UnreadFriendRequestBadge count={unreadFriendRequestCount} />
+                  </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
                     <div className="flex items-center">
                         <MailIcon className="mr-2 h-4 w-4" />
                         <span>Hộp Thư</span>
                     </div>
-                    <UnreadMailBadgeOnMenuItem />
+                    <UnreadMailBadge count={unreadMailCount} />
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={onOpenLeaderboard}>
                     <ListOrdered className="mr-2 h-4 w-4" />
@@ -459,10 +486,9 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Badge is now a direct child of the relative div */}
-            {unreadMailCount > 0 && (
+            {(unreadMailCount > 0 || unreadFriendRequestCount > 0) && (
               <Badge className="absolute top-1 right-1 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-20 pointer-events-none">
-                  {unreadMailCount > 9 ? '9+' : unreadMailCount}
+                  {(unreadMailCount + unreadFriendRequestCount) > 9 ? '9+' : (unreadMailCount + unreadFriendRequestCount)}
               </Badge>
             )}
           </div>
