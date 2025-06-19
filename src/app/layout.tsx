@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/hooks/useAuth';
 
 // Define your production URL here
-const productionUrl = 'https://your-happy-farm-app.com'; // IMPORTANT: REPLACE THIS!
+const productionUrl = 'https://nongtrai.web.app'; // UPDATED
 const metadataBase = new URL(productionUrl);
 
 export const metadata: Metadata = {

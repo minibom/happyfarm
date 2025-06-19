@@ -1,15 +1,13 @@
-
+# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+#
+# Allow crawling of all content
 User-agent: *
 Allow: /
-Allow: /library/
-Allow: /library/items
-Allow: /library/tiers
-Allow: /library/events
+
+# Disallow crawling of sensitive or non-public areas
 Disallow: /admin/
-Disallow: /game
 Disallow: /login
 Disallow: /register
-Disallow: /api/
+Disallow: /game
 
-Sitemap: https://your-happy-farm-app.com/sitemap.xml
-# IMPORTANT: Replace "https://your-happy-farm-app.com" with your actual production domain.
+Sitemap: https://nongtrai.web.app/sitemap.xml
