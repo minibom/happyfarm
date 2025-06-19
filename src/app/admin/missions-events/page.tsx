@@ -242,15 +242,7 @@ const AdminMissionsManagementContent = () => {
 
   return (
     <Card className="shadow-xl flex-1 flex flex-col min-h-0">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-primary font-headline flex items-center gap-2">
-          <ListChecks className="h-7 w-7" /> Quản Lý Nhiệm Vụ (Từ Database)
-        </CardTitle>
-        <CardDescription>
-          Xem, tạo, chỉnh sửa và xóa các loại nhiệm vụ trực tiếp từ cơ sở dữ liệu.
-          Các thay đổi ở đây sẽ ảnh hưởng trực tiếp đến game.
-        </CardDescription>
-      </CardHeader>
+      {/* CardHeader has been removed */}
       <CardContent className="flex-1 flex flex-col min-h-0 p-4">
         <Tabs value={activeMissionTab} onValueChange={(value) => setActiveMissionTab(value as MissionCategory)} className="w-full flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-3 shrink-0">
