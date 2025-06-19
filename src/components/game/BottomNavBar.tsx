@@ -194,6 +194,8 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
       </Badge>
     ) : null
   );
+  
+  const totalUnreadNotifications = unreadMailCount + unreadFriendRequestCount;
 
 
   return (
@@ -362,69 +364,72 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               </TooltipContent>
             </Tooltip>
 
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                      <Button
-                          variant="outline"
-                          className={cn(buttonBaseClass)}
-                          aria-label="Cài Đặt & Khác"
-                      >
-                          <Settings className={iconClass} />
-                          <span className={labelClass}>Cài Đặt</span>
-                      </Button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Cài Đặt & Khác</p>
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
-                  <DropdownMenuItem onSelect={onOpenProfile}>
-                      <UserCircle2 className="mr-2 h-4 w-4" />
-                      <span>Hồ Sơ</span>
-                  </DropdownMenuItem>
-                   <DropdownMenuItem onSelect={onOpenFriendsModal} className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <Users className="mr-2 h-4 w-4" />
-                      <span>Bạn Bè</span>
-                    </div>
-                    <UnreadCountBadge count={unreadFriendRequestCount} color="bg-blue-500" />
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <MailIcon className="mr-2 h-4 w-4" />
-                      <span>Hộp Thư</span>
-                    </div>
-                    <UnreadCountBadge count={unreadMailCount} />
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={onOpenLeaderboard}>
-                      <ListOrdered className="mr-2 h-4 w-4" />
-                      <span>Bảng Xếp Hạng</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                      <Link href="/library" className="w-full">
-                          <Library className="mr-2 h-4 w-4" />
-                          <span>Thư Viện Game</span>
-                      </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {isAdmin && (
-                    <>
-                      <DropdownMenuItem onSelect={handleAdminNavigation}>
-                          <ShieldCheck className="mr-2 h-4 w-4" />
-                          <span>Vào trang Admin</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem onSelect={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Đăng Xuất</span>
-                  </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="relative"> {/* Added relative positioning for badge */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(buttonBaseClass)}
+                            aria-label="Cài Đặt & Khác"
+                        >
+                            <Settings className={iconClass} />
+                            <span className={labelClass}>Cài Đặt</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>Cài Đặt & Khác</p>
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                    <DropdownMenuItem onSelect={onOpenProfile}>
+                        <UserCircle2 className="mr-2 h-4 w-4" />
+                        <span>Hồ Sơ</span>
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onSelect={onOpenFriendsModal} className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <Users className="mr-2 h-4 w-4" />
+                        <span>Bạn Bè</span>
+                      </div>
+                      <UnreadCountBadge count={unreadFriendRequestCount} color="bg-blue-500" />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <MailIcon className="mr-2 h-4 w-4" />
+                        <span>Hộp Thư</span>
+                      </div>
+                      <UnreadCountBadge count={unreadMailCount} />
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onOpenLeaderboard}>
+                        <ListOrdered className="mr-2 h-4 w-4" />
+                        <span>Bảng Xếp Hạng</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/library" className="w-full">
+                            <Library className="mr-2 h-4 w-4" />
+                            <span>Thư Viện Game</span>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {isAdmin && (
+                      <>
+                        <DropdownMenuItem onSelect={handleAdminNavigation}>
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            <span>Vào trang Admin</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem onSelect={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Đăng Xuất</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <NotificationBadge count={totalUnreadNotifications} /> {/* Combined badge for desktop settings */}
+            </div>
           </div>
 
           {/* ---- Mobile Specific "More" Dropdown ---- */}
@@ -512,3 +517,4 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 };
 
 export default BottomNavBar;
+
