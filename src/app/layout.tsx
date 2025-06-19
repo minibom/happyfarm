@@ -3,9 +3,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/hooks/useAuth';
+import Script from 'next/script'; // Import Script component
 
 // Define your production URL here
-const productionUrl = 'https://nongtrai.web.app'; // UPDATED
+const productionUrl = 'https://nongtrai.web.app';
 const metadataBase = new URL(productionUrl);
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
     languages: {
-      'en-US': '/en-US', // Example, if you add i18n later
+      'en-US': '/en-US', 
     },
   },
   openGraph: {
@@ -43,28 +44,26 @@ export const metadata: Metadata = {
     siteName: 'Happy Farm',
     images: [
       {
-        url: '/og-image.png', // IMPORTANT: Create and place this image (1200x630px recommended) in /public
+        url: '/og-image.png', 
         width: 1200,
         height: 630,
         alt: 'Happy Farm Game Cover',
       },
     ],
-    locale: 'en_US', // Change if your primary language is different
+    locale: 'en_US', 
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Happy Farm - Cheerful Farming Game',
     description: 'Join Happy Farm and build your dream farm! Plant, harvest, trade, and explore AI-powered features.',
-    // siteId: 'yourTwitterSiteId', // Optional: Your Twitter numeric ID
-    creator: '@yourTwitterHandle', // Optional: Your Twitter handle
-    // creatorId: 'yourTwitterCreatorId', // Optional: Your Twitter numeric ID for the creator
-    images: ['/twitter-image.png'], // IMPORTANT: Create and place this image (e.g., 1200x600px) in /public
+    creator: '@FirebaseStudio', 
+    images: ['/twitter-image.png'], 
   },
   icons: {
-    icon: '/favicon.ico', // Standard favicon
-    shortcut: '/favicon-16x16.png', // For older browsers
-    apple: '/apple-touch-icon.png', // For Apple devices
+    icon: '/favicon.ico', 
+    shortcut: '/favicon-16x16.png', 
+    apple: '/apple-touch-icon.png', 
     other: [
       {
         rel: 'icon',
@@ -78,9 +77,14 @@ export const metadata: Metadata = {
         sizes: '16x16',
         type: 'image/png',
       },
+      {
+        rel: 'apple-touch-icon',
+        url: '/apple-touch-icon-180x180.png', // Example for larger Apple icon
+        sizes: '180x180',
+      },
     ],
   },
-  manifest: '/manifest.json', // Already existed, keeping it
+  manifest: '/manifest.json',
   appleWebApp: {
     title: 'Happy Farm',
     statusBarStyle: 'default',
@@ -89,26 +93,18 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  // verification: { // Add these once you have the verification codes
-  //   google: 'your-google-site-verification-code',
-  //   yandex: 'your-yandex-verification-code',
-  //   other: {
-  //     me: ['my-email@example.com', 'my-link'],
-  //   },
-  // },
   category: 'games',
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAF7EB' }, // Corresponds to your light theme background
-    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },  // Corresponds to your dark theme background (approx)
+    { media: '(prefers-color-scheme: light)', color: '#FAF7EB' }, 
+    { media: '(prefers-color-scheme: dark)', color: '#0A0A0A' },  
   ],
   colorScheme: 'light dark',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1, // Optional: to prevent zooming on mobile for app-like feel
-  // userScalable: false, // Optional
+  maximumScale: 1,
 };
 
 
@@ -117,12 +113,35 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-XXXXXXXXXX"; // Fallback to a placeholder
+
   return (
     <html lang="vi">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+        
+        {/* Google Analytics gtag.js Script */}
+        {/* Replace G-XXXXXXXXXX with your Google Analytics Measurement ID if not using environment variable */}
+        <Script
+          strategy="beforeInteractive"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+        />
+        <Script
+          id="gtag-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_MEASUREMENT_ID}', {
+                page_path: window.location.pathname,
+              });
+            `,
+          }}
+        />
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
