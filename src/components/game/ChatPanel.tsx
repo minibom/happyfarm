@@ -87,7 +87,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
   return (
     <Card className={cn(
       "flex flex-col shadow-xl rounded-lg",
-      isModalMode ? "w-full h-full max-h-[90vh] sm:max-h-[85vh] md:max-h-[80vh] bg-background" : "w-96 h-[600px]"
+      isModalMode ? "w-full h-full bg-background" : "w-96 h-[600px]"
     )}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
@@ -101,7 +101,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
       )}>
         <ScrollArea 
           className={cn(
-            "flex-grow h-0 border rounded-md bg-muted/30",
+            "flex-grow h-0 border rounded-md bg-muted/30", // h-0 allows flex-grow to work
             isModalMode ? "mb-2 sm:mb-4" : "mb-4" 
           )} 
           ref={scrollAreaRef}
@@ -174,3 +174,4 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
 };
 
 export default ChatPanel;
+

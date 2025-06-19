@@ -568,7 +568,7 @@ export default function GamePage() {
       
       {Dialog && DialogContent && DialogHeader && DialogTitle && DialogDescription && ChatPanel && (
         <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
-          <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none data-[state=open]:has-[[data-chatpanel]]:overflow-hidden">
+          <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none flex flex-col h-[700px] max-h-[85vh]">
             <DialogHeader className="sr-only">
               <DialogTitle>Trò Chuyện Nông Trại</DialogTitle>
               <DialogDescription>Cửa sổ trò chuyện với những người chơi khác trong Happy Farm.</DialogDescription>
