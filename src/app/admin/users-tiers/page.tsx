@@ -5,12 +5,13 @@ import { useState, useEffect, useCallback } from 'react';
 import type { AdminUserView, GameState, TierDataFromFirestore } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart3, DollarSign, TrendingUp, Zap, Eye, Edit } from 'lucide-react';
+import { Loader2, Users, BarChart3, DollarSign, TrendingUp, Zap, Eye, Edit, Circle } from 'lucide-react';
 import { UserDetailModal } from '@/components/admin/UserActionModals';
-import { TierActionModal } from '@/components/admin/TierActionModal'; // Import TierActionModal
+import { TierActionModal } from '@/components/admin/TierActionModal';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore'; // Added setDoc
+import { db, rtdb } from '@/lib/firebase'; // Import rtdb
+import { collection, onSnapshot, doc, getDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { ref as rtdbRef, get as rtdbGet } from 'firebase/database'; // Import RTDB get
 import { TIER_DATA, type TierDetail, INITIAL_GAME_STATE } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import {
@@ -23,8 +24,13 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getPlayerTierInfo } from '@/lib/constants';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 type ActiveView = 'users' | 'tiers';
+type UserFilterStatus = 'all' | 'active' | 'banned_chat';
+type UserOnlineStatusFilter = 'all' | 'online' | 'offline';
 
 const maskEmail = (email?: string): string => {
   if (!email) return 'N/A';
@@ -41,7 +47,8 @@ const UsersManagementView = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUserView | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'banned_chat'>('all');
+  const [filterStatus, setFilterStatus] = useState<UserFilterStatus>('all');
+  const [onlineStatusFilter, setOnlineStatusFilter] = useState<UserOnlineStatusFilter>('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,7 +56,13 @@ const UsersManagementView = () => {
     const q = query(usersCollectionRef, orderBy('lastLogin', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
+      setIsLoading(true);
       const fetchedUsersList: AdminUserView[] = [];
+      // Fetch all online statuses once
+      const allStatusRef = rtdbRef(rtdb, 'status');
+      const allStatusSnapshot = await rtdbGet(allStatusRef);
+      const onlineStatuses: Record<string, { state: 'online' | 'offline' }> = allStatusSnapshot.exists() ? allStatusSnapshot.val() : {};
+
       for (const userDoc of snapshot.docs) {
         const uid = userDoc.id;
         const baseUserData = userDoc.data();
@@ -58,6 +71,7 @@ const UsersManagementView = () => {
         const gameStateSnap = await getDoc(gameStateRef);
 
         let userView: AdminUserView;
+        const rtdbStatus = onlineStatuses[uid]?.state || 'offline';
 
         if (gameStateSnap.exists()) {
           const gameState = gameStateSnap.data() as GameState;
@@ -67,6 +81,7 @@ const UsersManagementView = () => {
             displayName: gameState.displayName || baseUserData.displayName,
             ...gameState,
             lastLogin: baseUserData.lastLogin?.toMillis?.() || gameState.lastLogin,
+            onlineStatus: rtdbStatus,
           };
         } else {
            userView = {
@@ -80,6 +95,7 @@ const UsersManagementView = () => {
             lastLogin: baseUserData.lastLogin?.toMillis?.() || INITIAL_GAME_STATE.lastLogin,
             status: baseUserData.status || INITIAL_GAME_STATE.status,
             unlockedPlotsCount: baseUserData.unlockedPlotsCount || INITIAL_GAME_STATE.unlockedPlotsCount,
+            onlineStatus: rtdbStatus,
           };
         }
         fetchedUsersList.push(userView);
@@ -108,8 +124,11 @@ const UsersManagementView = () => {
     if (filterStatus !== 'all') {
       currentFilteredUsers = currentFilteredUsers.filter(user => user.status === filterStatus);
     }
+    if (onlineStatusFilter !== 'all') {
+      currentFilteredUsers = currentFilteredUsers.filter(user => user.onlineStatus === onlineStatusFilter);
+    }
     setFilteredUsers(currentFilteredUsers);
-  }, [allUsers, searchTerm, filterStatus]);
+  }, [allUsers, searchTerm, filterStatus, onlineStatusFilter]);
 
 
   const handleViewDetails = (user: AdminUserView) => {
@@ -139,6 +158,7 @@ const UsersManagementView = () => {
           className: "bg-green-500 text-white"
         });
         setIsUserModalOpen(false);
+         setAllUsers(prev => prev.map(u => u.uid === userId ? { ...u, status: newStatus } : u)); // Optimistic update
       } catch (err) {
         console.error("Error updating user status:", err);
         toast({ title: "Lỗi", description: "Không thể cập nhật trạng thái người dùng.", variant: "destructive"});
@@ -162,23 +182,34 @@ const UsersManagementView = () => {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex items-center gap-2 mb-4 shrink-0">
-        <input
+      <div className="flex flex-col md:flex-row items-center gap-2 mb-4 shrink-0">
+        <Input
           type="text"
           placeholder="Tìm kiếm theo tên, email, UID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="h-10 px-3 py-2 border border-input rounded-md text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 flex-grow bg-background"
         />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'banned_chat')}
-          className="h-10 px-3 py-2 border border-input rounded-md text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-background"
-        >
-          <option value="all">Tất cả Trạng Thái</option>
-          <option value="active">Đang Hoạt Động</option>
-          <option value="banned_chat">Bị Cấm Chat</option>
-        </select>
+        <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as UserFilterStatus)}>
+            <SelectTrigger className="h-10 w-full md:w-auto bg-background">
+                <SelectValue placeholder="Trạng thái Chat" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">Tất cả Trạng Thái Chat</SelectItem>
+                <SelectItem value="active">Đang Hoạt Động (Chat)</SelectItem>
+                <SelectItem value="banned_chat">Bị Cấm Chat</SelectItem>
+            </SelectContent>
+        </Select>
+        <Select value={onlineStatusFilter} onValueChange={(value) => setOnlineStatusFilter(value as UserOnlineStatusFilter)}>
+            <SelectTrigger className="h-10 w-full md:w-auto bg-background">
+                <SelectValue placeholder="Trạng thái Online" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">Tất cả TT Online</SelectItem>
+                <SelectItem value="online">Đang Online</SelectItem>
+                <SelectItem value="offline">Đang Offline</SelectItem>
+            </SelectContent>
+        </Select>
       </div>
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -190,19 +221,20 @@ const UsersManagementView = () => {
           <Table className="relative border-separate border-spacing-0">
             <TableHeader className="sticky top-0 bg-card z-10">
               <TableRow>
-                <TableHead className="w-[200px]">Tên Hiển Thị</TableHead>
-                <TableHead className="w-[220px]">Email (Masked)</TableHead>
+                <TableHead className="w-[180px]">Tên Hiển Thị</TableHead>
+                <TableHead className="w-[200px] hidden sm:table-cell">Email (Masked)</TableHead>
                 <TableHead className="w-[80px] text-center">UID (Ngắn)</TableHead>
                 <TableHead className="w-[80px] text-center">Cấp</TableHead>
-                <TableHead className="w-[100px] text-center">Trạng Thái</TableHead>
-                <TableHead className="w-[150px]">Lần Đ.Nhập Cuối</TableHead>
+                <TableHead className="w-[100px] text-center">TT Online</TableHead>
+                <TableHead className="w-[100px] text-center">TT Chat</TableHead>
+                <TableHead className="w-[150px] hidden md:table-cell">Lần Đ.Nhập Cuối</TableHead>
                 <TableHead className="text-center w-[100px]">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.length === 0 && !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     {getEmptyStateMessage()}
                   </TableCell>
                 </TableRow>
@@ -210,7 +242,7 @@ const UsersManagementView = () => {
                 filteredUsers.map((user) => (
                   <TableRow key={user.uid}>
                     <TableCell className="font-medium">{user.displayName || 'Chưa đặt'}</TableCell>
-                    <TableCell>{maskEmail(user.email)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{maskEmail(user.email)}</TableCell>
                     <TableCell className="text-center text-xs text-muted-foreground" title={user.uid}>
                       {user.uid.substring(0, 6)}...
                     </TableCell>
@@ -218,16 +250,22 @@ const UsersManagementView = () => {
                       <Badge variant="secondary">{user.level}</Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={cn(user.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600", "text-white")}>
+                        <div className="flex items-center justify-center">
+                            <Circle className={cn("h-3 w-3 mr-1.5", user.onlineStatus === 'online' ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400')} />
+                            <span className="text-xs capitalize">{user.onlineStatus || 'N/A'}</span>
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={user.status === 'active' ? 'default' : 'destructive'} className={cn(user.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600", "text-white text-xs")}>
                         {user.status === 'active' ? 'Hoạt động' : 'Cấm Chat'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs hidden md:table-cell">
                         {user.lastLogin ? new Date(user.lastLogin).toLocaleString('vi-VN') : 'Chưa có'}
                     </TableCell>
                     <TableCell className="text-center space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(user)} className="hover:text-primary" title="Xem chi tiết">
-                        <Eye className="h-5 w-5" />
+                      <Button variant="ghost" size="icon" onClick={() => handleViewDetails(user)} className="hover:text-primary h-8 w-8" title="Xem chi tiết">
+                        <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -252,7 +290,7 @@ const UsersManagementView = () => {
 interface TierDisplayData extends TierDetail {
   tierNumber: number;
   levelRange: string;
-  id: string; // Firestore document ID like "tier_1"
+  id: string; 
 }
 
 const TiersManagementView = () => {
@@ -270,8 +308,6 @@ const TiersManagementView = () => {
         fetchedTiers[docSnap.id] = docSnap.data() as TierDataFromFirestore;
       });
 
-      // Combine with TIER_DATA from constants to ensure all tiers are represented
-      // and to get levelStart for range calculation.
       const combinedTierData = TIER_DATA.map((constantTier, index) => {
         const tierId = `tier_${index + 1}`;
         const firestoreData = fetchedTiers[tierId] || {};
@@ -281,16 +317,15 @@ const TiersManagementView = () => {
           name: firestoreData.name || constantTier.name,
           icon: firestoreData.icon || constantTier.icon,
           colorClass: firestoreData.colorClass || constantTier.colorClass,
-          levelStart: constantTier.levelStart, // Base levelStart from constant
+          levelStart: constantTier.levelStart,
           xpBoostPercent: firestoreData.xpBoostPercent !== undefined ? firestoreData.xpBoostPercent : constantTier.xpBoostPercent,
           sellPriceBoostPercent: firestoreData.sellPriceBoostPercent !== undefined ? firestoreData.sellPriceBoostPercent : constantTier.sellPriceBoostPercent,
           growthTimeReductionPercent: firestoreData.growthTimeReductionPercent !== undefined ? firestoreData.growthTimeReductionPercent : constantTier.growthTimeReductionPercent,
         };
       });
 
-      // Calculate levelRange after combining and sorting
       const finalTierDisplayData = combinedTierData
-        .sort((a,b) => a.levelStart - b.levelStart) // Ensure sorted by levelStart
+        .sort((a,b) => a.levelStart - b.levelStart)
         .map((tier, index, allTiers) => {
           let endLevelText;
           if (index < allTiers.length - 1) {
@@ -314,7 +349,6 @@ const TiersManagementView = () => {
     }, (error) => {
       console.error("Error fetching tiers from Firestore:", error);
       toast({ title: "Lỗi Tải Dữ Liệu Bậc", description: "Không thể tải dữ liệu cấp bậc. Hiển thị dữ liệu mặc định.", variant: "destructive" });
-      // Fallback to display TIER_DATA from constants if Firestore fails
       const constantDisplayData = TIER_DATA.map((tierDetail, index) => {
           const tierNumber = index + 1;
           const startLevel = tierDetail.levelStart;
@@ -342,7 +376,7 @@ const TiersManagementView = () => {
       isOpen: true,
       onClose: () => setIsTierModalOpen(false),
       mode,
-      tierData: tier, // Pass the full tier data which includes potentially modified fields
+      tierData: tier, 
       tierId: tier.id,
       onSave: handleTierSaveChanges,
     });
@@ -352,7 +386,6 @@ const TiersManagementView = () => {
   const handleTierSaveChanges = async (data: TierDataFromFirestore, idToSave: string) => {
     try {
       const tierRef = doc(db, 'gameTiers', idToSave);
-      // Firestore expects plain objects, ensure data doesn't have extra derived fields if any
       const dataToSave: Partial<TierDataFromFirestore> = {
         name: data.name,
         icon: data.icon,
@@ -360,10 +393,8 @@ const TiersManagementView = () => {
         xpBoostPercent: data.xpBoostPercent,
         sellPriceBoostPercent: data.sellPriceBoostPercent,
         growthTimeReductionPercent: data.growthTimeReductionPercent,
-        // levelStart is not saved from modal as it's fixed by TIER_DATA for ID mapping
       };
-
-      await setDoc(tierRef, dataToSave, { merge: true }); // Use merge to only update provided fields
+      await setDoc(tierRef, dataToSave, { merge: true }); 
       toast({
         title: "Thành Công!",
         description: `Đã cập nhật thông tin cho ${data.name}.`,
@@ -433,8 +464,8 @@ const TiersManagementView = () => {
                 </div>
               </TableCell>
               <TableCell className="text-center">
-                <Button variant="ghost" size="icon" onClick={() => openTierModal('edit', tier)} className="hover:text-blue-600" title="Chỉnh sửa Bậc">
-                  <Edit className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={() => openTierModal('edit', tier)} className="hover:text-blue-600 h-8 w-8" title="Chỉnh sửa Bậc">
+                  <Edit className="h-4 w-4" />
                 </Button>
               </TableCell>
             </TableRow>
@@ -484,4 +515,3 @@ export default function AdminUsersTiersPage() {
     </Card>
   );
 }
-    

@@ -18,8 +18,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { AdminUserView } from '@/types';
-import { Gift, Zap, UserX, MessageSquareOff, ShieldCheck, ShieldX, UserCircle2 } from 'lucide-react';
+import { Gift, Zap, UserX, MessageSquareOff, ShieldCheck, ShieldX, UserCircle2, Circle } from 'lucide-react';
 import { getPlayerTierInfo } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 export interface UserDetailModalProps {
   isOpen: boolean;
@@ -32,8 +33,6 @@ export const UserDetailModal: FC<UserDetailModalProps> = ({ isOpen, onClose, use
   if (!userData) return null;
 
   const handleSimulatedAction = (actionType: 'reset_progress' | 'grant_items') => {
-    // In a real app, these would trigger backend functions.
-    // For now, they might just log or show a toast.
     onAction(userData.uid, actionType);
   };
 
@@ -64,7 +63,14 @@ export const UserDetailModal: FC<UserDetailModalProps> = ({ isOpen, onClose, use
                     <Label className="text-right font-medium">Email:</Label>
                     <Input value={userData.email || 'N/A'} readOnly className="col-span-2 bg-muted text-sm" />
 
-                    <Label className="text-right font-medium">Trạng Thái:</Label>
+                    <Label className="text-right font-medium">TT Online:</Label>
+                     <div className="col-span-2 flex items-center">
+                        <Circle className={cn("h-3 w-3 mr-1.5", userData.onlineStatus === 'online' ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400')} />
+                        <span className="text-sm capitalize">{userData.onlineStatus || 'N/A'}</span>
+                    </div>
+
+
+                    <Label className="text-right font-medium">TT Chat:</Label>
                     <Badge 
                         variant={userData.status === 'active' ? 'default' : 'destructive'} 
                         className={`col-span-2 ${userData.status === 'active' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}

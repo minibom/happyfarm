@@ -1,5 +1,4 @@
 
-
 export type PlotState = 'empty' | 'planted' | 'growing' | 'ready_to_harvest' | 'locked';
 
 export type CropId = string;
@@ -254,6 +253,7 @@ export interface TierInfo {
 
 export interface AdminUserView extends GameState {
   uid: string;
+  onlineStatus?: 'online' | 'offline'; // Added for RTDB presence
 }
 
 export type MarketItemId = CropId | SeedId | FertilizerId; // Extended to include FertilizerId
@@ -315,5 +315,3 @@ export interface TierDataFromFirestore {
   sellPriceBoostPercent: number;
   growthTimeReductionPercent: number;
 }
-
-  
