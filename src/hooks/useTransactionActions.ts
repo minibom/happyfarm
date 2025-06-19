@@ -36,16 +36,17 @@ const updateMissionProgressForTransaction = (
         if (mission.targetItemId === itemId) {
           match = true;
         }
-      } else if (missionType === 'earn_gold' && value) { // earn_gold doesn't use itemId
+      } else if (missionType === 'earn_gold' && value !== undefined) { // earn_gold doesn't use itemId, uses value
          match = true;
       }
-       else { // For missions without specific item ID (e.g., harvest_any_X)
+       else if (missionType !== 'earn_gold') { // For missions without specific item ID (e.g., harvest_any_X), but not earn_gold
         match = true;
       }
 
 
       if (match) {
-        const newProgress = mission.progress + (missionType === 'earn_gold' && value ? value : quantity);
+        const progressIncrement = (missionType === 'earn_gold' && value !== undefined) ? value : quantity;
+        const newProgress = mission.progress + progressIncrement;
         updatedMissions[key] = { ...mission, progress: newProgress };
         missionChanged = true;
         if (newProgress >= mission.targetQuantity) {
@@ -110,7 +111,7 @@ export const useTransactionActions = ({
     }
 
     setGameState(prev => {
-      if (prev.gold < totalCost) return prev;
+      if (prev.gold < totalCost) return prev; // Double check gold before state update
       const newInventory = { ...prev.inventory };
       newInventory[itemId] = (newInventory[itemId] || 0) + quantity;
       
@@ -145,7 +146,7 @@ export const useTransactionActions = ({
     }
 
     setGameState(prev => {
-      if ((prev.inventory[itemId] || 0) < quantity) return prev;
+      if ((prev.inventory[itemId] || 0) < quantity) return prev; // Double check inventory
       const baseGain = quantity * priceAtTransaction;
       const totalGain = Math.floor(baseGain * (1 + currentTierInfoValue.sellPriceBoostPercent));
       const newInventory = { ...prev.inventory };

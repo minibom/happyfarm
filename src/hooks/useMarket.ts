@@ -4,15 +4,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot, collection, query, where, Timestamp } from 'firebase/firestore';
-import type { MarketState, MarketPriceData, MarketPriceChange, MarketEventData, MarketItemId, CropDetails, CropId, FertilizerId, FertilizerDetails, ActiveGameEvent } from '@/types';
+import type { MarketState, MarketPriceData, MarketPriceChange, MarketEventData, MarketItemId, CropDetails, CropId, FertilizerId, FertilizerDetails, ActiveGameEvent, GameEventEffect } from '@/types';
 import { INITIAL_MARKET_STATE, CROP_DATA, FERTILIZER_DATA, ALL_SEED_IDS, ALL_CROP_IDS, ALL_FERTILIZER_IDS } from '@/lib/constants';
-import { useToast } from '@/hooks/use-toast'; // Added useToast
+import { useToast } from '@/hooks/use-toast'; 
 
 export interface MarketData {
-  prices: MarketPriceData; // Prices after AI adjustment but BEFORE live events
-  priceChanges: MarketPriceChange; // AI-driven price changes
-  activeMarketEvents: ActiveGameEvent[]; // Live game events affecting the market
-  currentEvent: MarketEventData | null; // Legacy event from marketState/global
+  prices: MarketPriceData; 
+  priceChanges: MarketPriceChange; 
+  activeMarketEvents: ActiveGameEvent[]; 
+  currentEvent: MarketEventData | null; 
   lastUpdated: number;
   loading: boolean;
   error: Error | null;
@@ -45,13 +45,12 @@ export const useMarket = (): MarketData => {
           console.warn("Market state document '/marketState/global' does not exist. Using initial default state.");
           setMarketState(INITIAL_MARKET_STATE);
         }
-        // Keep loading true until events also load or fail
       },
       (err) => {
         console.error("Error fetching market state:", err);
         setError(err);
         setMarketState(INITIAL_MARKET_STATE);
-        setLoading(false); // Stop loading on error
+        setLoading(false); 
       }
     );
 
@@ -71,12 +70,12 @@ export const useMarket = (): MarketData => {
         }
       });
       setActiveMarketEvents(fetchedEvents);
-      setLoading(false); // Stop loading after events are fetched
+      setLoading(false); 
     }, (eventError) => {
       console.error("Error fetching active market events:", eventError);
       toast({ title: "Lỗi Sự Kiện Chợ", description: "Không thể tải sự kiện chợ.", variant: "destructive" });
       setActiveMarketEvents([]);
-      setLoading(false); // Stop loading on error
+      setLoading(false); 
     });
 
 
@@ -87,50 +86,79 @@ export const useMarket = (): MarketData => {
   }, [toast]);
 
   const calculateEffectivePrice = useCallback((
-    basePrice: number,
-    aiAdjustedPrice: number,
+    basePrice: number, // The original price from constants (CROP_DATA, FERTILIZER_DATA)
+    aiAdjustedPrice: number, // Price from marketState.prices (after AI flow adjustments)
     itemId: MarketItemId,
     itemType: 'seed' | 'crop' | 'fertilizer',
-    events: ActiveGameEvent[]
+    events: ActiveGameEvent[] // All currently active game events
   ): number => {
-    let currentPrice = aiAdjustedPrice; // Start with AI adjusted price
-    let bestModifier = 1.0;
+    let currentPrice = aiAdjustedPrice; // Start with the AI-adjusted price
 
-    const relevantEvents = events.filter(event => {
-      const typeMatch = (itemType === 'seed' && event.type === 'ITEM_PURCHASE_PRICE_MODIFIER') ||
-                        (itemType === 'crop' && event.type === 'ITEM_SELL_PRICE_MODIFIER') ||
-                        (itemType === 'fertilizer' && event.type === 'ITEM_PURCHASE_PRICE_MODIFIER');
-      if (!typeMatch) return false;
+    const potentiallyApplicableEffects: Array<{ eventName: string, effect: GameEventEffect, specificity: 'item' | 'category' }> = [];
 
-      const itemMatch = (event.affectedItemIds === `ALL_${itemType.toUpperCase()}S` || // e.g. ALL_SEEDS, ALL_CROPS
-                        event.affectedItemIds === 'ALL_FERTILIZERS' && itemType === 'fertilizer') ||
-                        (Array.isArray(event.affectedItemIds) && event.affectedItemIds.includes(itemId));
-      return itemMatch;
+    events.forEach(event => {
+      event.effects.forEach(effect => {
+        let typeMatches = false;
+        if ((itemType === 'seed' || itemType === 'fertilizer') && effect.type === 'ITEM_PURCHASE_PRICE_MODIFIER') {
+          typeMatches = true;
+        } else if (itemType === 'crop' && effect.type === 'ITEM_SELL_PRICE_MODIFIER') {
+          typeMatches = true;
+        }
+
+        if (typeMatches) {
+          if (Array.isArray(effect.affectedItemIds) && effect.affectedItemIds.includes(itemId)) {
+            potentiallyApplicableEffects.push({ eventName: event.name, effect, specificity: 'item' });
+          } else if (typeof effect.affectedItemIds === 'string') { // ALL_...
+            const categoryString = `ALL_${itemType.toUpperCase()}S`; 
+            const fertilizerCategoryString = 'ALL_FERTILIZERS';
+            if (effect.affectedItemIds === categoryString || (itemType === 'fertilizer' && effect.affectedItemIds === fertilizerCategoryString)) {
+              potentiallyApplicableEffects.push({ eventName: event.name, effect, specificity: 'category' });
+            }
+          }
+        }
+      });
     });
 
-    if (relevantEvents.length > 0) {
-      const specificEvents = relevantEvents.filter(event => Array.isArray(event.affectedItemIds));
-      const generalEvents = relevantEvents.filter(event => typeof event.affectedItemIds === 'string');
+    if (potentiallyApplicableEffects.length > 0) {
+      const specificEffects = potentiallyApplicableEffects.filter(e => e.specificity === 'item');
+      const categoryEffects = potentiallyApplicableEffects.filter(e => e.specificity === 'category');
 
-      let finalModifier = 1.0;
+      let bestEffectValue: number | undefined = undefined;
+      let chosenEventName: string | undefined;
 
-      const findBestModifier = (eventList: ActiveGameEvent[], currentBest: number) => {
-        return eventList.reduce((best, event) => {
-          return (itemType === 'seed' || itemType === 'fertilizer') ? Math.min(best, event.value) : Math.max(best, event.value);
-        }, currentBest);
+      // Determine the best modifier based on item type (buy low, sell high)
+      const getBestModifier = (effectsToConsider: typeof potentiallyApplicableEffects) => {
+        if (effectsToConsider.length === 0) return undefined;
+        let bestVal: number | undefined = undefined;
+        let bestEvtName: string | undefined;
+
+        if (itemType === 'seed' || itemType === 'fertilizer') { // Buying: seek lowest modifier value
+          bestVal = Math.min(...effectsToConsider.map(e => e.effect.value));
+          bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
+        } else { // Selling crops: seek highest modifier value
+          bestVal = Math.max(...effectsToConsider.map(e => e.effect.value));
+          bestEvtName = effectsToConsider.find(e => e.effect.value === bestVal)?.eventName;
+        }
+        return {value: bestVal, eventName: bestEvtName};
       };
 
-      if (specificEvents.length > 0) {
-        finalModifier = findBestModifier(specificEvents, (itemType === 'seed' || itemType === 'fertilizer') ? Infinity : 0);
-      } else if (generalEvents.length > 0) {
-        finalModifier = findBestModifier(generalEvents, (itemType === 'seed' || itemType === 'fertilizer') ? Infinity : 0);
+      const specificResult = getBestModifier(specificEffects);
+      const categoryResult = getBestModifier(categoryEffects);
+
+      if (specificResult?.value !== undefined) {
+        bestEffectValue = specificResult.value;
+        chosenEventName = specificResult.eventName;
+      } else if (categoryResult?.value !== undefined) {
+        bestEffectValue = categoryResult.value;
+        chosenEventName = categoryResult.eventName;
       }
       
-      if ((itemType === 'seed' || itemType === 'fertilizer' ) && finalModifier === Infinity) finalModifier = 1.0;
-      if (itemType === 'crop' && finalModifier === 0) finalModifier = 1.0;
-
-      currentPrice *= finalModifier;
+      if (bestEffectValue !== undefined) {
+        // console.log(`Applying event "${chosenEventName}" modifier ${bestEffectValue} to ${itemId}`);
+        currentPrice *= bestEffectValue;
+      }
     }
+    
     return Math.max(1, Math.round(currentPrice));
   }, []);
 
@@ -160,10 +188,10 @@ export const useMarket = (): MarketData => {
     return {
       name: itemType === 'seed' ? `${itemDetails.name} (Hạt)` : itemDetails.name,
       icon: itemDetails.icon,
-      basePrice: basePrice, // The original base price from constants
+      basePrice: basePrice, 
       type: itemType,
       unlockTier: itemDetails.unlockTier,
-      effectivePrice: effectivePrice, // The final price after AI and event adjustments
+      effectivePrice: effectivePrice, 
     };
   }, [marketState?.prices, activeMarketEvents, calculateEffectivePrice]);
 
@@ -171,12 +199,11 @@ export const useMarket = (): MarketData => {
   return {
     prices: marketState?.prices || INITIAL_MARKET_STATE.prices,
     priceChanges: marketState?.priceChanges || INITIAL_MARKET_STATE.priceChanges,
-    currentEvent: marketState?.currentEvent || INITIAL_MARKET_STATE.currentEvent, // Legacy
-    activeMarketEvents: activeMarketEvents, // New live events
+    currentEvent: marketState?.currentEvent || INITIAL_MARKET_STATE.currentEvent, 
+    activeMarketEvents: activeMarketEvents, 
     lastUpdated: marketState?.lastUpdated || INITIAL_MARKET_STATE.lastUpdated,
     loading,
     error,
     getItemDetails,
   };
 };
-

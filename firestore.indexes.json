@@ -80,13 +80,6 @@
       ]
     },
     {
-      "collectionGroup": "gameRandomMissionPool",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "title", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [
@@ -94,13 +87,7 @@
         { "fieldPath": "xp", "order": "DESCENDING" }
       ]
     },
-    {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "lastLogin", "order": "DESCENDING" }
-      ]
-    },
+
     {
       "collectionGroup": "zones",
       "queryScope": "COLLECTION",

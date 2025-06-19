@@ -1,5 +1,5 @@
 
-import type { GameState, BonusConfiguration, MailMessage, TierInfo, Mission } from '@/types';
+import type { GameState, BonusConfiguration, MailMessage, TierInfo, Mission, PlayerMissionProgress } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp as firestoreServerTimestamp } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
@@ -54,11 +54,37 @@ export const checkAndApplyFirstLoginBonus = async (
   });
 
   if (firstLoginBonusFoundAndApplied) {
-    // Update gameState directly only if necessary or rely on Firestore listener to pick it up.
-    // For immediate UI feedback, update client state.
     setGameState(prev => ({ ...prev, claimedBonuses: tempClaimedBonuses, lastUpdate: Date.now() }));
   }
 };
+
+const updateReachLevelMissionProgress = (
+  currentActiveMissions: Record<string, PlayerMissionProgress>,
+  newPlayerLevel: number
+): Record<string, PlayerMissionProgress> => {
+  const updatedMissions = { ...currentActiveMissions };
+  let missionChanged = false;
+
+  Object.keys(updatedMissions).forEach(key => {
+    const mission = updatedMissions[key];
+    if (mission.status === 'active' && mission.type === 'reach_level') {
+      // For "reach_level", progress is simply the current level if it's not yet met.
+      // Once targetQuantity (target level) is met or exceeded, it's completed.
+      if (newPlayerLevel >= mission.targetQuantity) {
+        updatedMissions[key] = { ...mission, progress: mission.targetQuantity, status: 'completed_pending_claim' };
+        missionChanged = true;
+      } else {
+        // Update progress to current level if it changed but not yet met target
+        if (mission.progress !== newPlayerLevel) {
+          updatedMissions[key] = { ...mission, progress: newPlayerLevel };
+          missionChanged = true;
+        }
+      }
+    }
+  });
+  return missionChanged ? updatedMissions : currentActiveMissions;
+};
+
 
 export const checkAndApplyTierUpBonus = async (
   userId: string,
@@ -79,6 +105,7 @@ export const checkAndApplyTierUpBonus = async (
   
   let bonusStateChanged = false;
   let tempClaimedBonuses = { ...(currentGameState.claimedBonuses || {}) };
+  let activeMissionsAfterLevelUp = { ...(currentGameState.activeMissions || {}) };
 
   if (newTierInfo.tier > oldTierInfo.tier) {
     toastInstance({ title: "Thăng Hạng!", description: `Chúc mừng! Bạn đã đạt được ${newTierInfo.tierName}! Các vật phẩm và buff mới có thể đã được mở khóa.`, className: "bg-accent text-accent-foreground", duration: 7000 });
@@ -97,14 +124,17 @@ export const checkAndApplyTierUpBonus = async (
     });
   }
   
-  // Update missions regardless of tier up, as level up might unlock main missions
-  const updatedMissions = assignMainMissions(newLevel, currentGameState.activeMissions || {}, mainMissionDefinitions);
-  const missionsChanged = JSON.stringify(updatedMissions) !== JSON.stringify(currentGameState.activeMissions || {});
+  // Update main missions based on new level
+  activeMissionsAfterLevelUp = assignMainMissions(newLevel, activeMissionsAfterLevelUp, mainMissionDefinitions);
+  // Update reach_level mission progress
+  activeMissionsAfterLevelUp = updateReachLevelMissionProgress(activeMissionsAfterLevelUp, newLevel);
+
+  const missionsChanged = JSON.stringify(activeMissionsAfterLevelUp) !== JSON.stringify(currentGameState.activeMissions || {});
 
   if (bonusStateChanged || missionsChanged) {
     setGameState(prev => {
         const finalClaimedBonuses = bonusStateChanged ? tempClaimedBonuses : prev.claimedBonuses;
-        const finalActiveMissions = missionsChanged ? updatedMissions : prev.activeMissions;
+        const finalActiveMissions = missionsChanged ? activeMissionsAfterLevelUp : prev.activeMissions;
         return {...prev, claimedBonuses: finalClaimedBonuses, activeMissions: finalActiveMissions, lastUpdate: Date.now() };
     });
   }
