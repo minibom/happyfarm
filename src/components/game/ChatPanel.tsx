@@ -19,7 +19,7 @@ import { useGameLogic } from '@/hooks/useGameLogic';
 interface ChatPanelProps {
   isModalMode?: boolean;
   userStatus: GameState['status'];
-  onUsernameClick?: (uid: string, displayName: string) => void; // New prop
+  onUsernameClick?: (uid: string, displayName: string) => void;
 }
 
 const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUsernameClick }) => {
@@ -88,7 +88,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
   return (
     <Card className={cn(
       "flex flex-col shadow-xl rounded-lg",
-      isModalMode ? "w-full h-full bg-background" : "w-96 h-[600px]" // Adjusted modal height to h-full
+      isModalMode ? "w-full h-full bg-background" : "w-96 h-[600px]" 
     )}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
@@ -98,18 +98,18 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
       </CardHeader>
       <CardContent className={cn(
         "flex-grow flex flex-col pt-0",
-        isModalMode ? "p-2 sm:p-2" : "p-4"  // Reduced padding for sm screens in modal mode
+        isModalMode ? "p-2 sm:p-2" : "p-4"
       )}>
         <ScrollArea 
           className={cn(
             "flex-grow h-0 border rounded-md bg-muted/30",
-            isModalMode ? "mb-2 sm:mb-2" : "mb-4" // Reduced margin for sm screens in modal mode
+            isModalMode ? "mb-2 sm:mb-2" : "mb-4" 
           )} 
           ref={scrollAreaRef}
         >
           <div className={cn(
             "space-y-3",
-            isModalMode ? "p-1.5 sm:p-1.5" : "p-3" // Reduced padding for sm screens in modal mode
+            isModalMode ? "p-1.5 sm:p-1.5" : "p-3" 
           )}>
             {messages.map((msg) => (
               <div 
@@ -117,14 +117,14 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
                 className={cn(
                   "flex w-full", 
                   msg.senderUid === user?.uid 
-                    ? (isModalMode ? "justify-end pl-4 sm:pl-6" : "justify-end pl-8 sm:pl-12") // Adjusted padding
-                    : (isModalMode ? "justify-start pr-4 sm:pr-6" : "justify-start pr-8 sm:pr-12") // Adjusted padding
+                    ? (isModalMode ? "justify-end pl-4 sm:pl-6" : "justify-end pl-8 sm:pl-12") 
+                    : (isModalMode ? "justify-start pr-4 sm:pr-6" : "justify-start pr-8 sm:pr-12") 
                 )}
               >
                 <div
                   className={cn(
                     "rounded-lg shadow text-sm max-w-[85%]", 
-                    isModalMode ? "p-1 sm:p-1.5" : "p-2", // Adjusted padding
+                    isModalMode ? "p-1 sm:p-1.5" : "p-2", 
                     msg.senderUid === user?.uid
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border" 
@@ -134,10 +134,15 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus, onUser
                     variant="link"
                     className={cn(
                       "text-xs font-semibold mb-0.5 p-0 h-auto leading-none",
-                      msg.senderUid === user?.uid ? "text-primary-foreground/90 hover:text-primary-foreground" : "text-accent hover:text-accent/80"
+                      msg.senderUid === user?.uid ? "text-primary-foreground/90 hover:text-primary-foreground" : "text-accent hover:text-accent/80",
+                      !onUsernameClick && "pointer-events-none" // Disable button style if no handler
                     )}
-                    onClick={() => onUsernameClick && onUsernameClick(msg.senderUid, msg.senderDisplayName)}
-                    disabled={!onUsernameClick}
+                    onClick={() => {
+                      if (onUsernameClick) {
+                        onUsernameClick(msg.senderUid, msg.senderDisplayName);
+                      }
+                    }}
+                    disabled={!onUsernameClick} // Semantically disable if no handler
                   >
                     {msg.senderDisplayName || 'Người chơi'}
                   </Button>
