@@ -1,4 +1,5 @@
 
+
 # Happy Farm - A Next.js Farming Game 🚜🌾
 
 Welcome to Happy Farm! This is a delightful farming game built with Next.js, React, and powered by Firebase for backend services and Genkit for AI features.
