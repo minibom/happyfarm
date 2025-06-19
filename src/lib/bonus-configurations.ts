@@ -1,5 +1,6 @@
 
 import type { BonusConfiguration } from '@/types';
+import { TIER_DATA } from './tier-data'; // Import TIER_DATA to access tier names
 
 export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
   {
@@ -19,7 +20,7 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     id: "tierUp_2",
     triggerType: "tierUp",
     triggerValue: 2, // Represents Tier 2
-    description: "Phần thưởng khi người chơi đạt Bậc 2 - Chủ Vườn Chăm Chỉ.",
+    description: `Phần thưởng khi người chơi đạt Bậc 2 - ${TIER_DATA[1].name}.`,
     rewards: [
       { type: 'gold', amount: 300 },
       { type: 'xp', amount: 150 },
@@ -27,14 +28,14 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
       { type: 'item', itemId: 't1_basicGrow', quantity: 2 },
     ],
     mailSubject: "Chúc mừng bạn đã lên Bậc 2!",
-    mailBody: "Thật tuyệt vời! Bạn đã chăm chỉ làm việc và đạt được Bậc 2 - Chủ Vườn Chăm Chỉ.\n\nĐây là phần thưởng xứng đáng cho những nỗ lực của bạn. Hãy tiếp tục phát triển nông trại và khám phá những điều mới mẻ nhé!",
+    mailBody: `Thật tuyệt vời! Bạn đã chăm chỉ làm việc và đạt được Bậc 2 - ${TIER_DATA[1].name}.\n\nĐây là phần thưởng xứng đáng cho những nỗ lực của bạn. Hãy tiếp tục phát triển nông trại và khám phá những điều mới mẻ nhé!`,
     isEnabled: true,
   },
   {
     id: "tierUp_3",
     triggerType: "tierUp",
     triggerValue: 3, // Represents Tier 3
-    description: "Phần thưởng khi người chơi đạt Bậc 3 - Nhà Trồng Trọt Khéo Léo.",
+    description: `Phần thưởng khi người chơi đạt Bậc 3 - ${TIER_DATA[2].name}.`,
     rewards: [
       { type: 'gold', amount: 500 },
       { type: 'xp', amount: 300 },
@@ -42,28 +43,268 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
       { type: 'item', itemId: 't1_quickSoil', quantity: 3 },
     ],
     mailSubject: "Chúc mừng thăng hạng lên Bậc 3!",
-    mailBody: "Xuất sắc! Kỹ năng nông trại của bạn đã được nâng lên một tầm cao mới khi đạt Bậc 3 - Nhà Trồng Trọt Khéo Léo.\n\nNhận lấy phần thưởng này và tiếp tục hành trình trở thành một nông dân tài ba!",
+    mailBody: `Xuất sắc! Kỹ năng nông trại của bạn đã được nâng lên một tầm cao mới khi đạt Bậc 3 - ${TIER_DATA[2].name}.\n\nNhận lấy phần thưởng này và tiếp tục hành trình trở thành một nông dân tài ba!`,
     isEnabled: true,
   },
   {
-    id: "tierUp_5", // New: Reward for Tier 5
+    id: "tierUp_4",
     triggerType: "tierUp",
-    triggerValue: 5, // Represents Tier 5
-    description: "Phần thưởng khi người chơi đạt Bậc 5 - Bậc Thầy Nông Sản.",
+    triggerValue: 4,
+    description: `Phần thưởng khi người chơi đạt Bậc 4 - ${TIER_DATA[3].name}.`,
+    rewards: [
+      { type: 'gold', amount: 750 },
+      { type: 'xp', amount: 400 },
+      { type: 'item', itemId: 'mangoSeed', quantity: 3 },
+      { type: 'item', itemId: 't4_superFert', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 4!",
+    mailBody: `Tuyệt vời! Bạn đã đạt Bậc 4 - ${TIER_DATA[3].name}.\n\nPhần thưởng này dành cho bạn. Hãy tiếp tục khám phá nhé!`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_5",
+    triggerType: "tierUp",
+    triggerValue: 5,
+    description: `Phần thưởng khi người chơi đạt Bậc 5 - ${TIER_DATA[4].name}.`,
     rewards: [
       { type: 'gold', amount: 1000 },
       { type: 'xp', amount: 500 },
       { type: 'item', itemId: 'appleSeed', quantity: 10 },
-      { type: 'item', itemId: 't3_powerGro', quantity: 5 },
+      { type: 'item', itemId: 't3_powerGro', quantity: 5 }, // Note: t3_powerGro is Tier 3, maybe t5_ultraNutrient is better
     ],
-    mailSubject: "Tuyệt Vời! Bạn Đã Đạt Bậc 5!",
-    mailBody: "Không thể tin được! Bạn đã vươn tới Bậc 5 - Bậc Thầy Nông Sản! Nông trại của bạn chắc chắn đang rất thịnh vượng.\n\nPhần thưởng này là để ghi nhận sự kiên trì và tài năng của bạn. Hãy tiếp tục làm nên những điều kỳ diệu!",
+    mailSubject: `Tuyệt Vời! Bạn Đã Đạt Bậc 5 - ${TIER_DATA[4].name}!`,
+    mailBody: `Không thể tin được! Bạn đã vươn tới Bậc 5 - ${TIER_DATA[4].name}! Nông trại của bạn chắc chắn đang rất thịnh vượng.\n\nPhần thưởng này là để ghi nhận sự kiên trì và tài năng của bạn. Hãy tiếp tục làm nên những điều kỳ diệu!`,
     isEnabled: true,
   },
   {
-    id: "firstPlotUnlock_reward", // New: Reward for first plot unlock (beyond initial)
+    id: "tierUp_6",
+    triggerType: "tierUp",
+    triggerValue: 6,
+    description: `Phần thưởng khi người chơi đạt Bậc 6 - ${TIER_DATA[5].name}.`,
+    rewards: [
+      { type: 'gold', amount: 1200 },
+      { type: 'xp', amount: 600 },
+      { type: 'item', itemId: 'grapesSeed', quantity: 5 },
+      { type: 'item', itemId: 't6_gigaGro', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 6!",
+    mailBody: `Tuyệt vời! Bạn đã đạt Bậc 6 - ${TIER_DATA[5].name}.\n\nPhần thưởng này dành cho bạn. Hãy tiếp tục khám phá nhé!`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_7",
+    triggerType: "tierUp",
+    triggerValue: 7,
+    description: `Phần thưởng khi người chơi đạt Bậc 7 - ${TIER_DATA[6].name}.`,
+    rewards: [
+      { type: 'gold', amount: 1500 },
+      { type: 'xp', amount: 750 },
+      { type: 'item', itemId: 'peachSeed', quantity: 3 },
+      { type: 'item', itemId: 't7_megaFertilizer', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 7!",
+    mailBody: `Thật đáng nể! Bạn đã chinh phục Bậc 7 - ${TIER_DATA[6].name}.\n\nNhận lấy phần thưởng và tiếp tục hành trình!`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_8",
+    triggerType: "tierUp",
+    triggerValue: 8,
+    description: `Phần thưởng khi người chơi đạt Bậc 8 - ${TIER_DATA[7].name}.`,
+    rewards: [
+      { type: 'gold', amount: 1800 },
+      { type: 'xp', amount: 900 },
+      { type: 'item', itemId: 'cherrySeed', quantity: 5 },
+      { type: 'item', itemId: 't8_cosmicCompost', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 8!",
+    mailBody: `Xuất sắc! Bậc 8 - ${TIER_DATA[7].name} đã nằm trong tay bạn.\n\nĐây là phần thưởng xứng đáng cho những nỗ lực của bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_9",
+    triggerType: "tierUp",
+    triggerValue: 9,
+    description: `Phần thưởng khi người chơi đạt Bậc 9 - ${TIER_DATA[8].name}.`,
+    rewards: [
+      { type: 'gold', amount: 2200 },
+      { type: 'xp', amount: 1100 },
+      { type: 'item', itemId: 'watermelonSeed', quantity: 3 },
+      { type: 'item', itemId: 't9_divineElixir', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 9!",
+    mailBody: `Quá ấn tượng! Bạn đã chạm tới Bậc 9 - ${TIER_DATA[8].name}.\n\nPhần thưởng này là của bạn, hãy sử dụng thật tốt nhé!`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_10",
+    triggerType: "tierUp",
+    triggerValue: 10,
+    description: `Phần thưởng khi người chơi đạt Bậc 10 - ${TIER_DATA[9].name}.`,
+    rewards: [
+      { type: 'gold', amount: 2600 },
+      { type: 'xp', amount: 1300 },
+      { type: 'item', itemId: 'pineappleSeed', quantity: 5 },
+      { type: 'item', itemId: 't10_omnipotentOoze', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 10!",
+    mailBody: `Một cột mốc đáng nhớ! Bạn đã đạt Bậc 10 - ${TIER_DATA[9].name}.\n\nĐây là phần thưởng tuyệt vời cho hành trình của bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_11",
+    triggerType: "tierUp",
+    triggerValue: 11,
+    description: `Phần thưởng khi người chơi đạt Bậc 11 - ${TIER_DATA[10].name}.`,
+    rewards: [
+      { type: 'gold', amount: 3000 },
+      { type: 'xp', amount: 1500 },
+      { type: 'item', itemId: 'celestialCarrotSeed', quantity: 3 },
+      { type: 'item', itemId: 't11_starDust', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 11!",
+    mailBody: `Thật đáng kinh ngạc! Bạn đã mở khóa Bậc 11 - ${TIER_DATA[10].name}.\n\nHãy nhận lấy phần thưởng và tiếp tục chinh phục những thử thách mới.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_12",
+    triggerType: "tierUp",
+    triggerValue: 12,
+    description: `Phần thưởng khi người chơi đạt Bậc 12 - ${TIER_DATA[11].name}.`,
+    rewards: [
+      { type: 'gold', amount: 3500 },
+      { type: 'xp', amount: 1750 },
+      { type: 'item', itemId: 'moonHerbSeed', quantity: 5 },
+      { type: 'item', itemId: 't12_moonEssence', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 12!",
+    mailBody: `Bạn thật sự là một nông dân tài ba khi đạt đến Bậc 12 - ${TIER_DATA[11].name}.\n\nPhần thưởng này là minh chứng cho sự chăm chỉ của bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_13",
+    triggerType: "tierUp",
+    triggerValue: 13,
+    description: `Phần thưởng khi người chơi đạt Bậc 13 - ${TIER_DATA[12].name}.`,
+    rewards: [
+      { type: 'gold', amount: 4000 },
+      { type: 'xp', amount: 2000 },
+      { type: 'item', itemId: 'galaxyGrainSeed', quantity: 3 },
+      { type: 'item', itemId: 't13_galaxyBloom', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 13!",
+    mailBody: `Không ngừng tiến bộ! Bậc 13 - ${TIER_DATA[12].name} đã được bạn chinh phục.\n\nNhận lấy phần thưởng và tiếp tục làm nên những điều vĩ đại.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_14",
+    triggerType: "tierUp",
+    triggerValue: 14,
+    description: `Phần thưởng khi người chơi đạt Bậc 14 - ${TIER_DATA[13].name}.`,
+    rewards: [
+      { type: 'gold', amount: 4500 },
+      { type: 'xp', amount: 2250 },
+      { type: 'item', itemId: 'nebulaNectarineSeed', quantity: 5 },
+      { type: 'item', itemId: 't14_nebulaRich', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 14!",
+    mailBody: `Sức mạnh của bạn là không thể phủ nhận! Bậc 14 - ${TIER_DATA[13].name}.\n\nPhần thưởng giá trị này là dành cho bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_15",
+    triggerType: "tierUp",
+    triggerValue: 15,
+    description: `Phần thưởng khi người chơi đạt Bậc 15 - ${TIER_DATA[14].name}.`,
+    rewards: [
+      { type: 'gold', amount: 5000 },
+      { type: 'xp', amount: 2500 },
+      { type: 'item', itemId: 'quantumQuinceSeed', quantity: 3 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 15!",
+    mailBody: `Một thành tựu vĩ đại! Chúc mừng bạn đã đạt Bậc 15 - ${TIER_DATA[14].name}.\n\nPhần thưởng cuối cùng của những bậc thầy đang chờ bạn.`,
+    isEnabled: true,
+  },
+   {
+    id: "tierUp_16",
+    triggerType: "tierUp",
+    triggerValue: 16,
+    description: `Phần thưởng khi người chơi đạt Bậc 16 - ${TIER_DATA[15].name}.`,
+    rewards: [
+      { type: 'gold', amount: 5500 },
+      { type: 'xp', amount: 2750 },
+      { type: 'item', itemId: 'phantomPepperSeed', quantity: 5 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 16!",
+    mailBody: `Bạn đã vượt qua một cột mốc nữa! Chúc mừng Bậc 16 - ${TIER_DATA[15].name}.\n\nPhần thưởng này dành cho sự kiên trì của bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_17",
+    triggerType: "tierUp",
+    triggerValue: 17,
+    description: `Phần thưởng khi người chơi đạt Bậc 17 - ${TIER_DATA[16].name}.`,
+    rewards: [
+      { type: 'gold', amount: 6000 },
+      { type: 'xp', amount: 3000 },
+      { type: 'item', itemId: 'quantumQuinceSeed', quantity: 5 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 1 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 17!",
+    mailBody: `Thật không thể tin được! Bạn đã đạt Bậc 17 - ${TIER_DATA[16].name}.\n\nSự cống hiến của bạn thật đáng ngưỡng mộ.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_18",
+    triggerType: "tierUp",
+    triggerValue: 18,
+    description: `Phần thưởng khi người chơi đạt Bậc 18 - ${TIER_DATA[17].name}.`,
+    rewards: [
+      { type: 'gold', amount: 6500 },
+      { type: 'xp', amount: 3250 },
+      { type: 'item', itemId: 'phantomPepperSeed', quantity: 7 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 18!",
+    mailBody: `Bạn đang tiến gần đến đỉnh cao! Bậc 18 - ${TIER_DATA[17].name}.\n\nPhần thưởng này là động lực để bạn tiếp tục.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_19",
+    triggerType: "tierUp",
+    triggerValue: 19,
+    description: `Phần thưởng khi người chơi đạt Bậc 19 - ${TIER_DATA[18].name}.`,
+    rewards: [
+      { type: 'gold', amount: 7000 },
+      { type: 'xp', amount: 3500 },
+      { type: 'item', itemId: 'quantumQuinceSeed', quantity: 7 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 2 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 19!",
+    mailBody: `Chỉ còn một bước nữa! Bậc 19 - ${TIER_DATA[18].name}.\n\nSự vĩ đại đang chờ đón bạn.`,
+    isEnabled: true,
+  },
+  {
+    id: "tierUp_20",
+    triggerType: "tierUp",
+    triggerValue: 20,
+    description: `Phần thưởng khi người chơi đạt Bậc 20 - ${TIER_DATA[19].name}.`,
+    rewards: [
+      { type: 'gold', amount: 8000 },
+      { type: 'xp', amount: 4000 },
+      { type: 'item', itemId: 'phantomPepperSeed', quantity: 10 },
+      { type: 'item', itemId: 't15_quantumGrow', quantity: 3 },
+    ],
+    mailSubject: "Chúc mừng bạn đã lên Bậc 20!",
+    mailBody: `Đỉnh cao danh vọng! Bạn đã là một Đế Vương Nông Nghiệp - Bậc 20 - ${TIER_DATA[19].name}.\n\nĐây là phần thưởng cao quý nhất dành cho bạn.`,
+    isEnabled: true,
+  },
+  // --- Other Bonuses ---
+  {
+    id: "firstPlotUnlock_reward",
     triggerType: "firstPlotUnlock",
-    // No triggerValue needed, as it's the first time after initial plots
     description: "Phần thưởng khi người chơi mở khóa ô đất đầu tiên (sau các ô ban đầu).",
     rewards: [
       { type: 'gold', amount: 50 },
@@ -75,9 +316,9 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     isEnabled: true,
   },
   {
-    id: "plotsUnlocked_15", // New: Reward for unlocking 15 plots
-    triggerType: "specialEvent", // Use specialEvent for manual check or specific plot count check
-    triggerValue: "plots_15", // Admin/system can check for this specific value
+    id: "plotsUnlocked_15",
+    triggerType: "specialEvent",
+    triggerValue: "plots_15",
     description: "Thưởng khi người chơi mở khóa được 15 ô đất.",
     rewards: [
         { type: 'gold', amount: 250 },
@@ -88,9 +329,9 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     isEnabled: true,
   },
   {
-    id: "event_summerFestival_login", // New: Example for a special event login
+    id: "event_summerFestival_login",
     triggerType: "specialEvent",
-    triggerValue: "summer_festival_login_day1", // Unique ID for this event's first day login
+    triggerValue: "summer_festival_login_day1",
     description: "Quà đăng nhập ngày 1 - Sự kiện Lễ Hội Mùa Hè.",
     rewards: [
       { type: 'item', itemId: 'watermelonSeed', quantity: 5 },
@@ -98,12 +339,12 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     ],
     mailSubject: "☀️ Chào Mừng Lễ Hội Mùa Hè!",
     mailBody: "Lễ Hội Mùa Hè đã đến Happy Farm! Đăng nhập mỗi ngày để nhận những phần quà hấp dẫn.\n\nĐây là quà tặng cho ngày đầu tiên của bạn. Chúc bạn có một mùa hè thật vui vẻ!",
-    isEnabled: true, // Admin would enable this during the event
+    isEnabled: true,
   },
   {
-    id: "daily_login_reward_conceptual", // New: Conceptual daily login bonus
-    triggerType: "specialEvent", // Could be 'dailyLogin' if such a triggerType is implemented
-    triggerValue: "daily_reward_cycle_1", // System would cycle through these
+    id: "daily_login_reward_conceptual",
+    triggerType: "specialEvent",
+    triggerValue: "daily_reward_cycle_1",
     description: "Phần thưởng đăng nhập hàng ngày (Ý tưởng - Cần Cloud Function).",
     rewards: [
       { type: 'gold', amount: 20 },
@@ -111,7 +352,7 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     ],
     mailSubject: "🎁 Quà Đăng Nhập Hàng Ngày!",
     mailBody: "Cảm ơn bạn đã ghé thăm nông trại hôm nay! Đây là một chút quà nhỏ khích lệ từ Happy Farm.\n\nChúc bạn một ngày làm việc hiệu quả!",
-    isEnabled: true, // Requires a system to reset claim status daily
+    isEnabled: true,
   },
   {
     id: "recurring_weekly_top10",
@@ -142,4 +383,3 @@ export const BONUS_CONFIGURATIONS_DATA: BonusConfiguration[] = [
     isEnabled: true,
   },
 ];
-
