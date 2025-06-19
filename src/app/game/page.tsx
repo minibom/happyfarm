@@ -7,23 +7,34 @@ import { db } from '@/lib/firebase'; // Firestore instance
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, where, getDocs } from 'firebase/firestore';
 
 import ResourceBar from '@/components/game/ResourceBar';
-import MarketModal from '@/components/game/MarketModal';
+// Dynamic imports for modals:
+import dynamic from 'next/dynamic';
+const MarketModal = dynamic(() => import('@/components/game/MarketModal'));
+const InventoryModal = dynamic(() => import('@/components/game/InventoryModal'));
+const PlayerProfileModal = dynamic(() => import('@/components/game/PlayerProfileModal'));
+const LeaderboardModal = dynamic(() => import('@/components/game/LeaderboardModal'));
+const MailModal = dynamic(() => import('@/components/game/MailModal'));
+const MissionModal = dynamic(() => import('@/components/game/MissionModal'));
+const ChatPanel = dynamic(() => import('@/components/game/ChatPanel')); // ChatPanel itself
+const WelcomePopup = dynamic(() => import('@/components/game/WelcomePopup'));
+
+// Dynamic import for Dialog components used with ChatPanel
+const Dialog = dynamic(() => import('@/components/ui/dialog').then(mod => mod.Dialog), { ssr: false });
+const DialogContent = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogContent), { ssr: false });
+const DialogHeader = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogHeader), { ssr: false });
+const DialogTitle = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogTitle), { ssr: false });
+const DialogDescription = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogDescription), {ssr: false});
+
+
 import BottomNavBar from '@/components/game/BottomNavBar';
-import InventoryModal from '@/components/game/InventoryModal';
-import PlayerProfileModal from '@/components/game/PlayerProfileModal';
-import LeaderboardModal from '@/components/game/LeaderboardModal';
-import MailModal from '@/components/game/MailModal';
-import MissionModal from '@/components/game/MissionModal';
 import GameArea from '@/components/game/GameArea';
-import ChatPanel from '@/components/game/ChatPanel';
-import WelcomePopup from '@/components/game/WelcomePopup';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+// import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'; // Now dynamically imported
 import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
 
 export default function GamePage() {
@@ -494,62 +505,80 @@ export default function GamePage() {
         playerTier={playerTierInfo.tier}
       />
 
-      <MarketModal
-        isOpen={showMarket}
-        onClose={() => setShowMarket(false)}
-        playerGold={gameState.gold}
-        playerInventory={gameState.inventory}
-        onBuyItem={buyItem}
-        onSellItem={sellItem}
-        cropData={cropData}
-        playerTier={playerTierInfo.tier}
-      />
-      <InventoryModal
-        isOpen={showInventoryModal}
-        onClose={() => setShowInventoryModal(false)}
-        inventory={gameState.inventory}
-      />
-      <PlayerProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        playerEmail={user.email || 'Không có email'}
-        playerLevel={gameState.level}
-        playerGold={gameState.gold}
-        playerXP={gameState.xp}
-        xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
-        playerTierInfo={playerTierInfo}
-        currentDisplayName={gameState.displayName}
-      />
+      {showMarket && MarketModal && (
+        <MarketModal
+          isOpen={showMarket}
+          onClose={() => setShowMarket(false)}
+          playerGold={gameState.gold}
+          playerInventory={gameState.inventory}
+          onBuyItem={buyItem}
+          onSellItem={sellItem}
+          cropData={cropData}
+          playerTier={playerTierInfo.tier}
+        />
+      )}
+      {showInventoryModal && InventoryModal && (
+        <InventoryModal
+          isOpen={showInventoryModal}
+          onClose={() => setShowInventoryModal(false)}
+          inventory={gameState.inventory}
+        />
+      )}
+      {showProfileModal && PlayerProfileModal && (
+        <PlayerProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          playerEmail={user.email || 'Không có email'}
+          playerLevel={gameState.level}
+          playerGold={gameState.gold}
+          playerXP={gameState.xp}
+          xpToNextLevel={LEVEL_UP_XP_THRESHOLD(gameState.level)}
+          playerTierInfo={playerTierInfo}
+          currentDisplayName={gameState.displayName}
+        />
+      )}
 
-      <LeaderboardModal
-        isOpen={showLeaderboardModal}
-        onClose={() => setShowLeaderboardModal(false)}
-        currentUserId={userId}
-      />
+      {showLeaderboardModal && LeaderboardModal && (
+        <LeaderboardModal
+          isOpen={showLeaderboardModal}
+          onClose={() => setShowLeaderboardModal(false)}
+          currentUserId={userId}
+        />
+      )}
 
-      <MailModal
-        isOpen={isMailModalOpen}
-        onClose={() => setIsMailModalOpen(false)}
-        mailMessages={mailMessages}
-        onMarkAsRead={handleMarkMailAsRead}
-        onClaimRewards={handleClaimMailRewards}
-        onDeleteMail={handleDeleteMail}
-      />
+      {isMailModalOpen && MailModal && (
+        <MailModal
+          isOpen={isMailModalOpen}
+          onClose={() => setIsMailModalOpen(false)}
+          mailMessages={mailMessages}
+          onMarkAsRead={handleMarkMailAsRead}
+          onClaimRewards={handleClaimMailRewards}
+          onDeleteMail={handleDeleteMail}
+        />
+      )}
+      
+      {isMissionModalOpen && MissionModal && (
+        <MissionModal
+          isOpen={isMissionModalOpen}
+          onClose={() => setIsMissionModalOpen(false)}
+          playerMissionState={gameState.activeMissions || {}}
+          onClaimMissionReward={claimMissionReward}
+        />
+      )}
+      
+      {Dialog && DialogContent && DialogHeader && DialogTitle && DialogDescription && ChatPanel && (
+        <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
+          <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none data-[state=open]:has-[[data-chatpanel]]:overflow-hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Trò Chuyện Nông Trại</DialogTitle>
+              <DialogDescription>Cửa sổ trò chuyện với những người chơi khác trong Happy Farm.</DialogDescription>
+            </DialogHeader>
+            <ChatPanel isModalMode userStatus={gameState.status} data-chatpanel />
+          </DialogContent>
+        </Dialog>
+      )}
 
-      <MissionModal
-        isOpen={isMissionModalOpen}
-        onClose={() => setIsMissionModalOpen(false)}
-        playerMissionState={gameState.activeMissions || {}}
-        onClaimMissionReward={claimMissionReward}
-      />
-
-      <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
-        <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
-          <ChatPanel isModalMode userStatus={gameState.status} />
-        </DialogContent>
-      </Dialog>
-
-      {showWelcomePopup && !isLoadingWelcomeData && (
+      {showWelcomePopup && !isLoadingWelcomeData && WelcomePopup && (
         <WelcomePopup
           isOpen={showWelcomePopup}
           onClose={() => setShowWelcomePopup(false)}
@@ -561,3 +590,4 @@ export default function GamePage() {
     </div>
   );
 }
+
