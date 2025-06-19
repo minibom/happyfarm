@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   getDoc,
   getDocs,
-  Unsubscribe,
+  type Unsubscribe,
   Timestamp,
 } from 'firebase/firestore';
 import { useAuth } from './useAuth';
@@ -67,7 +67,7 @@ export const useFriends = () => {
       return;
     }
     const requestsRef = collection(db, 'users', userId, 'friendRequestsReceived');
-    const q = query(requestsRef, orderBy('receivedAt', 'desc'));
+    const q = query(requestsRef, where('status', '==', 'pending'), orderBy('receivedAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedRequests: FriendRequestReceived[] = [];
       snapshot.forEach((doc) => {
@@ -88,7 +88,7 @@ export const useFriends = () => {
       return;
     }
     const requestsRef = collection(db, 'users', userId, 'friendRequestsSent');
-    const q = query(requestsRef, orderBy('sentAt', 'desc'));
+    const q = query(requestsRef, where('status', '==', 'pending'), orderBy('sentAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedRequests: FriendRequestSent[] = [];
       snapshot.forEach((doc) => {
@@ -121,8 +121,8 @@ export const useFriends = () => {
 
 
   const sendFriendRequest = useCallback(async (recipientId: string) => {
-    if (!userId || !user || !user.displayName) {
-      toast({ title: "Lỗi", description: "Bạn cần đăng nhập và có tên hiển thị.", variant: "destructive" });
+    if (!userId || !user ) { // Removed user.displayName check for now
+      toast({ title: "Lỗi", description: "Bạn cần đăng nhập.", variant: "destructive" });
       return;
     }
     if (userId === recipientId) {
@@ -137,60 +137,88 @@ export const useFriends = () => {
         toast({ title: "Thông Báo", description: "Bạn đã gửi lời mời cho người này rồi.", variant: "default" });
         return;
     }
+    if (blockedUsers.includes(recipientId)) {
+        toast({ title: "Bị Chặn", description: "Bạn đã chặn người này. Bỏ chặn để gửi lời mời.", variant: "destructive"});
+        return;
+    }
 
     try {
-      const recipientDoc = await getDoc(doc(db, 'users', recipientId, 'gameState', 'data'));
-      if (!recipientDoc.exists()) {
+      const recipientGameStateDoc = await getDoc(doc(db, 'users', recipientId, 'gameState', 'data'));
+      const recipientUserDoc = await getDoc(doc(db, 'users', recipientId));
+
+      if (!recipientGameStateDoc.exists() && !recipientUserDoc.exists()) {
         toast({ title: "Lỗi", description: "Không tìm thấy người chơi này.", variant: "destructive" });
         return;
       }
-      const recipientData = recipientDoc.data() as GameState;
+      const recipientGameState = recipientGameStateDoc.data() as GameState | undefined;
+      const recipientBaseData = recipientUserDoc.data();
+      const recipientName = recipientGameState?.displayName || recipientBaseData?.displayName || recipientGameState?.email?.split('@')[0] || recipientBaseData?.email?.split('@')[0] || 'Người chơi';
+
+
+      const currentUserGameStateDoc = await getDoc(doc(db, 'users', userId, 'gameState', 'data'));
+      const currentUserGameState = currentUserGameStateDoc.data() as GameState | undefined;
+      const currentUserBaseData = (await getDoc(doc(db, 'users', userId))).data();
+      const senderName = currentUserGameState?.displayName || currentUserBaseData?.displayName || currentUserGameState?.email?.split('@')[0] || currentUserBaseData?.email?.split('@')[0] || 'Một người chơi';
+      const senderLevel = currentUserGameState?.level || currentUserBaseData?.level || 1;
+
 
       const batch = writeBatch(db);
       const sentReqRef = doc(db, 'users', userId, 'friendRequestsSent', recipientId);
       batch.set(sentReqRef, {
-        recipientName: recipientData.displayName || recipientData.email?.split('@')[0] || 'Người chơi',
+        recipientName: recipientName,
         status: 'pending',
         sentAt: serverTimestamp(),
       });
 
       const receivedReqRef = doc(db, 'users', recipientId, 'friendRequestsReceived', userId);
       batch.set(receivedReqRef, {
-        senderName: user.displayName, // Current user's display name
-        senderLevel: (await getDoc(doc(db, 'users', userId, 'gameState', 'data'))).data()?.level || 1,
+        senderName: senderName,
+        senderLevel: senderLevel,
         status: 'pending',
         receivedAt: serverTimestamp(),
       });
 
       await batch.commit();
-      toast({ title: "Thành Công", description: "Đã gửi lời mời kết bạn.", className: "bg-green-500 text-white" });
+      toast({ title: "Thành Công", description: `Đã gửi lời mời kết bạn đến ${recipientName}.`, className: "bg-green-500 text-white" });
     } catch (error) {
       console.error("Error sending friend request:", error);
       toast({ title: "Lỗi", description: "Không thể gửi lời mời kết bạn.", variant: "destructive" });
       throw error;
     }
-  }, [userId, user, toast, friendsList, outgoingRequests]);
+  }, [userId, user, toast, friendsList, outgoingRequests, blockedUsers]);
 
   const acceptFriendRequest = useCallback(async (senderId: string) => {
-    if (!userId || !user || !user.displayName) return;
+    if (!userId || !user) return; // Removed user.displayName check for now
     try {
-      const senderDoc = await getDoc(doc(db, 'users', senderId, 'gameState', 'data'));
-      if (!senderDoc.exists()) throw new Error("Sender not found");
-      const senderData = senderDoc.data() as GameState;
+      const senderGameStateDoc = await getDoc(doc(db, 'users', senderId, 'gameState', 'data'));
+      const senderUserDoc = await getDoc(doc(db, 'users', senderId));
+      if (!senderGameStateDoc.exists() && !senderUserDoc.exists()) throw new Error("Sender not found");
+      
+      const senderGameState = senderGameStateDoc.data() as GameState | undefined;
+      const senderBaseData = senderUserDoc.data();
+      const senderName = senderGameState?.displayName || senderBaseData?.displayName || senderGameState?.email?.split('@')[0] || senderBaseData?.email?.split('@')[0] || 'Người chơi';
+      const senderLevel = senderGameState?.level || senderBaseData?.level || 1;
+
+      const currentUserGameStateDoc = await getDoc(doc(db, 'users', userId, 'gameState', 'data'));
+      const currentUserGameState = currentUserGameStateDoc.data() as GameState | undefined;
+      const currentUserBaseData = (await getDoc(doc(db, 'users', userId))).data();
+      const currentUserName = currentUserGameState?.displayName || currentUserBaseData?.displayName || currentUserGameState?.email?.split('@')[0] || currentUserBaseData?.email?.split('@')[0] || 'Một người chơi';
+      const currentUserLevel = currentUserGameState?.level || currentUserBaseData?.level || 1;
+
 
       const batch = writeBatch(db);
       // Add to current user's friends list
       const currentUserFriendRef = doc(db, 'users', userId, 'friends', senderId);
       batch.set(currentUserFriendRef, {
-        displayName: senderData.displayName || senderData.email?.split('@')[0] || 'Người chơi',
-        level: senderData.level || 1,
+        displayName: senderName,
+        level: senderLevel,
         friendSince: serverTimestamp(),
       });
       // Add to sender's friends list
       const senderFriendRef = doc(db, 'users', senderId, 'friends', userId);
       batch.set(senderFriendRef, {
-        displayName: user.displayName,
-        level: (await getDoc(doc(db, 'users', userId, 'gameState', 'data'))).data()?.level || 1,
+        displayName: currentUserName,
+        level: currentUserLevel,
         friendSince: serverTimestamp(),
       });
       // Remove/update requests
