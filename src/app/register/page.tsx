@@ -1,6 +1,7 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -11,6 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Sparkles } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Đăng Ký - Happy Farm',
+  description: 'Tạo tài khoản mới để tham gia vào thế giới nông trại Happy Farm.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');

@@ -1,13 +1,13 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase'; // Firestore instance
+import { db } from '@/lib/firebase';
 import { collection, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, where, getDocs } from 'firebase/firestore';
 
 import ResourceBar from '@/components/game/ResourceBar';
-// Dynamic imports for modals:
 import dynamic from 'next/dynamic';
 const MarketModal = dynamic(() => import('@/components/game/MarketModal'));
 const InventoryModal = dynamic(() => import('@/components/game/InventoryModal'));
@@ -17,16 +17,14 @@ const MailModal = dynamic(() => import('@/components/game/MailModal'));
 const MissionModal = dynamic(() => import('@/components/game/MissionModal'));
 const ChatPanel = dynamic(() => import('@/components/game/ChatPanel'));
 const WelcomePopup = dynamic(() => import('@/components/game/WelcomePopup'));
-const FriendsModal = dynamic(() => import('@/components/game/FriendsModal')); // New Friends Modal
-const UserProfilePopup = dynamic(() => import('@/components/game/UserProfilePopup')); // New User Profile Popup
+const FriendsModal = dynamic(() => import('@/components/game/FriendsModal'));
+const UserProfilePopup = dynamic(() => import('@/components/game/UserProfilePopup'));
 
-// Dynamic import for Dialog components used with ChatPanel
 const Dialog = dynamic(() => import('@/components/ui/dialog').then(mod => mod.Dialog), { ssr: false });
 const DialogContent = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogContent), { ssr: false });
 const DialogHeader = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogHeader), { ssr: false });
 const DialogTitle = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogTitle), { ssr: false });
 const DialogDescription = dynamic(() => import('@/components/ui/dialog').then(mod => mod.DialogDescription), {ssr: false});
-
 
 import BottomNavBar from '@/components/game/BottomNavBar';
 import GameArea from '@/components/game/GameArea';
@@ -38,7 +36,17 @@ import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, AL
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
-import { useFriends } from '@/hooks/useFriends'; // New useFriends hook
+import { useFriends } from '@/hooks/useFriends';
+
+// Metadata for the game page - typically not indexed if behind auth
+export const metadata: Metadata = {
+  title: 'Chơi Game Happy Farm',
+  description: 'Vào game Happy Farm và bắt đầu hành trình nông trại của bạn.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
@@ -75,7 +83,7 @@ export default function GamePage() {
     blockUser,
     unblockUser,
     loadingFriendsData,
-  } = useFriends(); // Use the friends hook
+  } = useFriends();
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
   const [showMarket, setShowMarket] = useState(false);
@@ -85,10 +93,9 @@ export default function GamePage() {
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
   const [isMissionModalOpen, setIsMissionModalOpen] = useState(false);
-  const [showFriendsModal, setShowFriendsModal] = useState(false); // State for Friends Modal
-  const [showUserProfilePopup, setShowUserProfilePopup] = useState(false); // State for User Profile Popup
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showUserProfilePopup, setShowUserProfilePopup] = useState(false);
   const [selectedUserProfileData, setSelectedUserProfileData] = useState<{ uid: string; displayName: string } | null>(null);
-
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
@@ -98,7 +105,6 @@ export default function GamePage() {
   const [activeGameEventsForPopup, setActiveGameEventsForPopup] = useState<ActiveGameEvent[]>([]);
   const [aiGreeting, setAiGreeting] = useState<string | null>(null);
   const [isLoadingWelcomeData, setIsLoadingWelcomeData] = useState(true);
-
 
   useEffect(() => {
     if (!authLoading && !user && isInitialized) {
@@ -168,7 +174,6 @@ export default function GamePage() {
 
   }, [isInitialized, userId]);
 
-
   useEffect(() => {
     if (!userId) {
       setMailMessages([]);
@@ -201,7 +206,6 @@ export default function GamePage() {
     setShowUserProfilePopup(true);
   }, []);
 
-
   const handlePlotClick = (plotId: number) => {
     const plot = gameState.plots.find(p => p.id === plotId);
     if (!plot || !cropData) return;
@@ -218,7 +222,6 @@ export default function GamePage() {
     }
 
     if (currentAction === 'planting' && selectedSeedToPlant) {
-      // Tier check for planting removed here, handled by plantCrop if necessary (but we removed it there too)
       if (plot.state === 'empty') {
         plantCrop(plotId, selectedSeedToPlant);
       }
@@ -241,7 +244,6 @@ export default function GamePage() {
         toast({ title: "Đất Bị Khóa", description: "Không thể trồng trên ô đất bị khóa.", variant: "destructive"});
         return;
      }
-    // Tier check for planting removed, relies on seed being available in inventory
     plantCrop(plotId, seedId);
   };
 
@@ -278,9 +280,7 @@ export default function GamePage() {
     }
   };
 
-
   const handleSetPlantMode = (seedId: SeedId) => {
-    // Tier check removed. Player can select any seed they own.
     if (currentAction === 'planting' && selectedSeedToPlant === seedId) {
       setCurrentAction('none');
       setSelectedSeedToPlant(undefined);
@@ -305,7 +305,6 @@ export default function GamePage() {
     if (!fertilizerData || !fertilizerData[fertilizerId]) return;
     const fertilizerDetail = fertilizerData[fertilizerId];
 
-    // Tier check for selecting fertilizer to use is still relevant
     if (playerTierInfo.tier < fertilizerDetail.unlockTier) {
         toast({ title: "Bậc Chưa Mở Khóa", description: `Bạn cần đạt ${getPlayerTierInfo( (fertilizerDetail.unlockTier-1) * 10 +1 ).tierName} (Bậc ${fertilizerDetail.unlockTier}) để chọn phân bón ${fertilizerDetail.name}.`, variant: "destructive" });
         setCurrentAction('none');
@@ -331,7 +330,6 @@ export default function GamePage() {
   };
 
   const availableSeedsForPlanting = useMemo(() => {
-    // Tier check removed. Popover will show all seeds player has.
     if (!cropData) return [];
     return ALL_SEED_IDS
       .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
@@ -342,7 +340,6 @@ export default function GamePage() {
       .filter(seedId => (gameState.inventory[seedId] || 0) > 0);
   }, [gameState.inventory]);
 
-
   const availableFertilizersForSelection = useMemo(() => {
     if (!fertilizerData) return [];
     return ALL_FERTILIZER_IDS
@@ -350,14 +347,12 @@ export default function GamePage() {
     .filter(fert => fert && (gameState.inventory[fert.id] || 0) > 0 && playerTierInfo.tier >= fert.unlockTier) as FertilizerDetails[];
   }, [gameState.inventory, playerTierInfo.tier, fertilizerData]);
 
-
   const unreadMailCount = useMemo(() => mailMessages.filter(m => !m.isRead).length, [mailMessages]);
   const claimableMissionCount = useMemo(() => {
     return Object.values(gameState.activeMissions || {}).filter(
       (mission) => mission.status === 'completed_pending_claim'
     ).length;
   }, [gameState.activeMissions]);
-
 
   const handleMarkMailAsRead = async (mailId: string) => {
     if (!userId) return;

@@ -1,6 +1,7 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -11,6 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Đăng Nhập - Happy Farm',
+  description: 'Đăng nhập vào tài khoản Happy Farm của bạn để tiếp tục quản lý nông trại.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +34,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       toast({ title: "Đăng Nhập Thành Công", description: "Chào mừng trở lại Happy Farm!", className: "bg-primary text-primary-foreground" });
-      router.push('/game'); // Redirect to game page
+      router.push('/game'); 
     } catch (err: any) {
       console.error("Login failed:", err);
       const errorMessage = err.code === 'auth/invalid-credential' 

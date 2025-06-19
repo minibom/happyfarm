@@ -2,6 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import {
   SidebarProvider,
@@ -21,11 +22,15 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
+// Metadata for the library section - this won't be dynamically generated per child page from here
+// but sets a good default if child pages don't specify their own.
+// Child pages should export their own `metadata` object for more specific SEO.
+
 export default function LibraryLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { toast } = useToast(); // Though not used directly here, good practice if sub-components might need it.
+  const { toast } = useToast();
 
   const menuItems = [
     { href: '/library', label: 'Giới Thiệu Game', icon: Info, exact: true },
@@ -37,7 +42,7 @@ export default function LibraryLayout({ children }: { children: ReactNode }) {
   const getCurrentPageLabel = () => {
     const currentItem = menuItems.find(item => item.exact ? pathname === item.href : pathname.startsWith(item.href));
     if (currentItem) return currentItem.label;
-    if (pathname === '/library') return 'Giới Thiệu Game'; // Default for base path
+    if (pathname === '/library') return 'Giới Thiệu Game';
     return 'Thư Viện Game';
   };
 
@@ -104,7 +109,7 @@ export default function LibraryLayout({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 shrink-0">
           <SidebarTrigger className="md:hidden" />
           <div className="flex items-center gap-2">
-            <Gamepad2 className="h-5 w-5 text-muted-foreground" /> {/* Changed icon */}
+            <Gamepad2 className="h-5 w-5 text-muted-foreground" />
             <h1 className="text-lg font-semibold text-foreground">
               {getCurrentPageLabel()}
             </h1>
@@ -120,4 +125,3 @@ export default function LibraryLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-    

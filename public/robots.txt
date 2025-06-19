@@ -1,0 +1,15 @@
+
+User-agent: *
+Allow: /
+Allow: /library/
+Allow: /library/items
+Allow: /library/tiers
+Allow: /library/events
+Disallow: /admin/
+Disallow: /game
+Disallow: /login
+Disallow: /register
+Disallow: /api/
+
+Sitemap: https://your-happy-farm-app.com/sitemap.xml
+# IMPORTANT: Replace "https://your-happy-farm-app.com" with your actual production domain.

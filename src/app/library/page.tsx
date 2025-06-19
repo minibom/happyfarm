@@ -1,10 +1,25 @@
+
 'use client';
 
+import type { Metadata } from 'next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Users, Sprout, Gift, BarChart3, Zap, ListChecks, Info, ShoppingCart, TrendingUp, Compass } from 'lucide-react'; // Added Compass
+import { Users, Sprout, Gift, BarChart3, Zap, ListChecks, Info, ShoppingCart, TrendingUp, Compass } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Giới Thiệu Game - Thư Viện Happy Farm',
+  description: 'Khám phá tổng quan về game Happy Farm, cách chơi, các tính năng chính và mẹo để trở thành một nông dân tài ba.',
+  alternates: {
+    canonical: '/library',
+  },
+  openGraph: {
+    title: 'Giới Thiệu Game Happy Farm',
+    description: 'Tìm hiểu mọi thứ bạn cần biết để bắt đầu hành trình nông trại tại Happy Farm.',
+    url: '/library',
+  },
+};
 
 export default function LibraryIntroductionPage() {
   return (
@@ -24,7 +39,7 @@ export default function LibraryIntroductionPage() {
           <div className="mt-4 mb-8">
             <Image
               src="https://placehold.co/600x300.png"
-              alt="Happy Farm Scenery"
+              alt="Khung cảnh nông trại Happy Farm rực rỡ"
               width={600}
               height={300}
               className="rounded-lg w-full object-cover shadow-md aspect-[2/1]"

@@ -1,20 +1,35 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Zap, Info, CalendarDays, Tag, TrendingUp, TrendingDown, Gift, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { Loader2, Zap, Info, CalendarDays, Tag, TrendingUp, TrendingDown, Gift, AlertTriangle } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore'; // Added collection, query, where
-import type { ActiveGameEvent, MarketItemId } from '@/types'; // Changed MarketEventData to ActiveGameEvent
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import type { ActiveGameEvent, MarketItemId, InventoryItem } from '@/types';
 import { useMarket } from '@/hooks/useMarket';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
+export const metadata: Metadata = {
+  title: 'Sự Kiện Game - Thư Viện Happy Farm',
+  description: 'Theo dõi các sự kiện đặc biệt đang diễn ra trong Happy Farm. Tìm hiểu về hiệu ứng, thời gian và các vật phẩm bị ảnh hưởng.',
+  alternates: {
+    canonical: '/library/events',
+  },
+  openGraph: {
+    title: 'Sự Kiện Game Đặc Biệt tại Happy Farm',
+    description: 'Thông tin về các sự kiện đang hoạt động trong game Happy Farm.',
+    url: '/library/events',
+  },
+};
+
+
 export default function LibraryEventsPage() {
-  const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]); // Store multiple active events
+  const [activeEvents, setActiveEvents] = useState<ActiveGameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { getItemDetails } = useMarket();
@@ -26,19 +41,17 @@ export default function LibraryEventsPage() {
       eventsCollectionRef,
       where('isActive', '==', true),
       where('startTime', '<=', now)
-      // endTime will be filtered client-side as Firestore doesn't support two range filters on different fields
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedEvents: ActiveGameEvent[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-        // Client-side filter for endTime
         if (data.endTime.toMillis() > now.toMillis()) {
           fetchedEvents.push({ id: docSnap.id, ...data });
         }
       });
-      setActiveEvents(fetchedEvents.sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis())); // Sort by start time
+      setActiveEvents(fetchedEvents.sort((a,b) => a.startTime.toMillis() - b.startTime.toMillis()));
       setIsLoading(false);
       setError(null);
     }, (err) => {
@@ -61,7 +74,7 @@ export default function LibraryEventsPage() {
         const name = firstItemDetails ? `${firstItemDetails.name}${itemId.length > 1 ? ` và ${itemId.length -1} khác` : ''}` : 'Nhiều Vật Phẩm';
         return { name, icon: firstItemDetails?.icon || '📦', type: 'Nhiều Loại'};
     }
-    const details = getItemDetails(itemId as MarketItemId); // Cast if it's a single item ID
+    const details = getItemDetails(itemId as MarketItemId);
     if (!details) return { name: itemId, icon: '❓', type: 'Không rõ' };
     return { name: details.name, icon: details.icon, type: details.type === 'seed' ? 'Hạt Giống' : details.type === 'fertilizer' ? 'Phân Bón' : 'Nông Sản' };
   };
@@ -70,23 +83,23 @@ export default function LibraryEventsPage() {
     if (!event.effects || event.effects.length === 0) return { text: "Không có hiệu ứng cụ thể", icon: <Info className="inline mr-1 h-4 w-4"/>, color: "bg-blue-500" };
     
     const firstEffect = event.effects[0];
-    let text = event.name; // Default to event name if effect description is complex
+    let text = event.name; 
     let icon = <Zap className="inline mr-1 h-4 w-4"/>;
     let color = "bg-blue-500";
 
     if (firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' || firstEffect.type === 'ITEM_PURCHASE_PRICE_MODIFIER') {
-        if (firstEffect.value > 1) { // Price increase (good for sell, bad for buy)
+        if (firstEffect.value > 1) {
             text = `${firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' ? 'Giá bán tăng' : 'Giá mua tăng'} ${((firstEffect.value - 1) * 100).toFixed(0)}%`;
             icon = <TrendingUp className="inline mr-1 h-4 w-4"/>;
             color = "bg-green-500";
-        } else if (firstEffect.value < 1) { // Price decrease (bad for sell, good for buy)
+        } else if (firstEffect.value < 1) {
             text = `${firstEffect.type === 'ITEM_SELL_PRICE_MODIFIER' ? 'Giá bán giảm' : 'Giá mua giảm'} ${((1 - firstEffect.value) * 100).toFixed(0)}%`;
             icon = <TrendingDown className="inline mr-1 h-4 w-4"/>;
             color = "bg-red-500";
         }
     } else if (firstEffect.type === 'CROP_GROWTH_TIME_REDUCTION') {
         text = `TG trồng giảm ${(firstEffect.value * 100).toFixed(0)}%`;
-        icon = <Zap className="inline mr-1 h-4 w-4"/>; // Or a clock icon
+        icon = <Zap className="inline mr-1 h-4 w-4"/>;
         color = "bg-sky-500";
     }
     return { text, icon, color };
@@ -127,7 +140,7 @@ export default function LibraryEventsPage() {
           <div className="flex flex-col items-center justify-center text-center h-full py-10">
             <Image 
                 src="https://placehold.co/300x200.png" 
-                alt="Không có sự kiện" 
+                alt="Lịch trống, không có sự kiện" 
                 width={300} 
                 height={200} 
                 className="rounded-lg mb-6 opacity-70"

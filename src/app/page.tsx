@@ -2,12 +2,18 @@
 'use client';
 
 import Link from 'next/link';
+// Removed: import type { Metadata } from 'next'; 
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Tractor, Wheat, LogIn, UserPlus } from 'lucide-react';
-import ClientOnlyLeafBackground from '@/components/game/ClientOnlyLeafBackground'; // Import the new component
+import ClientOnlyLeafBackground from '@/components/game/ClientOnlyLeafBackground';
+
+// Removed: const productionUrl = 'https://your-happy-farm-app.com';
+
+// Removed: export const metadata: Metadata = { ... };
+
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -23,7 +29,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-green-200 via-yellow-100 to-sky-200 p-6 text-center overflow-hidden">
-      <ClientOnlyLeafBackground /> {/* Use the new component here */}
+      <ClientOnlyLeafBackground />
       <main className="z-10">
         <header className="mb-10 sm:mb-12">
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-primary font-headline mb-4 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
@@ -39,7 +45,7 @@ export default function LandingPage() {
         <div className="mb-10 sm:mb-12">
           <Image
             src="https://images.unsplash.com/photo-1471193945509-9ad0617afabf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZmFybWVyfGVufDB8fHx8MTc1MDE3NjMyOHww&ixlib=rb-4.1.0&q=80&w=1080"
-            alt="Happy Farm Game Screenshot"
+            alt="Người nông dân làm việc trên cánh đồng Happy Farm"
             width={600}
             height={400}
             className="rounded-xl shadow-2xl border-4 border-white transform transition-transform duration-500 hover:scale-105"

@@ -1,6 +1,7 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,11 +21,24 @@ import {
   type CropDetails, type CropId,
   type FertilizerDetails, type FertilizerId
 } from '@/lib/constants';
-import { Coins, Clock, TrendingUp, ShoppingBag, Sprout, Zap as FertilizerIcon, Package, Info, Loader2, Zap } from 'lucide-react'; // Added Zap here
+import { Coins, Clock, TrendingUp, ShoppingBag, Sprout, Zap as FertilizerIcon, Package, Info, Loader2, Zap } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+
+export const metadata: Metadata = {
+  title: 'Vật Phẩm Game - Thư Viện Happy Farm',
+  description: 'Khám phá chi tiết về các loại cây trồng, hạt giống và phân bón trong Happy Farm. Tìm hiểu thông tin về thời gian trồng, giá cả, và bậc mở khóa.',
+  alternates: {
+    canonical: '/library/items',
+  },
+  openGraph: {
+    title: 'Danh Sách Vật Phẩm Game Happy Farm',
+    description: 'Thông tin chi tiết về cây trồng và phân bón có trong Happy Farm.',
+    url: '/library/items',
+  },
+};
 
 const formatMillisecondsToTime = (ms: number): string => {
   if (isNaN(ms) || ms <= 0) return '00:00';
@@ -241,4 +255,3 @@ export default function LibraryItemsPage() {
     </Card>
   );
 }
-    

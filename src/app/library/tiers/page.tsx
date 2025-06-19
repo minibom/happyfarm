@@ -1,6 +1,7 @@
 
 'use client';
 
+import type { Metadata } from 'next';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,6 +20,19 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import type { TierDataFromFirestore } from '@/types';
 
+export const metadata: Metadata = {
+  title: 'Các Cấp Bậc - Thư Viện Happy Farm',
+  description: 'Tìm hiểu về hệ thống cấp bậc trong Happy Farm, bao gồm các lợi ích (buff) và yêu cầu cấp độ để thăng hạng.',
+  alternates: {
+    canonical: '/library/tiers',
+  },
+  openGraph: {
+    title: 'Hệ Thống Cấp Bậc trong Happy Farm',
+    description: 'Chi tiết về các bậc và lợi ích tương ứng trong game Happy Farm.',
+    url: '/library/tiers',
+  },
+};
+
 interface TierDisplayData extends TierDetail {
   tierNumber: number;
   levelRange: string;
@@ -30,10 +44,6 @@ export default function LibraryTiersPage() {
 
   useEffect(() => {
     const tiersCollectionRef = collection(db, 'gameTiers');
-    // Assuming tier documents in Firestore are named like "tier_1", "tier_2", etc.
-    // We can't directly order by numeric part of ID without a dedicated field.
-    // So, we fetch all and sort client-side, or ensure IDs are padded e.g. "tier_01", "tier_02" if ordering by ID.
-    // For now, fetch all then sort by `levelStart` from the merged data.
     const unsubscribe = onSnapshot(tiersCollectionRef, (snapshot) => {
       const fetchedTiersFromFirestore: Record<string, TierDataFromFirestore> = {};
       snapshot.forEach(docSnap => {
@@ -44,9 +54,9 @@ export default function LibraryTiersPage() {
         const tierId = `tier_${index + 1}`;
         const firestoreData = fetchedTiersFromFirestore[tierId] || {};
         return {
-          ...constantTier, // Start with constant data
-          ...firestoreData, // Override with Firestore data if available
-          levelStart: constantTier.levelStart, // Crucially, keep levelStart from constant
+          ...constantTier,
+          ...firestoreData,
+          levelStart: constantTier.levelStart,
           tierNumber: index + 1,
         };
       });
@@ -71,7 +81,6 @@ export default function LibraryTiersPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching tiers from Firestore:", error);
-      // Fallback to display TIER_DATA from constants if Firestore fails
        const constantDisplayData = FALLBACK_TIER_DATA.map((tierDetail, index) => {
           const tierNumber = index + 1;
           const startLevel = tierDetail.levelStart;
@@ -166,4 +175,3 @@ export default function LibraryTiersPage() {
     </Card>
   );
 }
-    

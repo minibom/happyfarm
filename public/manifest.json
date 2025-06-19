@@ -1,21 +1,34 @@
+
 {
-  "name": "Happy Farm",
-  "short_name": "HappyFarm",
-  "description": "A cheerful farming game by Firebase Studio",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#FAF7EB",
-  "theme_color": "#E0B319",
+  "name": "Happy Farm - Cheerful Farming Game",
+  "short_name": "Happy Farm",
+  "description": "Plant, grow, harvest, and trade in Happy Farm! A delightful Next.js farming game. Build your dream farm today!",
   "icons": [
     {
-      "src": "/icon-192x192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
       "type": "image/png"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "theme_color": "#FAF7EB",
+  "background_color": "#E0B319",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "vi-VN",
+  "categories": ["games", "entertainment", "simulation"]
 }
+// IMPORTANT: Create an "icons" folder inside /public and add icon-192x192.png, icon-384x384.png, and icon-512x512.png.
+// These are standard PWA icon sizes. You can generate these from a base logo.
