@@ -32,7 +32,7 @@ In Happy Farm, players can:
 - **Backend & Database:**
   - [Firebase](https://firebase.google.com/) (Authentication, Firestore, Realtime Database for Chat)
 - **AI Features:**
-  - [Genkit](https://firebase.google.com/docs/genkit) (For AI-powered features like display name generation and farming advice)
+  - [Genkit](https://firebase.google.com/docs/genkit) (For AI-powered features like display name generation, farming advice, market price updates, event generation)
   - Google AI (Gemini models)
 
 ## Getting Started
@@ -68,6 +68,11 @@ In Happy Farm, players can:
         ```env
         NEXT_PUBLIC_ADMIN_UIDS=your_admin_uid1,your_admin_uid2
         ```
+    *   (Optional) For securing scheduled tasks like market updates:
+        ```env
+        CRON_SECRET=your_strong_random_secret_for_cron_jobs
+        ```
+
 
 4.  **Install Dependencies:**
     ```bash
@@ -94,6 +99,7 @@ In Happy Farm, players can:
     -   `src/app/admin/`: Admin panel pages.
     -   `src/app/library/`: Game information library (redesigned with sidebar navigation).
     -   `src/app/login/`, `src/app/register/`: Auth pages.
+    -   `src/app/api/`: API routes, including scheduled task triggers.
 -   `src/components/`: Reusable UI components.
     -   `src/components/game/`: Components specific to the game UI.
     -   `src/components/admin/`: Components for the admin panel.
@@ -118,6 +124,44 @@ In Happy Farm, players can:
     -   `src/lib/firebase.ts`: Firebase app initialization.
 -   `public/`: Static assets.
 
+## Scheduled Tasks (e.g., Market Updates)
+
+The game includes AI flows that can be used to dynamically update aspects like market prices or generate market events. These are designed to be triggered by a scheduled backend process.
+
+### Market Price Updates
+
+An API route `/api/admin/trigger-market-update` is provided to facilitate automated market price updates.
+This route:
+1.  Fetches current market data.
+2.  Calls the `suggestPriceAdjustments` Genkit flow (from `src/ai/flows/update-market-prices-flow.ts`).
+3.  Processes the AI's suggestions to calculate new prices.
+4.  Updates the market state in Firestore.
+
+**How to Automate:**
+1.  **Set a Cron Secret:**
+    *   In your `.env` file, define a strong, random secret for `CRON_SECRET`.
+        ```env
+        CRON_SECRET=your_very_strong_and_random_secret_here
+        ```
+    *   This secret will be used to authorize requests to the API route.
+2.  **Deploy Your Application:** Ensure your Next.js application is deployed to a hosting environment (e.g., Firebase Hosting with Cloud Functions for Next.js, Vercel).
+3.  **Set up Cloud Scheduler (or similar cron service):**
+    *   Go to the Google Cloud Console for your Firebase project.
+    *   Navigate to Cloud Scheduler.
+    *   Create a new job:
+        *   **Frequency:** e.g., `0 */12 * * *` (every 12 hours at the start of the hour).
+        *   **Target type:** HTTP.
+        *   **URL:** The fully qualified URL of your deployed API route (e.g., `https://your-app-domain.com/api/admin/trigger-market-update`).
+        *   **HTTP method:** `POST`.
+        *   **Headers:** Add an `Authorization` header with the value `Bearer your_very_strong_and_random_secret_here` (replace with your actual `CRON_SECRET`).
+        *   **Body:** Can be empty or a simple JSON like `{}`.
+
+This setup will periodically call your API route, which in turn uses the AI flow to update market prices.
+**Note on Market Activity Logs:** The `update-market-prices-flow` is designed to potentially use aggregated market activity (buys/sells). Currently, the API route sends placeholder activity data. Full implementation would require logging player transactions to a separate Firestore collection (e.g., `marketActivityLogs`) and then aggregating this data before calling the flow.
+
+### Market Event Generation
+Similarly, the `createMarketEventFlow` (in `src/ai/flows/create-market-event-flow.ts`) can be triggered by a scheduled function to automatically generate and activate new market events. The setup would be similar to the market price updates, with a dedicated API route or Cloud Function calling this flow.
+
 ## Admin Panel
 
 The game includes an admin panel accessible at `/admin`.
@@ -136,7 +180,7 @@ The admin panel allows:
     -   View, create, edit, and delete bonus configurations (e.g., first login bonus, tier-up rewards).
 -   **Missions & Events Management**:
     -   **Events Tab**: View, create, edit, and delete active/scheduled game events. Base new events on predefined templates.
-    -   **Missions Tab**: (Future) View, create, edit, and delete mission definitions (main, daily, weekly, random) directly in Firestore. Currently, mission definitions are synced from constants.
+    -   **Missions Tab**: View, create, edit, and delete mission definitions (main, daily, weekly, random) directly in Firestore.
 -   **System Configuration**:
     -   Push local game data definitions from `src/lib/*.ts` files to Firestore. This is used to initialize or overwrite data in collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, and `gameRandomMissionPool`. Use this section to ensure Firestore has the latest static game data.
 
@@ -147,17 +191,10 @@ Core static game data such as crop details, fertilizer properties, tier progress
 To populate or update your Firestore database with this data:
 1.  Navigate to the **Admin Panel**.
 2.  Go to the **"Cấu hình Hệ thống" (System Configuration)** page.
-3.  Use the respective "Đồng Bộ" (Sync) buttons to push the local constant data to the corresponding Firestore collections (e.g., `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, `gameRandomMissionPool`). This ensures your game uses the most up-to-date definitions.
+3.  Use the respective "Đồng Bộ" (Sync) buttons to push the local constant data to the corresponding Firestore collections.
 
 ## Important: Firestore Security Rules
 
-For a production environment, **it is crucial to set up robust Firestore Security Rules** to protect your game data and prevent cheating. The client-side logic currently has a high degree of trust, and security rules are the primary way to enforce game logic and permissions on the server side. Ensure that:
--   Users can only write to their own game state (`/users/{userId}/gameState/data`).
--   Data modifications are validated (e.g., gold cannot increase arbitrarily, XP and level progression is valid, mission progress updates are legitimate).
--   Collections like `gameItems`, `gameFertilizers`, `gameTiers`, `gameBonusConfigurations`, `gameMailTemplates`, `gameEventTemplates`, `gameMainMissions`, `gameDailyMissionTemplates`, `gameWeeklyMissionTemplates`, `gameRandomMissionPool` are read-only for clients (or writable only by admin-privileged backend functions if you implement server-side management beyond the current constant pushing mechanism).
--   The `activeGameEvents` collection should be read-only for clients and writable only by admin-privileged functions.
--   Player mission subcollections (`/users/{userId}/playerMissions` - if you choose to store active/completed missions per player in a subcollection) must be carefully secured.
--   Mail subcollections (`/users/{userId}/mail`) are writable by admin-privileged functions for sending mail and readable by the recipient user. Users should only be able to update `isRead` and `isClaimed` fields on their own mail.
--   Chat messages in Realtime Database (`/messages`) should also have appropriate rules (e.g., authenticated users can write, all can read).
+For a production environment, **it is crucial to set up robust Firestore Security Rules** to protect your game data and prevent cheating. The client-side logic currently has a high degree of trust, and security rules are the primary way to enforce game logic and permissions on the server side.
 
 Happy farming!
