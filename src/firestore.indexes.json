@@ -80,13 +80,6 @@
       ]
     },
     {
-      "collectionGroup": "gameWeeklyMissionTemplates",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "title", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "gameRandomMissionPool",
       "queryScope": "COLLECTION",
       "fields": [

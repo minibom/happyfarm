@@ -96,15 +96,20 @@ const updateMarketPricesFlow = ai.defineFlow(
     outputSchema: PriceAdjustmentOutputSchema,
   },
   async (input) => {
-    const { output } = await updateMarketPricesPrompt(input);
-    if (!output) {
-      console.error('AI failed to generate price adjustment suggestions.');
-      // Consider returning empty changes or a default neutral adjustment
-      return { changes: [] };
+    try {
+      const { output } = await updateMarketPricesPrompt(input);
+      if (!output) {
+        console.error('AI failed to generate price adjustment suggestions (output was null).');
+        return { changes: [] }; // Fallback
+      }
+      // The caller of this flow (e.g., a Cloud Function)
+      // will be responsible for applying these percentage changes to the actual prices
+      // and updating Firestore. This flow only suggests the changes.
+      return output;
+    } catch (error) {
+      console.error('Error in updateMarketPricesFlow during prompt execution:', error);
+      return { changes: [] }; // Fallback on any error
     }
-    // The caller of this flow (e.g., a Cloud Function)
-    // will be responsible for applying these percentage changes to the actual prices
-    // and updating Firestore. This flow only suggests the changes.
-    return output;
   }
 );
+
