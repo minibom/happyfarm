@@ -87,7 +87,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
   return (
     <Card className={cn(
       "flex flex-col shadow-xl rounded-lg",
-      isModalMode ? "w-full h-full max-h-[80vh] bg-background" : "w-96 h-[600px]"
+      isModalMode ? "w-full h-full max-h-[90vh] sm:max-h-[85vh] md:max-h-[80vh] bg-background" : "w-96 h-[600px]"
     )}>
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center text-xl font-headline text-primary">
@@ -97,18 +97,18 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
       </CardHeader>
       <CardContent className={cn(
         "flex-grow flex flex-col pt-0",
-        isModalMode ? "p-2 sm:p-4" : "p-4" // Adjusted padding for modal mode
+        isModalMode ? "p-2 sm:p-4" : "p-4" 
       )}>
         <ScrollArea 
           className={cn(
             "flex-grow h-0 border rounded-md bg-muted/30",
-            isModalMode ? "mb-2 sm:mb-4" : "mb-4" // Adjusted margin for modal mode
+            isModalMode ? "mb-2 sm:mb-4" : "mb-4" 
           )} 
           ref={scrollAreaRef}
         >
           <div className={cn(
             "space-y-3",
-            isModalMode ? "p-1.5 sm:p-3" : "p-3" // Adjusted inner padding for modal mode
+            isModalMode ? "p-1.5 sm:p-3" : "p-3" 
           )}>
             {messages.map((msg) => (
               <div 
@@ -116,14 +116,14 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
                 className={cn(
                   "flex w-full", 
                   msg.senderUid === user?.uid 
-                    ? (isModalMode ? "justify-end pl-6 sm:pl-8" : "justify-end pl-8 sm:pl-12") // Reduced base padding
-                    : (isModalMode ? "justify-start pr-6 sm:pr-8" : "justify-start pr-8 sm:pr-12") // Reduced base padding
+                    ? (isModalMode ? "justify-end pl-6 sm:pl-8" : "justify-end pl-8 sm:pl-12") 
+                    : (isModalMode ? "justify-start pr-6 sm:pr-8" : "justify-start pr-8 sm:pr-12") 
                 )}
               >
                 <div
                   className={cn(
-                    "rounded-lg shadow text-sm max-w-[85%]", // Slightly increased max-width for bubbles
-                    isModalMode ? "p-1.5 sm:p-2" : "p-2", // Adjusted bubble padding
+                    "rounded-lg shadow text-sm max-w-[85%]", 
+                    isModalMode ? "p-1.5 sm:p-2" : "p-2", 
                     msg.senderUid === user?.uid
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border" 
