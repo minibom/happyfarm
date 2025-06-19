@@ -54,80 +54,51 @@
       ]
     },
     {
-      "collectionGroup": "missions",
+      "collectionGroup": "gameMainMissions",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "assignedZoneId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "requiredLevelUnlock", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "missions",
+      "collectionGroup": "gameDailyMissionTemplates",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "title", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "zones",
+      "collectionGroup": "gameWeeklyMissionTemplates",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "title", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "zones",
+      "collectionGroup": "gameRandomMissionPool",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "title", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "zones",
+      "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "updatedAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "level", "order": "DESCENDING" },
+        { "fieldPath": "xp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lastLogin", "order": "DESCENDING" }
       ]
     }
   ],
   "fieldOverrides": []
 }
-    
+
+  

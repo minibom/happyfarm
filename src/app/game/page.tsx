@@ -13,9 +13,10 @@ import InventoryModal from '@/components/game/InventoryModal';
 import PlayerProfileModal from '@/components/game/PlayerProfileModal';
 import LeaderboardModal from '@/components/game/LeaderboardModal';
 import MailModal from '@/components/game/MailModal';
+import MissionModal from '@/components/game/MissionModal'; // New Mission Modal
 import GameArea from '@/components/game/GameArea';
 import ChatPanel from '@/components/game/ChatPanel';
-import WelcomePopup from '@/components/game/WelcomePopup'; // New
+import WelcomePopup from '@/components/game/WelcomePopup';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
 import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent } from '@/types';
@@ -23,7 +24,7 @@ import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, AL
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting'; // New
+import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
@@ -31,7 +32,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const {
     gameState,
-    setGameState, 
+    setGameState,
     plantCrop,
     harvestCrop,
     buyItem,
@@ -39,11 +40,12 @@ export default function GamePage() {
     unlockPlot,
     updateDisplayName,
     applyFertilizer,
-    uprootCrop, 
+    uprootCrop,
     isInitialized,
     playerTierInfo,
     cropData,
-    fertilizerData, 
+    fertilizerData,
+    // claimMissionReward, // Will be added in Phase 2
   } = useGameLogic();
 
   const [mailMessages, setMailMessages] = useState<MailMessage[]>([]);
@@ -53,12 +55,12 @@ export default function GamePage() {
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [isMailModalOpen, setIsMailModalOpen] = useState(false);
+  const [isMissionModalOpen, setIsMissionModalOpen] = useState(false); // New state for MissionModal
 
   const [currentAction, setCurrentAction] = useState<'none' | 'planting' | 'harvesting' | 'fertilizing'>('none');
   const [selectedSeedToPlant, setSelectedSeedToPlant] = useState<SeedId | undefined>(undefined);
   const [selectedFertilizerId, setSelectedFertilizerId] = useState<FertilizerId | undefined>(undefined);
 
-  // Welcome Popup State
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
   const [activeGameEventsForPopup, setActiveGameEventsForPopup] = useState<ActiveGameEvent[]>([]);
   const [aiGreeting, setAiGreeting] = useState<string | null>(null);
@@ -71,7 +73,6 @@ export default function GamePage() {
     }
   }, [user, authLoading, router, isInitialized]);
 
-  // Welcome Popup Logic
   useEffect(() => {
     if (!isInitialized || !userId) return;
 
@@ -79,7 +80,7 @@ export default function GamePage() {
     const hasShownWelcomePopupThisSession = sessionStorage.getItem(WELCOME_POPUP_SESSION_KEY);
 
     if (hasShownWelcomePopupThisSession) {
-      setIsLoadingWelcomeData(false); // Already shown, no need to load data
+      setIsLoadingWelcomeData(false);
       return;
     }
 
@@ -92,13 +93,12 @@ export default function GamePage() {
           eventsCollectionRef,
           where('isActive', '==', true),
           where('startTime', '<=', now)
-          // We'll filter endTime on the client-side as Firestore doesn't support two range filters on different fields
         );
         const snapshot = await getDocs(q);
         const fetchedEvents: ActiveGameEvent[] = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data() as Omit<ActiveGameEvent, 'id'>;
-          if (data.endTime.toMillis() > now.toMillis()) { // Client-side filter for endTime
+          if (data.endTime.toMillis() > now.toMillis()) {
             fetchedEvents.push({ id: docSnap.id, ...data });
           }
         });
@@ -110,14 +110,13 @@ export default function GamePage() {
             setAiGreeting(greetingOutput.greeting);
           } catch (aiError) {
             console.error("AI greeting generation failed:", aiError);
-            setAiGreeting("Chào mừng bạn trở lại Happy Farm! Chúc bạn một ngày vui vẻ!"); // Fallback
+            setAiGreeting("Chào mừng bạn trở lại Happy Farm! Chúc bạn một ngày vui vẻ!");
           }
         }
         setShowWelcomePopup(true);
         sessionStorage.setItem(WELCOME_POPUP_SESSION_KEY, 'true');
       } catch (error) {
         console.error("Error fetching active events for popup:", error);
-        // Fallback to AI greeting if event fetch fails
         try {
             const greetingOutput = await generateWelcomeGreeting();
             setAiGreeting(greetingOutput.greeting);
@@ -137,7 +136,6 @@ export default function GamePage() {
   }, [isInitialized, userId]);
 
 
-  // Listen to Mail Subcollection
   useEffect(() => {
     if (!userId) {
       setMailMessages([]);
@@ -199,7 +197,6 @@ export default function GamePage() {
         toast({ title: "Không Thể Bón Phân", description: "Chỉ có thể bón phân cho cây đang trồng hoặc đang lớn.", variant: "default"});
       }
     }
-    // If not in global action mode, plot popover logic is handled in FarmPlot.tsx via its own onClick
   };
 
   const plantSeedFromPlotPopover = (plotId: number, seedId: SeedId) => {
@@ -341,7 +338,6 @@ export default function GamePage() {
     const mailRef = doc(db, 'users', userId, 'mail', mailId);
     try {
       await updateDoc(mailRef, { isRead: true });
-      // Local state update is handled by onSnapshot
     } catch (error) {
       console.error("Error marking mail as read:", error);
       toast({ title: "Lỗi", description: "Không thể đánh dấu thư đã đọc.", variant: "destructive"});
@@ -349,7 +345,7 @@ export default function GamePage() {
   };
 
   const handleClaimMailRewards = async (mailId: string) => {
-    if (!userId || !gameState) return; // Ensure gameState is available
+    if (!userId || !gameState) return;
     const mailToClaim = mailMessages.find(m => m.id === mailId);
     if (!mailToClaim) {
       toast({ title: "Lỗi", description: "Không tìm thấy thư để nhận.", variant: "destructive" });
@@ -361,7 +357,6 @@ export default function GamePage() {
     }
      if (mailToClaim.bonusId && gameState.claimedBonuses[mailToClaim.bonusId]) {
       toast({ title: "Bonus Đã Nhận", description: "Bạn đã nhận phần thưởng bonus này rồi.", variant: "default" });
-      // Optionally also mark mail as claimed if bonus already claimed through other means
       const mailRef = doc(db, 'users', userId, 'mail', mailId);
       try { await updateDoc(mailRef, { isClaimed: true, isRead: true }); } catch (e) { console.error("Error updating mail for already claimed bonus:", e);}
       return;
@@ -379,7 +374,7 @@ export default function GamePage() {
     }
 
     setGameState(prev => {
-      if (!prev) return INITIAL_GAME_STATE; // Should not happen if isInitialized
+      if (!prev) return INITIAL_GAME_STATE;
       const newState = { ...prev };
       let goldReward = 0;
       let xpReward = 0;
@@ -399,7 +394,7 @@ export default function GamePage() {
       let currentXp = newState.xp + xpReward;
       let currentLevel = newState.level;
       let xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
-      while (currentXp >= xpToNext && xpToNext > 0) { // Added xpToNext > 0 to prevent infinite loop if threshold is 0
+      while (currentXp >= xpToNext && xpToNext > 0) {
         currentXp -= xpToNext;
         currentLevel += 1;
         xpToNext = LEVEL_UP_XP_THRESHOLD(currentLevel);
@@ -438,6 +433,13 @@ export default function GamePage() {
     }
   };
 
+  // Placeholder for claimMissionReward - to be implemented in Phase 2
+  const claimMissionReward = useCallback(async (missionId: string) => {
+    console.log("Attempting to claim mission:", missionId);
+    toast({ title: "Tính năng sắp ra mắt", description: `Chức năng nhận thưởng cho nhiệm vụ ${missionId} sẽ sớm được cập nhật.`});
+    // Actual logic will modify gameState and playerMissionState
+  }, [toast]);
+
 
   if (authLoading || !isInitialized || !user || !cropData || !gameState || !playerTierInfo || !fertilizerData) {
     return (
@@ -471,7 +473,7 @@ export default function GamePage() {
         plantSeedFromPlotPopover={plantSeedFromPlotPopover}
         fertilizeFromPlotPopover={fertilizeFromPlotPopover}
         uprootCropFromPlotPopover={uprootCropFromPlotPopover}
-        harvestCropFromPlotPopover={harvestCropFromPlotPopover} // Pass down
+        harvestCropFromPlotPopover={harvestCropFromPlotPopover}
         unlockPlot={unlockPlot}
         userStatus={gameState.status}
       />
@@ -483,6 +485,7 @@ export default function GamePage() {
         onOpenChatModal={() => setIsChatModalOpen(true)}
         onOpenLeaderboard={() => setShowLeaderboardModal(true)}
         onOpenMailModal={() => setIsMailModalOpen(true)}
+        onOpenMissionModal={() => setIsMissionModalOpen(true)} // Pass handler for Mission Modal
         unreadMailCount={unreadMailCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
@@ -541,6 +544,14 @@ export default function GamePage() {
         onDeleteMail={handleDeleteMail}
       />
 
+      {/* New Mission Modal */}
+      <MissionModal
+        isOpen={isMissionModalOpen}
+        onClose={() => setIsMissionModalOpen(false)}
+        playerMissionState={gameState.activeMissions || {}} // Pass player's mission state
+        onClaimMissionReward={claimMissionReward} // Pass claim function
+      />
+
       <Dialog open={isChatModalOpen} onOpenChange={setIsChatModalOpen}>
         <DialogContent className="sm:max-w-md p-0 border-0 bg-transparent shadow-none">
           <ChatPanel isModalMode userStatus={gameState.status} />
@@ -553,10 +564,11 @@ export default function GamePage() {
           onClose={() => setShowWelcomePopup(false)}
           activeEvents={activeGameEventsForPopup}
           aiGreeting={aiGreeting}
-          isLoadingGreeting={isLoadingWelcomeData} // Pass this down correctly
+          isLoadingGreeting={isLoadingWelcomeData}
         />
       )}
     </div>
   );
 }
 
+  

@@ -3,25 +3,75 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog, Store } from 'lucide-react'; // Added Store icon
+import { UploadCloud, DatabaseZap, ServerCog, BarChartHorizontalBig, Gift, BarChart3, Mail, CalendarCog, Store, ListChecks } from 'lucide-react'; // Added Store icon and ListChecks
 import { useToast } from '@/hooks/use-toast';
-import { 
-  CROP_DATA, 
-  FERTILIZER_DATA, 
-  BONUS_CONFIGURATIONS_DATA, 
-  TIER_DATA, 
-  MAIL_TEMPLATES_DATA, 
+import {
+  CROP_DATA,
+  FERTILIZER_DATA,
+  BONUS_CONFIGURATIONS_DATA,
+  TIER_DATA,
+  MAIL_TEMPLATES_DATA,
   GAME_EVENT_TEMPLATES_DATA,
-  INITIAL_MARKET_STATE // Import INITIAL_MARKET_STATE
-} from '@/lib/constants'; 
+  INITIAL_MARKET_STATE,
+  MAIN_MISSIONS_DATA,                 // New Mission Data
+  DAILY_MISSION_TEMPLATES_DATA,     // New Mission Data
+  WEEKLY_MISSION_TEMPLATES_DATA,    // New Mission Data
+  RANDOM_MISSION_POOL_DATA,         // New Mission Data
+} from '@/lib/constants';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, writeBatch, getDoc } from 'firebase/firestore'; // Added getDoc
-import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig, MarketState } from '@/types'; 
+import { doc, setDoc, writeBatch, getDoc } from 'firebase/firestore';
+import type { CropId, CropDetails, FertilizerId, FertilizerDetails, BonusConfiguration, TierDataFromFirestore, GameEventConfig, MarketState, Mission } from '@/types'; // Added Mission type
 import type { TierDetail } from '@/lib/tier-data';
 import type { MailTemplate } from '@/lib/mail-templates';
 
 export default function AdminConfigPage() {
   const { toast } = useToast();
+  const [isSyncingMissions, setIsSyncingMissions] = useState(false);
+
+
+  const handlePushGenericData = async (
+    dataArray: any[],
+    collectionName: string,
+    docIdField: string, // Field in the data object to use as Document ID
+    dataTypeLabel: string
+  ) => {
+    toast({
+      title: "Đang Xử Lý...",
+      description: `Bắt đầu đẩy dữ liệu ${dataTypeLabel} lên Firestore...`,
+      duration: 3000,
+    });
+
+    try {
+      const batch = writeBatch(db);
+      let itemCount = 0;
+
+      for (const item of dataArray) {
+        if (!item[docIdField]) {
+          console.warn(`Skipping item in ${dataTypeLabel} due to missing ID field '${docIdField}':`, item);
+          continue;
+        }
+        const itemRef = doc(db, collectionName, item[docIdField]);
+        batch.set(itemRef, item);
+        itemCount++;
+      }
+
+      await batch.commit();
+      toast({
+        title: "Thành Công!",
+        description: `Đã đẩy ${itemCount} ${dataTypeLabel} lên Firestore collection '${collectionName}'.`,
+        duration: 7000,
+        className: "bg-green-500 text-white"
+      });
+    } catch (error) {
+      console.error(`Error pushing ${dataTypeLabel} to Firestore:`, error);
+      toast({
+        title: `Lỗi Đẩy Dữ Liệu ${dataTypeLabel}`,
+        description: `Không thể đẩy dữ liệu. Lỗi: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handlePushCropFertilizerData = async () => {
     toast({
@@ -71,40 +121,6 @@ export default function AdminConfigPage() {
     }
   };
 
-  const handlePushBonusConfigs = async () => {
-    toast({
-      title: "Đang Xử Lý...",
-      description: "Bắt đầu đẩy dữ liệu Cấu Hình Bonus lên Firestore...",
-      duration: 3000,
-    });
-    try {
-      const batch = writeBatch(db);
-      let bonusConfigCount = 0;
-
-      for (const bonusConfig of BONUS_CONFIGURATIONS_DATA) {
-        const configRef = doc(db, 'gameBonusConfigurations', bonusConfig.id);
-        batch.set(configRef, bonusConfig);
-        bonusConfigCount++;
-      }
-      
-      await batch.commit();
-      toast({
-        title: "Thành Công!",
-        description: `Đã đẩy ${bonusConfigCount} cấu hình bonus từ 'constants.ts' lên Firestore.`,
-        duration: 7000,
-        className: "bg-green-500 text-white"
-      });
-
-    } catch (error) {
-      console.error("Error pushing bonus configurations to Firestore:", error);
-       toast({
-        title: "Lỗi Đẩy Cấu Hình Bonus",
-        description: `Không thể đẩy dữ liệu cấu hình bonus. Lỗi: ${(error as Error).message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handlePushTierData = async () => {
     toast({
       title: "Đang Xử Lý...",
@@ -116,13 +132,13 @@ export default function AdminConfigPage() {
       let tierCount = 0;
 
       TIER_DATA.forEach((tierDetail: TierDetail, index: number) => {
-        const tierId = `tier_${index + 1}`; 
+        const tierId = `tier_${index + 1}`;
         const dataToPush: TierDataFromFirestore = { ...tierDetail };
         const tierRef = doc(db, 'gameTiers', tierId);
         batch.set(tierRef, dataToPush);
         tierCount++;
       });
-      
+
       await batch.commit();
       toast({
         title: "Thành Công!",
@@ -141,73 +157,6 @@ export default function AdminConfigPage() {
     }
   };
 
-  const handlePushMailTemplates = async () => {
-    toast({
-      title: "Đang Xử Lý...",
-      description: "Bắt đầu đẩy dữ liệu Thư Mẫu lên Firestore...",
-      duration: 3000,
-    });
-    try {
-      const batch = writeBatch(db);
-      let templateCount = 0;
-
-      for (const template of MAIL_TEMPLATES_DATA) {
-        const templateRef = doc(db, 'gameMailTemplates', template.id);
-        batch.set(templateRef, template);
-        templateCount++;
-      }
-      
-      await batch.commit();
-      toast({
-        title: "Thành Công!",
-        description: `Đã đẩy ${templateCount} thư mẫu từ 'mail-templates.ts' lên Firestore collection 'gameMailTemplates'.`,
-        duration: 7000,
-        className: "bg-green-500 text-white"
-      });
-
-    } catch (error) {
-      console.error("Error pushing mail templates to Firestore:", error);
-       toast({
-        title: "Lỗi Đẩy Thư Mẫu",
-        description: `Không thể đẩy dữ liệu thư mẫu. Lỗi: ${(error as Error).message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handlePushEventTemplates = async () => {
-    toast({
-      title: "Đang Xử Lý...",
-      description: "Bắt đầu đẩy Mẫu Sự Kiện Game lên Firestore...",
-      duration: 3000,
-    });
-    try {
-      const batch = writeBatch(db);
-      let templateCount = 0;
-
-      for (const template of GAME_EVENT_TEMPLATES_DATA) {
-        const templateRef = doc(db, 'gameEventTemplates', template.id);
-        batch.set(templateRef, template);
-        templateCount++;
-      }
-      
-      await batch.commit();
-      toast({
-        title: "Thành Công!",
-        description: `Đã đẩy ${templateCount} mẫu sự kiện từ 'event-templates.ts' lên Firestore collection 'gameEventTemplates'.`,
-        duration: 7000,
-        className: "bg-green-500 text-white"
-      });
-
-    } catch (error) {
-      console.error("Error pushing event templates to Firestore:", error);
-       toast({
-        title: "Lỗi Đẩy Mẫu Sự Kiện",
-        description: `Không thể đẩy dữ liệu mẫu sự kiện. Lỗi: ${(error as Error).message}`,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleInitializeMarketState = async () => {
     toast({
@@ -217,10 +166,8 @@ export default function AdminConfigPage() {
     });
     try {
       const marketDocRef = doc(db, 'marketState', 'global');
-      // We can directly set the initial market state.
-      // Firestore's setDoc will create the document if it doesn't exist, or overwrite it if it does.
       await setDoc(marketDocRef, INITIAL_MARKET_STATE);
-      
+
       toast({
         title: "Thành Công!",
         description: "Trạng thái Chợ đã được khởi tạo/đặt lại với dữ liệu mặc định.",
@@ -238,11 +185,37 @@ export default function AdminConfigPage() {
     }
   };
 
+  const handlePushAllMissionData = async () => {
+    setIsSyncingMissions(true);
+    try {
+      await handlePushGenericData(MAIN_MISSIONS_DATA, 'gameMainMissions', 'id', 'Nhiệm Vụ Chính');
+      await handlePushGenericData(DAILY_MISSION_TEMPLATES_DATA, 'gameDailyMissionTemplates', 'id', 'Mẫu NV Ngày');
+      await handlePushGenericData(WEEKLY_MISSION_TEMPLATES_DATA, 'gameWeeklyMissionTemplates', 'id', 'Mẫu NV Tuần');
+      await handlePushGenericData(RANDOM_MISSION_POOL_DATA, 'gameRandomMissionPool', 'id', 'NV Ngẫu Nhiên');
+      toast({
+        title: "Đồng Bộ Hoàn Tất!",
+        description: "Tất cả dữ liệu nhiệm vụ đã được đồng bộ lên Firestore.",
+        className: "bg-green-500 text-white",
+        duration: 7000,
+      });
+    } catch (error) {
+      // Individual errors are handled by handlePushGenericData
+      toast({
+        title: "Lỗi Đồng Bộ Tổng Thể",
+        description: "Một hoặc nhiều loại nhiệm vụ không thể đồng bộ. Kiểm tra console.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingMissions(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
       <Card className="shadow-xl">
         <CardContent className="space-y-6 p-6">
+          {/* Row 1 */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="border-primary/50">
               <CardHeader>
@@ -274,13 +247,12 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Cấu Hình Bonus</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ cấu hình Bonus từ <code>constants.ts</code> 
+                  Đẩy TOÀN BỘ cấu hình Bonus từ <code>constants.ts</code>
                   lên collection <code>gameBonusConfigurations</code> trong Firestore.
-                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu bonus trên database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushBonusConfigs} className="bg-purple-500 hover:bg-purple-600 text-white">
+                <Button onClick={() => handlePushGenericData(BONUS_CONFIGURATIONS_DATA, 'gameBonusConfigurations', 'id', 'Cấu Hình Bonus')} className="bg-purple-500 hover:bg-purple-600 text-white">
                   <UploadCloud className="mr-2 h-5 w-5" />
                   Đẩy Cấu Hình Bonus
                 </Button>
@@ -291,6 +263,7 @@ export default function AdminConfigPage() {
             </Card>
           </div>
 
+          {/* Row 2 */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="border-sky-500/50">
               <CardHeader>
@@ -299,9 +272,8 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Dữ Liệu Cấp Bậc (Tiers)</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code> 
+                  Đẩy TOÀN BỘ cấu hình Cấp Bậc (Tiers) từ <code>constants.ts</code>
                   lên collection <code>gameTiers</code> trong Firestore.
-                  Sử dụng để khởi tạo hoặc GHI ĐÈ dữ liệu cấp bậc trên database.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -314,7 +286,7 @@ export default function AdminConfigPage() {
                 </p>
               </CardContent>
             </Card>
-            
+
             <Card className="border-teal-500/50">
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -322,12 +294,12 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Đồng Bộ Thư Mẫu</CardTitle>
                 </div>
                 <CardDescription>
-                  Đẩy TOÀN BỘ Thư Mẫu từ <code>mail-templates.ts</code> (thông qua <code>constants.ts</code>)
+                  Đẩy TOÀN BỘ Thư Mẫu từ <code>mail-templates.ts</code>
                   lên collection <code>gameMailTemplates</code> trong Firestore.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushMailTemplates} className="bg-teal-500 hover:bg-teal-600 text-white">
+                <Button onClick={() => handlePushGenericData(MAIL_TEMPLATES_DATA, 'gameMailTemplates', 'id', 'Thư Mẫu')} className="bg-teal-500 hover:bg-teal-600 text-white">
                     <UploadCloud className="mr-2 h-5 w-5" />
                     Đồng Bộ Thư Mẫu
                 </Button>
@@ -337,7 +309,8 @@ export default function AdminConfigPage() {
               </CardContent>
             </Card>
           </div>
-          
+
+          {/* Row 3 */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card className="border-blue-500/50">
               <CardHeader>
@@ -351,7 +324,7 @@ export default function AdminConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handlePushEventTemplates} className="bg-blue-500 hover:bg-blue-600 text-white">
+                <Button onClick={() => handlePushGenericData(GAME_EVENT_TEMPLATES_DATA, 'gameEventTemplates', 'id', 'Mẫu Sự Kiện')} className="bg-blue-500 hover:bg-blue-600 text-white">
                     <UploadCloud className="mr-2 h-5 w-5" />
                     Đồng Bộ Mẫu Sự Kiện
                 </Button>
@@ -360,7 +333,7 @@ export default function AdminConfigPage() {
                 </p>
               </CardContent>
             </Card>
-            
+
             <Card className="border-orange-400/50">
               <CardHeader>
                   <div className="flex items-center gap-2">
@@ -368,7 +341,7 @@ export default function AdminConfigPage() {
                     <CardTitle className="text-xl">Khởi Tạo Trạng Thái Chợ</CardTitle>
                   </div>
                   <CardDescription>
-                  Khởi tạo hoặc đặt lại tài liệu <code>marketState/global</code> trong Firestore với giá và sự kiện mặc định.
+                  Khởi tạo hoặc đặt lại tài liệu <code>marketState/global</code> với dữ liệu mặc định.
                   </CardDescription>
               </CardHeader>
               <CardContent>
@@ -382,6 +355,36 @@ export default function AdminConfigPage() {
               </CardContent>
             </Card>
           </div>
+
+           {/* New Row for Missions */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-indigo-500/50 md:col-span-2"> {/* Make this card span 2 columns on md+ screens */}
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                    <ListChecks className="h-6 w-6 text-indigo-500" />
+                    <CardTitle className="text-xl">Đồng Bộ Định Nghĩa Nhiệm Vụ</CardTitle>
+                </div>
+                <CardDescription>
+                  Đẩy TOÀN BỘ cấu hình Nhiệm Vụ từ <code>mission-data.ts</code> (thông qua <code>constants.ts</code>)
+                  lên các collection tương ứng (<code>gameMainMissions</code>, <code>gameDailyMissionTemplates</code>, etc.) trong Firestore.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handlePushAllMissionData} className="bg-indigo-500 hover:bg-indigo-600 text-white" disabled={isSyncingMissions}>
+                    {isSyncingMissions ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
+                    Đồng Bộ Tất Cả Nhiệm Vụ
+                </Button>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  GHI ĐÈ dữ liệu trên các collection nhiệm vụ.
+                </p>
+              </CardContent>
+            </Card>
+            {/* Placeholder for another card if needed, or leave one empty
+            This div will be empty on md+ screens because the mission card spans 2 columns.
+            On smaller screens, it will just be an empty div below the mission card. */}
+            <div></div>
+          </div>
+
 
           <div className="grid md:grid-cols-2 gap-6">
              <Card className="border-gray-500/50">
@@ -398,7 +401,6 @@ export default function AdminConfigPage() {
                   <Button variant="outline" disabled className="mt-2">Soạn Thông Báo</Button>
               </CardContent>
             </Card>
-            {/* Placeholder for another card if needed, or leave one empty */}
             <div></div>
           </div>
 
@@ -407,6 +409,5 @@ export default function AdminConfigPage() {
     </div>
   );
 }
-    
 
-    
+  

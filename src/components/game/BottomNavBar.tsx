@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Menu,
   Mail as MailIcon,
+  CheckSquare as MissionIcon, // New icon for Missions
 } from 'lucide-react';
 import {
   Tooltip,
@@ -53,6 +54,7 @@ interface BottomNavBarProps {
   onOpenChatModal: () => void;
   onOpenLeaderboard: () => void;
   onOpenMailModal: () => void;
+  onOpenMissionModal: () => void; // New prop for missions
   unreadMailCount: number;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
@@ -76,6 +78,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   onOpenChatModal,
   onOpenLeaderboard,
   onOpenMailModal,
+  onOpenMissionModal, // Destructure new prop
   unreadMailCount,
   onSetPlantMode,
   onToggleHarvestMode,
@@ -117,7 +120,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
   const selectedFertilizerInfo = selectedFertilizerId && currentAction === 'fertilizing' ? getFertilizerInfo(selectedFertilizerId) : null;
 
   const handleAdminNavigation = () => {
-    router.push('/admin/items-management');
+    router.push('/admin/missions-events'); // Updated to new admin page
   };
 
   const handleLogout = async () => {
@@ -177,7 +180,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
       <div className="fixed bottom-4 right-1/2 translate-x-1/2 sm:right-4 sm:translate-x-0 z-50">
         <div className="flex flex-row gap-2 p-2 bg-card border border-border rounded-lg shadow-lg items-center">
 
-          {/* Always Visible Core Buttons */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -299,27 +301,28 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
             </TooltipContent>
           </Tooltip>
 
+          {/* New Mission Button */}
+           <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onOpenMissionModal}
+                variant="outline"
+                className={cn(buttonBaseClass, "bg-blue-500 hover:bg-blue-600 text-white")}
+                aria-label="Nhiệm Vụ"
+              >
+                <MissionIcon className={iconClass} />
+                <span className={labelClass}>Nhiệm Vụ</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Nhiệm Vụ</p>
+            </TooltipContent>
+          </Tooltip>
+
+
           {/* ---- Desktop Specific Buttons ---- */}
           <div className="hidden md:flex items-center gap-2">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                <Button
-                    onClick={onOpenProfile}
-                    variant="outline"
-                    className={cn(buttonBaseClass)}
-                    aria-label="Thông tin Người chơi"
-                >
-                    <UserCircle2 className={iconClass} />
-                    <span className={labelClass}>Hồ Sơ</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                  <p>Thông tin Người chơi</p>
-              </TooltipContent>
-            </Tooltip>
-
-            {/* Mail button removed from direct view on desktop */}
-
+            {/* Profile button moved to settings dropdown */}
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -339,6 +342,10 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" side="top" className="mb-2 min-w-[200px]">
+                  <DropdownMenuItem onSelect={onOpenProfile}>
+                      <UserCircle2 className="mr-2 h-4 w-4" />
+                      <span>Hồ Sơ</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={onOpenMailModal} className="flex justify-between items-center">
                     <div className="flex items-center">
                       <MailIcon className="mr-2 h-4 w-4" />
@@ -404,7 +411,6 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                       >
                           <Menu className={iconClass} />
                           <span className={labelClass}>Thêm</span>
-                          {/* Badge on "More" if Mail has unread items */}
                           {unreadMailCount > 0 && (
                             <Badge className="absolute -top-1.5 -right-1.5 h-4 w-4 p-0 min-w-4 justify-center text-[9px] bg-red-500 text-white z-10">
                                 {unreadMailCount > 9 ? '9+' : unreadMailCount}
@@ -464,3 +470,4 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
 
 export default BottomNavBar;
 
+  

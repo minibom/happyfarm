@@ -52,7 +52,6 @@ export interface MailMessage {
   id: string; // Firestore Document ID
   senderType: MailSenderType;
   senderName: string; // e.g., "System", "Game Master", "Tomato Festival"
-  // recipientUid is implicit via path users/{userId}/mail/{mailId}
   subject: string;
   body: string;
   rewards: RewardItem[];
@@ -95,7 +94,7 @@ export interface AdminMailLogEntry {
 }
 
 // --- Game Event Types ---
-export type GameEventType = 
+export type GameEventType =
   | 'CROP_GROWTH_TIME_REDUCTION' // Percentage reduction for all or specific crops
   | 'ITEM_PURCHASE_PRICE_MODIFIER' // Percentage modifier for specific buyable items (seeds, fertilizers)
   | 'ITEM_SELL_PRICE_MODIFIER'; // Percentage modifier for specific sellable items (crops)
@@ -104,7 +103,6 @@ export interface GameEventEffect {
   type: GameEventType;
   value: number; // e.g., 0.1 for 10% reduction/increase. For price modifiers, >1 for increase, <1 for decrease.
   affectedItemIds?: InventoryItem[] | 'ALL_CROPS' | 'ALL_SEEDS' | 'ALL_FERTILIZERS'; // Specific items or categories
-  // additionalParams?: Record<string, any>; // For more complex effects
 }
 
 export interface GameEventConfig { // For templates / definitions
@@ -113,7 +111,6 @@ export interface GameEventConfig { // For templates / definitions
   description: string; // Admin-facing description of what the event does
   defaultEffects: GameEventEffect[];
   defaultDurationHours: number; // Suggested duration in hours
-  // Suggested mail/notification text could also be here
   defaultMailSubject?: string;
   defaultMailBody?: string;
   icon?: string; // Optional icon for the event type
@@ -128,7 +125,6 @@ export interface ActiveGameEvent { // For Firestore `activeGameEvents` collectio
   startTime: any; // Firestore Timestamp
   endTime: any; // Firestore Timestamp
   isActive: boolean; // Calculated or manually set
-  // notificationSent?: boolean; // To track if start/end notifications were sent
 }
 // --- End Game Event Types ---
 
@@ -138,6 +134,47 @@ export interface AIGreetingOutput {
 }
 // --- End AI Greeting Type ---
 
+// --- Mission System Types ---
+export type MissionType =
+  | 'harvest_crop'        // Thu hoạch N [cropId]
+  | 'plant_seed'          // Trồng N [seedId]
+  | 'buy_item'            // Mua N [itemId] (seed or fertilizer)
+  | 'sell_item'           // Bán N [cropId]
+  | 'reach_level'         // Đạt cấp độ N
+  | 'earn_gold'           // Kiếm được N vàng (trong một phiên, hoặc tổng)
+  | 'unlock_plots'        // Mở khóa N ô đất
+  | 'use_fertilizer'      // Sử dụng N [fertilizerId] (hoặc N phân bón bất kỳ)
+  | 'complete_daily_missions' // Hoàn thành N nhiệm vụ ngày
+  | 'complete_weekly_missions'; // Hoàn thành N nhiệm vụ tuần
+
+export type MissionCategory = 'main' | 'daily' | 'weekly' | 'event' | 'random'; // Added 'event' category
+export type MissionStatus = 'locked' | 'active' | 'completed_pending_claim' | 'claimed' | 'expired';
+
+export interface MissionReward extends RewardItem {} // Re-using RewardItem for mission rewards
+
+export interface Mission {
+  id: string; // Unique mission ID, e.g., "main_harvest_tomato_1", "daily_plant_any_5"
+  title: string;
+  description?: string;
+  category: MissionCategory;
+  type: MissionType;
+  targetItemId?: InventoryItem; // For harvest, plant, buy, sell, use_fertilizer
+  targetQuantity: number;
+  requiredLevelUnlock?: number; // Level required to unlock/see this mission
+  rewards: MissionReward[];
+  resetFrequency?: 'daily' | 'weekly'; // For daily/weekly missions
+  icon?: string; // Optional icon for the mission type or category
+  eventSourceId?: string; // If this mission is tied to a specific game event
+}
+
+export interface PlayerMissionProgress {
+  missionId: string; // References a Mission.id
+  progress: number;
+  status: MissionStatus;
+  assignedAt?: number; // Timestamp when the mission was assigned (for daily/weekly)
+  expiresAt?: number; // Timestamp for daily/weekly/event missions
+}
+// --- End Mission System Types ---
 
 export interface GameState {
   gold: number;
@@ -151,7 +188,8 @@ export interface GameState {
   lastLogin: number;
   email?: string;
   displayName?: string;
-  claimedBonuses: Record<string, boolean>; // Tracks which one-time bonuses have been claimed e.g. {'tierUp_2': true}
+  claimedBonuses: Record<string, boolean>;
+  activeMissions?: Record<string, PlayerMissionProgress>; // Player's current missions
 }
 
 export interface ChatMessage {
@@ -177,7 +215,7 @@ export interface AdminUserView extends GameState {
   uid: string;
 }
 
-export type MarketItemId = CropId | SeedId;
+export type MarketItemId = CropId | SeedId | FertilizerId; // Extended to include FertilizerId
 
 export interface MarketPriceData {
   [itemId: string]: number;
@@ -195,13 +233,13 @@ export interface MarketEventData { // This existing one might be simplified or i
   priceModifier?: number;
   effectDescription?: string;
   expiresAt?: number;
-  durationHours?: number; // This was added previously for the AI flow
+  durationHours?: number;
 }
 
 export interface MarketState {
   prices: MarketPriceData;
   priceChanges: MarketPriceChange;
-  currentEvent: MarketEventData | null; // This might become an ActiveGameEvent focused on market prices
+  currentEvent: MarketEventData | null;
   lastUpdated: number;
 }
 
@@ -227,7 +265,6 @@ export interface MarketItemDisplay {
   description?: string;
 }
 
-// Tier data as stored in Firestore (matches TierDetail in tier-data.ts but for explicit typing)
 export interface TierDataFromFirestore {
   name: string;
   icon: string;
@@ -238,3 +275,4 @@ export interface TierDataFromFirestore {
   growthTimeReductionPercent: number;
 }
 
+  

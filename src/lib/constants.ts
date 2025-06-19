@@ -7,7 +7,8 @@ export * from './fertilizer-data';
 export * from './initial-states';
 export * from './bonus-configurations';
 export * from './mail-templates';
-export * from './event-templates'; // Export new event templates
+export * from './event-templates';
+export * from './mission-data'; // Export new mission data
 
 // Type re-exports are primarily handled by types/index.ts
 // but if specific types were defined ONLY in the old constants.ts and used elsewhere,
@@ -16,3 +17,5 @@ export * from './event-templates'; // Export new event templates
 // or are now co-located with their respective data (e.g., TierDetail in tier-data.ts).
 
     
+
+  
