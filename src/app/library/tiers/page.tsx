@@ -19,8 +19,6 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import type { TierDataFromFirestore } from '@/types';
 
-// Removed metadata export
-
 interface TierDisplayData extends TierDetail {
   tierNumber: number;
   levelRange: string;

@@ -7,8 +7,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Users, Sprout, Gift, BarChart3, Zap, ListChecks, Info, ShoppingCart, TrendingUp, Compass } from 'lucide-react';
 
-// Removed metadata export
-
 export default function LibraryIntroductionPage() {
   return (
     <div className="space-y-6">

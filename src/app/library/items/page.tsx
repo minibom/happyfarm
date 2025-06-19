@@ -26,8 +26,6 @@ import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
-// Removed metadata export
-
 const formatMillisecondsToTime = (ms: number): string => {
   if (isNaN(ms) || ms <= 0) return '00:00';
   const totalSeconds = Math.floor(ms / 1000);
