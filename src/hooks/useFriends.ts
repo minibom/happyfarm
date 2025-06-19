@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -17,6 +17,7 @@ import {
   getDocs,
   type Unsubscribe,
   Timestamp,
+  orderBy, // Added orderBy
 } from 'firebase/firestore';
 import { useAuth } from './useAuth';
 import type { FriendInfo, FriendRequestSent, FriendRequestReceived, GameState } from '@/types';
@@ -314,3 +315,4 @@ export const useFriends = () => {
     loadingFriendsData,
   };
 };
+
