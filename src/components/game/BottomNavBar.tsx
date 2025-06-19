@@ -59,7 +59,7 @@ interface BottomNavBarProps {
   onOpenFriendsModal: () => void;
   unreadMailCount: number;
   unreadFriendRequestCount: number;
-  claimableMissionCount: number; 
+  claimableMissionCount: number;
   onSetPlantMode: (seedId: SeedId) => void;
   onToggleHarvestMode: () => void;
   onSetFertilizeMode: (fertilizerId: FertilizerId) => void;
@@ -194,7 +194,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
       </Badge>
     ) : null
   );
-  
+
   const totalUnreadNotifications = unreadMailCount + unreadFriendRequestCount;
 
 
@@ -222,14 +222,14 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                 <p>{mainActionTooltip}</p>
               </TooltipContent>
             </Tooltip>
-            <DropdownMenuContent align="end" side="top" className="mb-2 max-h-80 overflow-y-auto">
+            <DropdownMenuContent align="end" side="top" className="mb-2 max-h-80 overflow-y-auto min-w-[240px]">
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Sprout className="mr-2 h-4 w-4" />
                   Trồng Hạt Giống
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto min-w-[240px]">
                     {availableSeeds.length > 0 ? (
                       availableSeeds.map(seedId => {
                         const crop = getSeedCropInfo(seedId);
@@ -260,7 +260,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   Bón Phân
                 </DropdownMenuSubTrigger>
                 <DropdownMenuPortal>
-                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto">
+                  <DropdownMenuSubContent className="max-h-60 overflow-y-auto min-w-[240px]">
                     {ownedAvailableFertilizers.length > 0 ? (
                       ownedAvailableFertilizers.map(fertilizer => {
                         return (
@@ -289,7 +289,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <Tooltip>
             <TooltipTrigger asChild>
             <Button
@@ -440,7 +440,7 @@ const BottomNavBar: FC<BottomNavBarProps> = ({
                   <DropdownMenuTrigger asChild>
                       <Button
                           variant="outline"
-                          className={cn(buttonBaseClass)} 
+                          className={cn(buttonBaseClass)}
                           aria-label="Thêm tùy chọn"
                       >
                           <Menu className={iconClass} />
