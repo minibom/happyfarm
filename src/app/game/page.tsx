@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Metadata } from 'next';
+// Removed: import type { Metadata } from 'next';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
@@ -38,15 +38,15 @@ import { useToast } from '@/hooks/use-toast';
 import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
 import { useFriends } from '@/hooks/useFriends';
 
-// Metadata for the game page - typically not indexed if behind auth
-export const metadata: Metadata = {
-  title: 'Chơi Game Happy Farm',
-  description: 'Vào game Happy Farm và bắt đầu hành trình nông trại của bạn.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+// Removed metadata export:
+// export const metadata: Metadata = {
+//   title: 'Chơi Game Happy Farm',
+//   description: 'Vào game Happy Farm và bắt đầu hành trình nông trại của bạn.',
+//   robots: {
+//     index: false,
+//     follow: false,
+//   },
+// };
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
