@@ -95,20 +95,35 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
           Trò Chuyện Nông Trại
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col p-4 pt-0">
-        <ScrollArea className="flex-grow h-0 mb-4 border rounded-md p-3 bg-muted/30" ref={scrollAreaRef}>
-          <div className="space-y-3">
+      <CardContent className={cn(
+        "flex-grow flex flex-col pt-0",
+        isModalMode ? "p-2 sm:p-4" : "p-4" // Adjusted padding for modal mode
+      )}>
+        <ScrollArea 
+          className={cn(
+            "flex-grow h-0 border rounded-md bg-muted/30",
+            isModalMode ? "mb-2 sm:mb-4" : "mb-4" // Adjusted margin for modal mode
+          )} 
+          ref={scrollAreaRef}
+        >
+          <div className={cn(
+            "space-y-3",
+            isModalMode ? "p-1.5 sm:p-3" : "p-3" // Adjusted inner padding for modal mode
+          )}>
             {messages.map((msg) => (
               <div 
                 key={msg.id} 
                 className={cn(
                   "flex w-full", 
-                  msg.senderUid === user?.uid ? "justify-end pl-8 sm:pl-12" : "justify-start pr-8 sm:pr-12"
+                  msg.senderUid === user?.uid 
+                    ? (isModalMode ? "justify-end pl-6 sm:pl-8" : "justify-end pl-8 sm:pl-12") // Reduced base padding
+                    : (isModalMode ? "justify-start pr-6 sm:pr-8" : "justify-start pr-8 sm:pr-12") // Reduced base padding
                 )}
               >
                 <div
                   className={cn(
-                    "p-2 rounded-lg shadow text-sm max-w-[80%]",
+                    "rounded-lg shadow text-sm max-w-[85%]", // Slightly increased max-width for bubbles
+                    isModalMode ? "p-1.5 sm:p-2" : "p-2", // Adjusted bubble padding
                     msg.senderUid === user?.uid
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border" 
@@ -147,6 +162,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ isModalMode = false, userStatus }) => {
             type="submit" 
             className="bg-accent hover:bg-accent/90 text-accent-foreground" 
             disabled={!user || userStatus === 'banned_chat' || newMessage.trim() === ''}
+            aria-label="Gửi tin nhắn"
           >
             <Send className="h-4 w-4" />
             <span className="sr-only">Gửi</span>
