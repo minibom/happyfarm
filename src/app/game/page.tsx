@@ -370,6 +370,12 @@ export default function GamePage() {
 
 
   const unreadMailCount = useMemo(() => mailMessages.filter(m => !m.isRead).length, [mailMessages]);
+  const claimableMissionCount = useMemo(() => {
+    return Object.values(gameState.activeMissions || {}).filter(
+      (mission) => mission.status === 'completed_pending_claim'
+    ).length;
+  }, [gameState.activeMissions]);
+
 
   const handleMarkMailAsRead = async (mailId: string) => {
     if (!userId) return;
@@ -519,6 +525,7 @@ export default function GamePage() {
         onOpenFriendsModal={() => setShowFriendsModal(true)}
         unreadMailCount={unreadMailCount}
         unreadFriendRequestCount={unreadRequestCount}
+        claimableMissionCount={claimableMissionCount}
         onSetPlantMode={handleSetPlantMode}
         onToggleHarvestMode={handleToggleHarvestMode}
         onSetFertilizeMode={handleSetFertilizeMode}
@@ -651,8 +658,6 @@ export default function GamePage() {
           onRemoveFriend={removeFriend}
           onBlockUser={blockUser}
           onUnblockUser={unblockUser}
-          // You might need to fetch more profile data for the target user here
-          // For now, it will be basic.
         />
       )}
     </div>
