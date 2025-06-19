@@ -30,6 +30,7 @@ import BottomNavBar from '@/components/game/BottomNavBar';
 import GameArea from '@/components/game/GameArea';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import { useAuth } from '@/hooks/useAuth';
+import { usePresence } from '@/hooks/usePresence'; // Import usePresence
 import type { SeedId, CropId, FertilizerId, FertilizerDetails, MailMessage, RewardItem, GameState, ActiveGameEvent } from '@/types';
 import { LEVEL_UP_XP_THRESHOLD, getPlayerTierInfo, TOTAL_PLOTS, ALL_SEED_IDS, ALL_CROP_IDS, FERTILIZER_DATA, ALL_FERTILIZER_IDS } from '@/lib/constants';
 import { Loader2, MessageSquare } from 'lucide-react';
@@ -39,6 +40,7 @@ import { generateWelcomeGreeting } from '@/ai/flows/generate-welcome-greeting';
 
 export default function GamePage() {
   const { user, userId, loading: authLoading } = useAuth();
+  usePresence(); // Initialize the presence system
   const router = useRouter();
   const { toast } = useToast();
   const {
@@ -590,4 +592,3 @@ export default function GamePage() {
     </div>
   );
 }
-
