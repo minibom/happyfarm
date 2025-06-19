@@ -16,9 +16,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, UserPlus, UserCheck, UserX, Hourglass, Eye, Loader2 } from 'lucide-react';
+import { Users, UserPlus, UserCheck, UserX, Hourglass, Eye, Loader2, Circle } from 'lucide-react'; // Added Circle
 import type { FriendInfo, FriendRequestReceived, FriendRequestSent } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from "@/lib/utils"; // Import cn
 
 interface FriendsModalProps {
   isOpen: boolean;
@@ -26,24 +27,33 @@ interface FriendsModalProps {
   currentUserId: string | null;
   friendsList: FriendInfo[];
   incomingRequests: FriendRequestReceived[];
-  outgoingRequests: FriendRequestSent[]; // Not displayed directly in this version, but hook provides it
+  outgoingRequests: FriendRequestSent[]; 
   onAcceptRequest: (senderId: string) => Promise<void>;
   onDeclineRequest: (senderId: string) => Promise<void>;
   onRemoveFriend: (friendId: string) => Promise<void>;
-  onBlockUser: (userIdToBlock: string) => Promise<void>; // For future use with friend profile
-  onUnblockUser: (userIdToUnblock: string) => Promise<void>; // For future use
+  onBlockUser: (userIdToBlock: string) => Promise<void>; 
+  onUnblockUser: (userIdToUnblock: string) => Promise<void>; 
   onViewProfile: (friendId: string, friendName: string) => void;
   loading: boolean;
 }
 
 const FriendListItem: FC<{ friend: FriendInfo; onRemove: (uid: string) => void; onViewProfile: (uid: string, name: string) => void }> = ({ friend, onRemove, onViewProfile }) => {
+  const statusColor = friend.onlineStatus === 'online' ? 'bg-green-500' : 'bg-gray-400';
+  const statusTooltip = friend.onlineStatus === 'online' ? 'Trực tuyến' : 'Ngoại tuyến';
+
   return (
     <Card className="flex items-center justify-between p-2.5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={friend.avatarUrl || `https://placehold.co/40x40.png?text=${friend.displayName?.[0] || 'U'}`} alt={friend.displayName} data-ai-hint="user avatar"/>
-          <AvatarFallback>{friend.displayName?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
-        </Avatar>
+        <div className="relative">
+            <Avatar className="h-9 w-9">
+            <AvatarImage src={friend.avatarUrl || `https://placehold.co/40x40.png?text=${friend.displayName?.[0] || 'U'}`} alt={friend.displayName} data-ai-hint="user avatar"/>
+            <AvatarFallback>{friend.displayName?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+            </Avatar>
+            <span 
+                title={statusTooltip}
+                className={cn("absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-1 ring-white", statusColor)} 
+            />
+        </div>
         <div>
           <p className="text-sm font-semibold">{friend.displayName}</p>
           <p className="text-xs text-muted-foreground">Bạn bè từ: {new Date(friend.friendSince?.seconds ? friend.friendSince.seconds * 1000 : Date.now()).toLocaleDateString()}</p>
@@ -93,12 +103,9 @@ const FriendsModal: FC<FriendsModalProps> = ({
   currentUserId,
   friendsList,
   incomingRequests,
-  // outgoingRequests, // Not used directly in UI yet
   onAcceptRequest,
   onDeclineRequest,
   onRemoveFriend,
-  // onBlockUser,
-  // onUnblockUser,
   onViewProfile,
   loading,
 }) => {

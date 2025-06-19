@@ -1,4 +1,5 @@
 
+
 export type PlotState = 'empty' | 'planted' | 'growing' | 'ready_to_harvest' | 'locked';
 
 export type CropId = string;
@@ -192,7 +193,7 @@ export interface FriendInfo {
   displayName: string;
   level: number;
   avatarUrl?: string; // Optional
-  status?: 'online' | 'offline'; // From RTDB presence
+  onlineStatus?: 'online' | 'offline'; // Added for presence
   friendSince: any; // Firestore Timestamp
 }
 

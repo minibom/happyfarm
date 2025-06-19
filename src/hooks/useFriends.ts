@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { db } from '@/lib/firebase';
+import { db, rtdb } from '@/lib/firebase'; // Added rtdb
 import {
   collection,
   query,
   where,
-  onSnapshot,
+  onSnapshot as onFirestoreSnapshot, // Aliased to avoid conflict
   doc,
   setDoc,
   deleteDoc,
@@ -17,8 +17,9 @@ import {
   getDocs,
   type Unsubscribe,
   Timestamp,
-  orderBy, // Added orderBy
+  orderBy, 
 } from 'firebase/firestore';
+import { ref as rtdbRef, onValue as onRtdbValue, type Unsubscribe as RtdbUnsubscribe } from 'firebase/database'; // Added RTDB imports
 import { useAuth } from './useAuth';
 import type { FriendInfo, FriendRequestSent, FriendRequestReceived, GameState } from '@/types';
 import { useToast } from './use-toast';
@@ -30,14 +31,14 @@ export const useFriends = () => {
   const [friendsList, setFriendsList] = useState<FriendInfo[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<FriendRequestReceived[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<FriendRequestSent[]>([]);
-  const [blockedUsers, setBlockedUsers] = useState<string[]>([]); // Store UIDs of blocked users
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]); 
   const [loadingFriendsData, setLoadingFriendsData] = useState(true);
 
   const unreadRequestCount = useMemo(() => {
     return incomingRequests.filter(req => req.status === 'pending').length;
   }, [incomingRequests]);
 
-  // Fetch friends
+  // Fetch friends and their online status
   useEffect(() => {
     if (!userId) {
       setFriendsList([]);
@@ -46,20 +47,55 @@ export const useFriends = () => {
     }
     setLoadingFriendsData(true);
     const friendsRef = collection(db, 'users', userId, 'friends');
-    const unsubscribe = onSnapshot(friendsRef, (snapshot) => {
-      const fetchedFriends: FriendInfo[] = [];
-      snapshot.forEach((doc) => {
-        fetchedFriends.push({ uid: doc.id, ...doc.data() } as FriendInfo);
+    const unsubscribeFirestoreFriends = onFirestoreSnapshot(friendsRef, (snapshot) => {
+      const fetchedFriendsPromises = snapshot.docs.map(async (friendDoc) => {
+        const friendData = friendDoc.data() as Omit<FriendInfo, 'uid' | 'onlineStatus'>;
+        return { 
+            uid: friendDoc.id, 
+            ...friendData, 
+            onlineStatus: 'offline' // Default to offline, will be updated by RTDB listener
+        } as FriendInfo;
       });
-      setFriendsList(fetchedFriends.sort((a,b) => a.displayName.localeCompare(b.displayName)));
-      setLoadingFriendsData(false);
+
+      Promise.all(fetchedFriendsPromises).then(fetchedFriends => {
+        setFriendsList(fetchedFriends.sort((a,b) => a.displayName.localeCompare(b.displayName)));
+        setLoadingFriendsData(false);
+      });
+
     }, (error) => {
       console.error("Error fetching friends list:", error);
       toast({ title: "Lỗi", description: "Không thể tải danh sách bạn bè.", variant: "destructive" });
       setLoadingFriendsData(false);
     });
-    return () => unsubscribe();
+
+    return () => unsubscribeFirestoreFriends();
   }, [userId, toast]);
+
+  // RTDB listeners for friends' online status
+  useEffect(() => {
+    if (!userId || friendsList.length === 0) {
+        return;
+    }
+
+    const rtdbListeners: RtdbUnsubscribe[] = [];
+
+    friendsList.forEach(friend => {
+        const friendStatusRef = rtdbRef(rtdb, `/status/${friend.uid}/state`);
+        const listener = onRtdbValue(friendStatusRef, (snapshot) => {
+            const onlineStatus = snapshot.val() as 'online' | 'offline' | null;
+            setFriendsList(prevFriends => 
+                prevFriends.map(f => 
+                    f.uid === friend.uid ? { ...f, onlineStatus: onlineStatus || 'offline' } : f
+                )
+            );
+        });
+        rtdbListeners.push(listener);
+    });
+    
+    return () => {
+        rtdbListeners.forEach(listener => listener());
+    };
+  }, [userId, friendsList]); // Re-run if friendsList changes
 
   // Fetch incoming friend requests
   useEffect(() => {
@@ -69,7 +105,7 @@ export const useFriends = () => {
     }
     const requestsRef = collection(db, 'users', userId, 'friendRequestsReceived');
     const q = query(requestsRef, where('status', '==', 'pending'), orderBy('receivedAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onFirestoreSnapshot(q, (snapshot) => {
       const fetchedRequests: FriendRequestReceived[] = [];
       snapshot.forEach((doc) => {
         fetchedRequests.push({ senderId: doc.id, ...doc.data() } as FriendRequestReceived);
@@ -90,7 +126,7 @@ export const useFriends = () => {
     }
     const requestsRef = collection(db, 'users', userId, 'friendRequestsSent');
     const q = query(requestsRef, where('status', '==', 'pending'), orderBy('sentAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onFirestoreSnapshot(q, (snapshot) => {
       const fetchedRequests: FriendRequestSent[] = [];
       snapshot.forEach((doc) => {
         fetchedRequests.push({ recipientId: doc.id, ...doc.data() } as FriendRequestSent);
@@ -98,19 +134,17 @@ export const useFriends = () => {
       setOutgoingRequests(fetchedRequests);
     }, (error) => {
       console.error("Error fetching outgoing friend requests:", error);
-      // toast({ title: "Lỗi", description: "Không thể tải lời mời đã gửi.", variant: "destructive" });
     });
     return () => unsubscribe();
   }, [userId, toast]);
   
-  // Fetch blocked users (simplified: just stores UIDs)
   useEffect(() => {
     if (!userId) {
         setBlockedUsers([]);
         return;
     }
     const blockedRef = collection(db, 'users', userId, 'blockedUsers');
-    const unsubscribe = onSnapshot(blockedRef, (snapshot) => {
+    const unsubscribe = onFirestoreSnapshot(blockedRef, (snapshot) => {
         const uids: string[] = [];
         snapshot.forEach(doc => uids.push(doc.id));
         setBlockedUsers(uids);
@@ -122,7 +156,7 @@ export const useFriends = () => {
 
 
   const sendFriendRequest = useCallback(async (recipientId: string) => {
-    if (!userId || !user ) { // Removed user.displayName check for now
+    if (!userId || !user ) { 
       toast({ title: "Lỗi", description: "Bạn cần đăng nhập.", variant: "destructive" });
       return;
     }
@@ -189,7 +223,7 @@ export const useFriends = () => {
   }, [userId, user, toast, friendsList, outgoingRequests, blockedUsers]);
 
   const acceptFriendRequest = useCallback(async (senderId: string) => {
-    if (!userId || !user) return; // Removed user.displayName check for now
+    if (!userId || !user) return; 
     try {
       const senderGameStateDoc = await getDoc(doc(db, 'users', senderId, 'gameState', 'data'));
       const senderUserDoc = await getDoc(doc(db, 'users', senderId));
@@ -208,21 +242,18 @@ export const useFriends = () => {
 
 
       const batch = writeBatch(db);
-      // Add to current user's friends list
       const currentUserFriendRef = doc(db, 'users', userId, 'friends', senderId);
       batch.set(currentUserFriendRef, {
         displayName: senderName,
         level: senderLevel,
         friendSince: serverTimestamp(),
       });
-      // Add to sender's friends list
       const senderFriendRef = doc(db, 'users', senderId, 'friends', userId);
       batch.set(senderFriendRef, {
         displayName: currentUserName,
         level: currentUserLevel,
         friendSince: serverTimestamp(),
       });
-      // Remove/update requests
       batch.delete(doc(db, 'users', userId, 'friendRequestsReceived', senderId));
       batch.delete(doc(db, 'users', senderId, 'friendRequestsSent', userId));
       await batch.commit();
@@ -238,7 +269,7 @@ export const useFriends = () => {
     try {
       const batch = writeBatch(db);
       batch.delete(doc(db, 'users', userId, 'friendRequestsReceived', senderId));
-      batch.delete(doc(db, 'users', senderId, 'friendRequestsSent', userId)); // Also remove from sender's sent
+      batch.delete(doc(db, 'users', senderId, 'friendRequestsSent', userId)); 
       await batch.commit();
     } catch (error) {
       console.error("Error declining friend request:", error);
@@ -265,15 +296,12 @@ export const useFriends = () => {
     if (!userId || userId === userIdToBlock) return;
     try {
         const batch = writeBatch(db);
-        // Add to current user's blocked list
         const blockRef = doc(db, 'users', userId, 'blockedUsers', userIdToBlock);
         batch.set(blockRef, { blockedAt: serverTimestamp() });
 
-        // Remove friend if they were friends
         batch.delete(doc(db, 'users', userId, 'friends', userIdToBlock));
         batch.delete(doc(db, 'users', userIdToBlock, 'friends', userId));
 
-        // Remove any pending friend requests between them
         batch.delete(doc(db, 'users', userId, 'friendRequestsReceived', userIdToBlock));
         batch.delete(doc(db, 'users', userId, 'friendRequestsSent', userIdToBlock));
         batch.delete(doc(db, 'users', userIdToBlock, 'friendRequestsReceived', userId));
@@ -311,7 +339,7 @@ export const useFriends = () => {
     removeFriend,
     blockUser,
     unblockUser,
-    blockedUsers, // Expose blocked users list
+    blockedUsers, 
     loadingFriendsData,
   };
 };
