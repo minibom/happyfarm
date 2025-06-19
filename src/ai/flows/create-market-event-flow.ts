@@ -37,6 +37,15 @@ const MarketEventOutputSchema = z.object({
 });
 export type MarketEventOutput = z.infer<typeof MarketEventOutputSchema>;
 
+const FALLBACK_MARKET_EVENT: MarketEventOutput = {
+  eventName: "EVENT_GENERATION_FAILURE",
+  description: "The AI could not generate a new market event at this time. The market remains stable.",
+  itemId: "none", // Placeholder or a specific error code
+  priceModifier: 1.0, // Neutral modifier
+  effectDescription: "No market changes due to event generation failure.",
+  durationHours: 1 // Minimal duration
+};
+
 // ----- Wrapper Function -----
 export async function generateMarketEvent(input: MarketEventInput): Promise<MarketEventOutput> {
   return createMarketEventFlow(input);
@@ -96,17 +105,20 @@ const createMarketEventFlow = ai.defineFlow(
     outputSchema: MarketEventOutputSchema,
   },
   async (input) => {
-    const { output } = await createMarketEventPrompt(input);
-    if (!output) {
-      console.error('AI failed to generate a market event.');
-      // Fallback or throw a more specific error.
-      // For now, returning a dummy/error event might be one way,
-      // but the calling function should ideally handle null/error.
-      throw new Error('AI failed to generate a valid market event structure.');
+    try {
+      const { output } = await createMarketEventPrompt(input);
+      if (!output) {
+        console.error('AI failed to generate a market event (output was null).');
+        return FALLBACK_MARKET_EVENT;
+      }
+      return output;
+    } catch (error) {
+        console.error('Error in createMarketEventFlow during prompt execution:', error);
+        // The caller of this flow (e.g., a Cloud Function)
+        // should ideally check the eventName for "EVENT_GENERATION_FAILURE"
+        // or handle the fallback appropriately.
+        return FALLBACK_MARKET_EVENT;
     }
-    // The caller of this flow (e.g., a Cloud Function)
-    // will be responsible for taking this event data and updating
-    // the `currentEvent` field in `/marketState/global` in Firestore.
-    return output;
   }
 );
+
