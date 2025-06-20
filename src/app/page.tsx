@@ -2,18 +2,13 @@
 'use client';
 
 import Link from 'next/link';
-// Removed: import type { Metadata } from 'next'; 
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Tractor, Wheat, LogIn, UserPlus } from 'lucide-react';
 import ClientOnlyLeafBackground from '@/components/game/ClientOnlyLeafBackground';
-
-// Removed: const productionUrl = 'https://your-happy-farm-app.com';
-
-// Removed: export const metadata: Metadata = { ... };
-
+import happyFarmGameImage from '@/components/icons/happyfarm.png'; // Import the local image
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -44,13 +39,13 @@ export default function LandingPage() {
 
         <div className="mb-10 sm:mb-12">
           <Image
-            src="https://images.unsplash.com/photo-1471193945509-9ad0617afabf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZmFybWVyfGVufDB8fHx8MTc1MDE3NjMyOHww&ixlib=rb-4.1.0&q=80&w=1080"
-            alt="Người nông dân làm việc trên cánh đồng Happy Farm"
-            width={600}
-            height={400}
+            src={happyFarmGameImage} // Use the imported image
+            alt="Happy Farm Game Illustration" // Updated alt text
+            width={600} // Kept original dimensions, adjust if needed
+            height={400} // Kept original dimensions, adjust if needed
             className="rounded-xl shadow-2xl border-4 border-white transform transition-transform duration-500 hover:scale-105"
             priority
-            data-ai-hint="farmer farm work"
+            data-ai-hint="farm game" // Updated data-ai-hint
           />
         </div>
 
